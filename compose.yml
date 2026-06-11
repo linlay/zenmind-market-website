@@ -6,10 +6,13 @@ services:
         VITE_MARKET_API_BASE: ${VITE_MARKET_API_BASE:-/api/v1}
     image: zenmind-market-website
     container_name: zenmind-market-website
+    ports:
+      - "${WEBSITE_PORT:-127.0.0.1:11964}:80"
     networks:
       zenmind-official-net:
         aliases:
           - zenmind-market-website
+    restart: unless-stopped
 
 networks:
   zenmind-official-net:
