@@ -1,6 +1,6 @@
 # ZenMind Market Website
 
-React + Vite marketplace browser mounted at `/market/`.
+React + Vite marketplace browser mounted at `/`.
 
 ```bash
 cp .env.example .env
@@ -16,5 +16,5 @@ Vite loads `.env` automatically during development and build.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `VITE_MARKET_API_BASE` | `/market/api/v1` | API root used by the browser UI. |
+| `VITE_MARKET_API_BASE` | `/api/v1` | API root used by the browser UI. |
 # zenmind-market-website

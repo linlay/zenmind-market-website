@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/market/api/v1';
+const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/api/v1';
 const tabs = [
   { id: 'skill', label: 'Skills', title: 'Skill Market', empty: 'No skills match this view.' },
   { id: 'plugin', label: 'Plugins', title: 'Plugin Market', empty: 'No plugins match this view.' },
@@ -207,7 +207,7 @@ function MarketCard({ item, onSelect }) {
 
 function DetailPanel({ item, onClose }) {
   const viewCommand = `npx @zenmind/market-cli ${cliType(item.type)} view ${item.id}`;
-  const npmCommand = item.npmPackage ? `npm view --registry ${location.origin}/market/npm ${item.npmPackage}` : '';
+  const npmCommand = item.npmPackage ? `npm view --registry ${location.origin}/npm ${item.npmPackage}` : '';
   return (
     <div className="detail-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="detail-panel" role="dialog" aria-modal="true" aria-label={`${item.name} details`} onMouseDown={(event) => event.stopPropagation()}>
