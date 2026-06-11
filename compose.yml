@@ -1,0 +1,16 @@
+services:
+  market-website:
+    build:
+      context: .
+      args:
+        VITE_MARKET_API_BASE: ${VITE_MARKET_API_BASE:-/market/api/v1}
+    image: zenmind-market-website
+    container_name: zenmind-market-website
+    networks:
+      zenmind-official-net:
+        aliases:
+          - zenmind-market-website
+
+networks:
+  zenmind-official-net:
+    external: true
