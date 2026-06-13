@@ -70,7 +70,7 @@ const translations = {
     fallbackTitle: '已使用内置演示目录',
     fallbackBody: '远端目录暂不可用，页面仍可完整演示安装与依赖流程。',
     dependencyTitle: '依赖自愈管理',
-    dependencyBody: '安装此组件前，需要先补齐以下本地依赖。',
+    dependencyBody: '安装此组件前，可在这里检查必需与可选本地依赖状态。',
     oneClickInstall: '一键安装',
     proceedInstall: '继续安装组件',
     cancel: '取消',
@@ -97,6 +97,8 @@ const translations = {
     refreshDependency: '依赖安装完成，正在刷新环境...',
     installDone: '安装成功！',
     depReady: '已就绪',
+    depMissing: '未安装',
+    depOptionalMissing: '可选未安装',
     depRequired: '必需',
     depOptional: '可选',
     developer: '开发者',
@@ -160,7 +162,7 @@ const translations = {
     fallbackTitle: 'Using built-in demo catalog',
     fallbackBody: 'The remote catalog is unavailable, but install and dependency flows are fully available.',
     dependencyTitle: 'Dependency self-healing',
-    dependencyBody: 'Install the missing local dependencies before installing this component.',
+    dependencyBody: 'Review required and optional local dependency status before installing this component.',
     oneClickInstall: 'Install',
     proceedInstall: 'Continue install',
     cancel: 'Cancel',
@@ -187,6 +189,8 @@ const translations = {
     refreshDependency: 'Dependency installed, refreshing environment...',
     installDone: 'Install succeeded!',
     depReady: 'Ready',
+    depMissing: 'Not installed',
+    depOptionalMissing: 'Optional not installed',
     depRequired: 'Required',
     depOptional: 'Optional',
     developer: 'Developer',
@@ -599,7 +603,6 @@ export function App() {
 
   const currentCategoryName = activeCategory === 'all' ? t.all : t.categories[activeCategory];
   const dependencyItem = catalog.find((item) => item.id === dependencyItemId);
-  const missingDependencies = dependencyItem ? getMissingDependencies(dependencyItem, localEnv) : [];
   const brandTitle = localized(marketBrand.name, locale);
 
   function notify(message, tone = 'info') {
@@ -920,7 +923,7 @@ export function App() {
           item={dependencyItem}
           locale={locale}
           t={t}
-          missingDependencies={missingDependencies}
+          localEnv={localEnv}
           onClose={closeDependencyFlow}
           onInstallDependency={triggerDependencyInstall}
           onProceed={() => triggerInstall(dependencyItem.id)}
@@ -1083,7 +1086,9 @@ function DetailModal({ item, locale, t, localEnv, installed, videoPlaying, onTog
   );
 }
 
-function DependencyModal({ item, locale, t, missingDependencies, onClose, onInstallDependency, onProceed }) {
+function DependencyModal({ item, locale, t, localEnv, onClose, onInstallDependency, onProceed }) {
+  const dependencies = item.dependencies || [];
+  const missingRequired = getMissingDependencies(item, localEnv);
   return (
     <div className="modal-backdrop centered" role="presentation" onMouseDown={onClose}>
       <section className="dependency-modal" role="dialog" aria-modal="true" aria-label={t.dependencyTitle} onMouseDown={(event) => event.stopPropagation()}>
@@ -1095,25 +1100,33 @@ function DependencyModal({ item, locale, t, missingDependencies, onClose, onInst
           <button className="modal-close inline" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
         </div>
         <div className="dependency-install-list">
-          {missingDependencies.map((dep) => {
+          {dependencies.length ? dependencies.map((dep) => {
             const key = dependencyKey(dep);
+            const ready = localEnv[key] === true;
+            const required = dep.required === true;
+            const StatusIcon = ready ? CheckCircle2 : AlertCircle;
+            const statusText = ready ? t.depReady : required ? t.depMissing : t.depOptionalMissing;
             return (
-              <div className="dependency-install-row" key={key}>
+              <div className={`dependency-install-row ${ready ? 'is-ready' : required ? 'is-missing' : 'is-optional-missing'}`} key={key}>
                 <div>
-                  <AlertCircle size={17} />
+                  <StatusIcon size={17} />
                   <span>
                     <strong>{localized(dep.name || dependencyMeta[key]?.name || key, locale)}</strong>
-                    <small>ID: {key}</small>
+                    <small>ID: {key} · {required ? t.depRequired : t.depOptional}</small>
                   </span>
                 </div>
-                <button type="button" onClick={() => onInstallDependency(key)}>{t.oneClickInstall}</button>
+                {ready || !required ? (
+                  <span className="dependency-status">{statusText}</span>
+                ) : (
+                  <button type="button" onClick={() => onInstallDependency(key)}>{t.oneClickInstall}</button>
+                )}
               </div>
             );
-          })}
+          }) : <p className="empty-detail">{t.noDependencies}</p>}
         </div>
         <footer className="modal-actions">
           <button className="secondary-action" type="button" onClick={onClose}>{t.cancel}</button>
-          <button className="primary-action" type="button" disabled={missingDependencies.length > 0} onClick={onProceed}>{t.proceedInstall}</button>
+          <button className="primary-action" type="button" disabled={missingRequired.length > 0} onClick={onProceed}>{t.proceedInstall}</button>
         </footer>
       </section>
     </div>

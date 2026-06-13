@@ -1194,7 +1194,15 @@ img {
   flex: 0 0 auto;
 }
 
-.dependency-install-row span {
+.dependency-install-row.is-ready svg {
+  color: var(--emerald);
+}
+
+.dependency-install-row.is-optional-missing svg {
+  color: var(--faint);
+}
+
+.dependency-install-row > div span {
   min-width: 0;
   display: grid;
   gap: 3px;
@@ -1218,6 +1226,26 @@ img {
   background: var(--brand-strong);
   padding: 0 12px;
   flex: 0 0 auto;
+}
+
+.dependency-status {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.dependency-install-row.is-ready .dependency-status {
+  color: var(--emerald);
+}
+
+.dependency-install-row.is-optional-missing .dependency-status {
+  color: var(--faint);
 }
 
 .modal-actions {
