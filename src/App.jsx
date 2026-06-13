@@ -4,7 +4,10 @@ const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/api/v1';
 const tabs = [
   { id: 'skill', label: 'Skills', title: 'Skill Market', empty: 'No skills match this view.' },
   { id: 'plugin', label: 'Plugins', title: 'Plugin Market', empty: 'No plugins match this view.' },
-  { id: 'sandbox-image', label: 'Sandboxes', title: 'Sandbox Market', empty: 'No sandbox templates match this view.' },
+  { id: 'sandbox-image', label: 'Sandboxes', title: 'Sandbox Image Market', empty: 'No sandbox images match this view.' },
+  { id: 'pet', label: 'Pets', title: 'Pet Market', empty: 'No pets match this view.' },
+  { id: 'cli-tool', label: 'CLI Tools', title: 'CLI Tool Market', empty: 'No CLI tools match this view.' },
+  { id: 'website-app', label: 'Website Apps', title: 'Website App Market', empty: 'No website apps match this view.' },
 ];
 const themeModes = ['auto', 'light', 'dark'];
 
@@ -216,6 +219,7 @@ function DetailPanel({ item, onClose }) {
           <span className={`card-icon icon-${item.type}`} aria-hidden="true" />
           <div>
             <p className="eyebrow">{item.type}{item.sandboxKind ? ` · ${item.sandboxKind}` : ''}</p>
+            {item.websiteKind ? <p className="eyebrow">{item.websiteKind}</p> : null}
             <h2>{item.name}</h2>
             <p>{item.description}</p>
           </div>
@@ -225,15 +229,41 @@ function DetailPanel({ item, onClose }) {
         <section className="detail-section">
           <h3>Assets</h3>
           <div className="asset-list">
-            {Object.entries(item.assets || {}).map(([platform, asset]) => (
+            {Object.entries(item.assets || {}).length ? Object.entries(item.assets || {}).map(([platform, asset]) => (
               <a key={platform} href={asset.url}>
                 <span>{platform}</span>
                 <span>{asset.archiveType}</span>
                 <span>{formatBytes(asset.sizeBytes)}</span>
               </a>
-            ))}
+            )) : <p className="empty-detail">No downloadable artifact.</p>}
           </div>
         </section>
+        {item.dependencies?.length ? (
+          <section className="detail-section">
+            <h3>Dependencies</h3>
+            <div className="dependency-list">
+              {item.dependencies.map((dependency, index) => (
+                <div key={`${dependency.kind}:${index}`}>
+                  <span>{dependency.kind}</span>
+                  <strong>{dependencyTarget(dependency)}</strong>
+                  <small>{dependency.phase}{dependency.required ? ' · required' : ''}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+        {item.install || item.uninstall || item.detect ? (
+          <section className="detail-section">
+            <h3>Protocol</h3>
+            <div className="protocol-list">
+              {item.install?.command ? <code>install: {item.install.command}</code> : null}
+              {item.install?.scriptUrl ? <code>install script: {item.install.scriptUrl}</code> : null}
+              {item.uninstall?.command ? <code>uninstall: {item.uninstall.command}</code> : null}
+              {item.detect?.commands?.length ? <code>detect: {item.detect.commands.join(', ')}</code> : null}
+              {item.detect?.versionCommand ? <code>version: {item.detect.versionCommand}</code> : null}
+            </div>
+          </section>
+        ) : null}
         {item.readme ? (
           <section className="detail-section">
             <h3>README</h3>
@@ -271,7 +301,7 @@ function StateNotice({ title, body, tone = 'neutral' }) {
 }
 
 function cliType(type) {
-  return type === 'sandbox-image' ? 'sandbox' : type;
+  return type;
 }
 
 function formatBytes(value) {
@@ -279,4 +309,8 @@ function formatBytes(value) {
   if (value < 1024) return `${value} B`;
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
   return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function dependencyTarget(dependency) {
+  return dependency.serviceId || dependency.id || dependency.command || dependency.runtime || dependency.capability || 'unknown';
 }

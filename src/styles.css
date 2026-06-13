@@ -181,6 +181,30 @@ select {
   box-shadow: 0 8px 0 color-mix(in srgb, var(--accent) 55%, #2b6cb0);
 }
 
+.icon-pet::before {
+  width: 16px;
+  height: 16px;
+  border-radius: 50% 50% 6px 6px;
+  box-shadow: -6px -5px 0 color-mix(in srgb, var(--accent) 55%, #2b6cb0), 6px -5px 0 color-mix(in srgb, var(--accent) 55%, #2b6cb0);
+}
+
+.icon-cli-tool::before {
+  width: 18px;
+  height: 12px;
+  border-radius: 3px;
+  background: transparent;
+  border-left: 3px solid var(--accent);
+  border-bottom: 3px solid var(--accent);
+  box-shadow: 7px 0 0 color-mix(in srgb, var(--accent) 55%, #2b6cb0);
+}
+
+.icon-website-app::before {
+  width: 18px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: inset 0 4px 0 color-mix(in srgb, var(--accent) 55%, #2b6cb0);
+}
+
 .sidebar-stat {
   margin-top: 24px;
   padding: 16px;
@@ -461,6 +485,12 @@ select {
   gap: 8px;
 }
 
+.dependency-list,
+.protocol-list {
+  display: grid;
+  gap: 8px;
+}
+
 .asset-list a {
   min-height: 42px;
   display: grid;
@@ -473,6 +503,33 @@ select {
   border-radius: 8px;
   padding: 0 10px;
   background: var(--panel);
+}
+
+.dependency-list div {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--panel);
+}
+
+.dependency-list span,
+.dependency-list small,
+.empty-detail {
+  color: var(--muted);
+}
+
+.protocol-list code {
+  display: block;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: auto;
 }
 
 .readme {
@@ -526,7 +583,8 @@ select {
   }
 
   .command-block,
-  .asset-list a {
+  .asset-list a,
+  .dependency-list div {
     grid-template-columns: 1fr;
   }
 }
