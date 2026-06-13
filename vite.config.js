@@ -1,8 +1,13 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+const marketBrand = process.env.BRAND?.trim() || 'zenmind';
+
 export default defineConfig({
   base: '/',
+  define: {
+    'import.meta.env.VITE_MARKET_BRAND': JSON.stringify(marketBrand),
+  },
   plugins: [react()],
   server: {
     host: true,

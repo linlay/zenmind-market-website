@@ -3,7 +3,9 @@ FROM node:25-alpine AS build
 WORKDIR /src
 
 ARG VITE_MARKET_API_BASE=/api/v1
+ARG BRAND=zenmind
 ENV VITE_MARKET_API_BASE=$VITE_MARKET_API_BASE
+ENV BRAND=$BRAND
 
 COPY package.json ./
 RUN npm install

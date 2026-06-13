@@ -4,6 +4,7 @@ services:
       context: .
       args:
         VITE_MARKET_API_BASE: ${VITE_MARKET_API_BASE:-/api/v1}
+        BRAND: ${BRAND:-zenmind}
     image: zenmind-market-website
     container_name: zenmind-market-website
     ports:

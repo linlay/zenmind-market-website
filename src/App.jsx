@@ -14,7 +14,6 @@ import {
   Globe,
   Info,
   Languages,
-  Laptop,
   LayoutGrid,
   Moon,
   PackageOpen,
@@ -24,6 +23,7 @@ import {
   Search,
   Shapes,
   ShieldAlert,
+  SlidersHorizontal,
   Sun,
   Terminal,
   Upload,
@@ -31,21 +31,26 @@ import {
 } from 'lucide-react';
 
 const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/api/v1';
+const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
 const locales = ['zh-CN', 'en-US'];
 const canonicalTypes = ['skill', 'plugin', 'agent', 'sandbox-image', 'pet', 'cli-tool', 'website-app'];
 
+const brandNames = {
+  zenmind: { 'zh-CN': 'ZenMind 市场', 'en-US': 'ZenMind Market' },
+  cutej: { 'zh-CN': '小君 AI 市场', 'en-US': 'CuteJ Market' },
+};
+
+const marketBrand = resolveMarketBrand(brandId);
+
 const translations = {
   'zh-CN': {
-    appName: 'ZenMind Hub',
-    marketBadge: 'Marketplace',
     searchPlaceholder: '搜索扩展、插件、沙箱、工具...',
-    connected: '本地环境已连接',
     publish: '开发者发布',
     categoriesTitle: '市场分类',
     envTitle: '本地环境模拟',
     envBadge: '配置',
     envDescription: '开启或关闭本地环境，测试依赖阻断与自愈流。',
-    footer: '© 2026 ZenMind Technologies.\nStandard Extension Protocol v1.0',
+    footer: '© 2026 ZenMind Technologies.\n标准扩展协议 v1.0',
     sortLabel: '排序:',
     sortPopular: '热门推荐',
     sortLatest: '最新发布',
@@ -61,17 +66,20 @@ const translations = {
     emptyTitle: '未找到相关组件',
     emptyBody: '请尝试其他搜索词或分类',
     loadingTitle: '正在加载市场',
-    loadingBody: '正在获取官方 catalog。',
-    fallbackTitle: '已使用内置演示 catalog',
-    fallbackBody: '远端 catalog 暂不可用，页面仍可完整演示安装与依赖流程。',
+    loadingBody: '正在获取官方目录。',
+    fallbackTitle: '已使用内置演示目录',
+    fallbackBody: '远端目录暂不可用，页面仍可完整演示安装与依赖流程。',
     dependencyTitle: '依赖自愈管理',
     dependencyBody: '安装此组件前，需要先补齐以下本地依赖。',
     oneClickInstall: '一键安装',
     proceedInstall: '继续安装组件',
     cancel: '取消',
+    close: '关闭',
     wait: '请稍候...',
     returnDeps: '返回依赖管理',
     complete: '完成',
+    themeToggle: '切换主题',
+    languageToggle: '切换语言',
     terminalShell: 'bash',
     installSuccess: (name) => `[${name}] 安装成功`,
     uninstallSuccess: (name) => `[${name}] 已成功卸载`,
@@ -98,11 +106,13 @@ const translations = {
     dependencies: '依赖图谱',
     assets: '制品内容',
     readmeFallback: '组件核心特性',
+    noDescription: '暂无描述。',
+    noDependencies: '暂无依赖。',
     installRequiredDeps: (value) => `安装所需依赖 (${value})`,
     oneClickComponent: '一键安装',
     uninstallComponent: '卸载组件',
     videoPlaying: '演示运行中',
-    publishTitle: '发布到本地市场',
+    publishTitle: '发布到市场',
     publishBody: '填写组件元数据后，立即加入当前市场视图。',
     type: '类型',
     componentId: '组件 ID',
@@ -114,20 +124,17 @@ const translations = {
     publishSuccess: (name) => `组件 [${name}] 发布成功并上架！`,
     categories: {
       all: '全部组件',
-      skill: 'Skill 智能体',
-      plugin: 'Plugin 插件',
-      agent: 'Agents 市场',
-      'sandbox-image': 'Sandbox 沙箱',
-      pet: 'Pet 桌面宠物',
+      skill: '技能',
+      plugin: '插件',
+      agent: '智能体',
+      'sandbox-image': '沙箱',
+      pet: '桌面宠物',
       'cli-tool': 'CLI 工具',
-      'website-app': '网站应用 WebApps',
+      'website-app': '网站应用',
     },
   },
   'en-US': {
-    appName: 'ZenMind Hub',
-    marketBadge: 'Marketplace',
     searchPlaceholder: 'Search extensions, plugins, sandboxes, tools...',
-    connected: 'Local environment connected',
     publish: 'Developer publish',
     categoriesTitle: 'Market Categories',
     envTitle: 'Local Environment',
@@ -157,9 +164,12 @@ const translations = {
     oneClickInstall: 'Install',
     proceedInstall: 'Continue install',
     cancel: 'Cancel',
+    close: 'Close',
     wait: 'Please wait...',
     returnDeps: 'Back to dependencies',
     complete: 'Done',
+    themeToggle: 'Theme',
+    languageToggle: 'Language',
     terminalShell: 'bash',
     installSuccess: (name) => `[${name}] installed`,
     uninstallSuccess: (name) => `[${name}] uninstalled`,
@@ -186,6 +196,8 @@ const translations = {
     dependencies: 'Dependency graph',
     assets: 'Artifacts',
     readmeFallback: 'Component highlights',
+    noDescription: 'No description provided.',
+    noDependencies: 'No dependencies.',
     installRequiredDeps: (value) => `Install required deps (${value})`,
     oneClickComponent: 'Install now',
     uninstallComponent: 'Uninstall component',
@@ -508,6 +520,7 @@ export function App() {
   const [terminalState, setTerminalState] = useState(null);
   const [toast, setToast] = useState(null);
   const [isPublishOpen, setPublishOpen] = useState(false);
+  const [isEnvSettingsOpen, setEnvSettingsOpen] = useState(false);
   const [publishedItems, setPublishedItems] = useState([]);
 
   const t = translations[locale];
@@ -587,6 +600,7 @@ export function App() {
   const currentCategoryName = activeCategory === 'all' ? t.all : t.categories[activeCategory];
   const dependencyItem = catalog.find((item) => item.id === dependencyItemId);
   const missingDependencies = dependencyItem ? getMissingDependencies(dependencyItem, localEnv) : [];
+  const brandTitle = localized(marketBrand.name, locale);
 
   function notify(message, tone = 'info') {
     const id = window.setTimeout(() => setToast(null), 3000);
@@ -782,11 +796,10 @@ export function App() {
   return (
     <main className="market-shell">
       <header className="topbar">
-        <a className="brand" href="/">
+        <a className="brand" href="/" aria-label={brandTitle}>
           <span className="brand-mark"><Shapes size={20} /></span>
           <span className="brand-copy">
-            <strong>{t.appName}</strong>
-            <small>{t.marketBadge}</small>
+            <strong>{brandTitle}</strong>
           </span>
         </a>
 
@@ -796,17 +809,13 @@ export function App() {
         </label>
 
         <div className="top-actions">
-          <button className="icon-button" type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Theme" aria-label="Theme">
+          <button className="icon-button" type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title={t.themeToggle} aria-label={t.themeToggle}>
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button className="language-button" type="button" onClick={() => setLocale(locale === 'zh-CN' ? 'en-US' : 'zh-CN')} title="Language" aria-label="Language">
+          <button className="language-button" type="button" onClick={() => setLocale(locale === 'zh-CN' ? 'en-US' : 'zh-CN')} title={t.languageToggle} aria-label={t.languageToggle}>
             <Languages size={15} />
             <span>{locale === 'zh-CN' ? '中' : 'EN'}</span>
           </button>
-          <div className="status-pill">
-            <Laptop size={14} />
-            <span>{t.connected}</span>
-          </div>
           <button className="publish-button" type="button" onClick={() => setPublishOpen(true)}>
             <Plus size={15} />
             <span>{t.publish}</span>
@@ -834,24 +843,6 @@ export function App() {
                   );
                 })}
               </nav>
-            </section>
-
-            <section className="env-panel">
-              <div className="env-heading">
-                <h3>{t.envTitle}</h3>
-                <span>{t.envBadge}</span>
-              </div>
-              <p>{t.envDescription}</p>
-              <div className="env-list">
-                {Object.entries(localEnv).map(([key, value]) => (
-                  <div className="env-row" key={key}>
-                    <span>{key}</span>
-                    <button className={value ? 'switch is-on' : 'switch'} type="button" onClick={() => toggleEnv(key)} aria-pressed={value}>
-                      <span />
-                    </button>
-                  </div>
-                ))}
-              </div>
             </section>
           </div>
           <p className="sidebar-footer">{t.footer}</p>
@@ -936,6 +927,17 @@ export function App() {
         />
       ) : null}
 
+      <button className="env-floating-button" type="button" onClick={() => setEnvSettingsOpen(true)} title={t.envTitle} aria-label={t.envTitle}>
+        <SlidersHorizontal size={17} />
+      </button>
+      {isEnvSettingsOpen ? (
+        <EnvSettingsDialog
+          t={t}
+          localEnv={localEnv}
+          onClose={() => setEnvSettingsOpen(false)}
+          onToggleEnv={toggleEnv}
+        />
+      ) : null}
       {terminalState ? <TerminalModal state={terminalState} t={t} onClose={closeTerminal} /> : null}
       {isPublishOpen ? <PublishModal t={t} onClose={() => setPublishOpen(false)} onSubmit={handlePublish} /> : null}
       {toast ? <Toast toast={toast} /> : null}
@@ -949,7 +951,7 @@ function MarketCard({ item, locale, t, installed, missingDependencies, onDetails
     <article className="market-card">
       <div className="card-body">
         <div className="card-kicker">
-          <span>{displayType(item.type)}</span>
+          <span>{displayType(item.type, t)}</span>
           <small className={hasMissingDeps ? 'status-warning' : 'status-ready'}>
             <span />
             {hasMissingDeps ? t.missingDeps : t.ready}
@@ -960,7 +962,7 @@ function MarketCard({ item, locale, t, installed, missingDependencies, onDetails
             {localized(item.name, locale)}
             <span>v{item.version}</span>
           </h2>
-          <p>{localized(item.description, locale) || 'No description provided.'}</p>
+          <p>{localized(item.description, locale) || t.noDescription}</p>
         </div>
         <div className="tag-row">
           {(item.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
@@ -993,7 +995,7 @@ function DetailModal({ item, locale, t, localEnv, installed, videoPlaying, onTog
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="detail-modal" role="dialog" aria-modal="true" aria-label={localized(item.name, locale)} onMouseDown={(event) => event.stopPropagation()}>
-        <button className="modal-close" type="button" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        <button className="modal-close" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
         <div className="detail-grid">
           <section className="detail-main">
             <div className="media-panel">
@@ -1015,7 +1017,7 @@ function DetailModal({ item, locale, t, localEnv, installed, videoPlaying, onTog
           <section className="detail-side">
             <div className="detail-heading">
               <div className="detail-icon"><Icon size={30} /></div>
-              <span>{displayType(item.type)}</span>
+              <span>{displayType(item.type, t)}</span>
               <h2>{localized(item.name, locale)}</h2>
               <p>{localized(item.description, locale)}</p>
             </div>
@@ -1039,7 +1041,7 @@ function DetailModal({ item, locale, t, localEnv, installed, videoPlaying, onTog
                       <small>{ready ? t.depReady : dep.required ? t.depRequired : t.depOptional}</small>
                     </div>
                   );
-                }) : <p className="empty-detail">No dependencies.</p>}
+                }) : <p className="empty-detail">{t.noDependencies}</p>}
               </div>
             </section>
 
@@ -1090,7 +1092,7 @@ function DependencyModal({ item, locale, t, missingDependencies, onClose, onInst
             <h2>{t.dependencyTitle}</h2>
             <p>{localized(item.name, locale)} · {t.dependencyBody}</p>
           </div>
-          <button className="modal-close inline" type="button" onClick={onClose}><X size={18} /></button>
+          <button className="modal-close inline" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
         </div>
         <div className="dependency-install-list">
           {missingDependencies.map((dep) => {
@@ -1113,6 +1115,31 @@ function DependencyModal({ item, locale, t, missingDependencies, onClose, onInst
           <button className="secondary-action" type="button" onClick={onClose}>{t.cancel}</button>
           <button className="primary-action" type="button" disabled={missingDependencies.length > 0} onClick={onProceed}>{t.proceedInstall}</button>
         </footer>
+      </section>
+    </div>
+  );
+}
+
+function EnvSettingsDialog({ t, localEnv, onClose, onToggleEnv }) {
+  return (
+    <div className="env-dialog-layer" role="presentation" onMouseDown={onClose}>
+      <section className="env-dialog" role="dialog" aria-modal="true" aria-label={t.envTitle} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="env-heading">
+          <h3>{t.envTitle}</h3>
+          <span>{t.envBadge}</span>
+        </div>
+        <p>{t.envDescription}</p>
+        <div className="env-list">
+          {Object.entries(localEnv).map(([key, value]) => (
+            <div className="env-row" key={key}>
+              <span>{key}</span>
+              <button className={value ? 'switch is-on' : 'switch'} type="button" onClick={() => onToggleEnv(key)} aria-pressed={value}>
+                <span />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button className="modal-close inline env-dialog-close" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
       </section>
     </div>
   );
@@ -1155,7 +1182,7 @@ function PublishModal({ t, onClose, onSubmit }) {
             <h2>{t.publishTitle}</h2>
             <p>{t.publishBody}</p>
           </div>
-          <button className="modal-close inline" type="button" onClick={onClose}><X size={18} /></button>
+          <button className="modal-close inline" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
         </div>
         <form className="publish-form" onSubmit={onSubmit}>
           <label>
@@ -1252,8 +1279,32 @@ function localized(value, locale) {
   return value || '';
 }
 
-function displayType(type) {
-  return type === 'website-app' ? 'webapps' : type;
+function resolveMarketBrand(value) {
+  const raw = String(value || 'zenmind').trim() || 'zenmind';
+  const key = raw.toLowerCase();
+  if (brandNames[key]) return { id: key, name: brandNames[key] };
+  const fallbackName = formatBrandLabel(raw);
+  return {
+    id: key,
+    name: {
+      'zh-CN': `${fallbackName} 市场`,
+      'en-US': `${fallbackName} Market`,
+    },
+  };
+}
+
+function formatBrandLabel(value) {
+  const words = String(value || '')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return 'ZenMind';
+  return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+function displayType(type, t) {
+  return t?.categories?.[type] || (type === 'website-app' ? 'webapps' : type);
 }
 
 function dependencyKey(dep) {
