@@ -60,7 +60,9 @@ const translations = {
     ready: '就绪',
     missingDeps: '缺少依赖',
     installDeps: '安装依赖',
+    installDepsCount: (value) => `安装 ${value} 个依赖`,
     install: '安装',
+    manage: '管理',
     uninstall: '卸载',
     details: '详情与演示',
     emptyTitle: '未找到相关组件',
@@ -152,7 +154,9 @@ const translations = {
     ready: 'Ready',
     missingDeps: 'Missing deps',
     installDeps: 'Install deps',
+    installDepsCount: (value) => `Install ${value} ${value === 1 ? 'dep' : 'deps'}`,
     install: 'Install',
+    manage: 'Manage',
     uninstall: 'Uninstall',
     details: 'Details & demo',
     emptyTitle: 'No matching components',
@@ -884,7 +888,6 @@ export function App() {
                     onDetails={() => openDetails(item)}
                     onInstall={() => triggerInstall(item.id)}
                     onInstallDeps={() => openDependencyFlow(item.id)}
-                    onUninstall={() => uninstallItem(item.id)}
                   />
                 ))}
               </div>
@@ -948,25 +951,23 @@ export function App() {
   );
 }
 
-function MarketCard({ item, locale, t, installed, missingDependencies, onDetails, onInstall, onInstallDeps, onUninstall }) {
+function MarketCard({ item, locale, t, installed, missingDependencies, onDetails, onInstall, onInstallDeps }) {
   const hasMissingDeps = missingDependencies.length > 0;
+  const category = categoryMeta.find((entry) => entry.id === item.type);
+  const Icon = category?.icon || PackageOpen;
   return (
     <article className="market-card">
       <div className="card-body">
-        <div className="card-kicker">
-          <span>{displayType(item.type, t)}</span>
-          <small className={hasMissingDeps ? 'status-warning' : 'status-ready'}>
-            <span />
-            {hasMissingDeps ? t.missingDeps : t.ready}
-          </small>
-        </div>
-        <div>
+        <div className="card-title-row">
+          <span className={`card-type-icon ${category?.colorClass || 'is-muted'}`} title={displayType(item.type, t)} aria-label={displayType(item.type, t)}>
+            <Icon size={16} />
+          </span>
           <h2>
             {localized(item.name, locale)}
             <span>v{item.version}</span>
           </h2>
-          <p>{localized(item.description, locale) || t.noDescription}</p>
         </div>
+        <p>{localized(item.description, locale) || t.noDescription}</p>
         <div className="tag-row">
           {(item.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
         </div>
@@ -977,11 +978,11 @@ function MarketCard({ item, locale, t, installed, missingDependencies, onDetails
           <ArrowRight size={13} />
         </button>
         {installed ? (
-          <button className="secondary-action" type="button" onClick={onUninstall}>{t.uninstall}</button>
+          <button className="secondary-action" type="button" onClick={onDetails}>{t.manage}</button>
         ) : hasMissingDeps ? (
           <button className="dependency-action" type="button" onClick={onInstallDeps}>
             <ShieldAlert size={14} />
-            <span>{t.installDeps}</span>
+            <span>{t.installDepsCount(missingDependencies.length)}</span>
           </button>
         ) : (
           <button className="primary-action" type="button" onClick={onInstall}>{t.install}</button>

@@ -575,7 +575,7 @@ img {
 }
 
 .market-card {
-  min-height: 232px;
+  min-height: 204px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -596,65 +596,36 @@ img {
 
 .card-body {
   display: grid;
-  gap: 14px;
+  gap: 11px;
 }
 
-.card-kicker {
+.card-title-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
 }
 
-.card-kicker > span {
-  color: var(--muted);
-  background: var(--surface-soft);
+.card-type-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 9px;
-  text-transform: uppercase;
-  font-weight: 840;
-  letter-spacing: 0.06em;
-}
-
-.card-kicker small {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  font-weight: 650;
-}
-
-.card-kicker small span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-.status-ready {
-  color: var(--emerald);
-}
-
-.status-ready span {
-  background: var(--emerald);
-}
-
-.status-warning {
-  color: var(--amber);
-}
-
-.status-warning span {
-  background: var(--amber);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  display: grid;
+  place-items: center;
 }
 
 .market-card h2 {
   margin: 0;
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 8px;
   font-size: 15px;
   line-height: 1.35;
+  min-width: 0;
 }
 
 .market-card h2 span {
@@ -665,7 +636,7 @@ img {
 }
 
 .market-card p {
-  margin: 5px 0 0;
+  margin: 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
@@ -676,7 +647,7 @@ img {
 }
 
 .tag-row {
-  min-height: 24px;
+  min-height: 22px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -693,7 +664,7 @@ img {
 
 .market-card footer {
   border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
-  padding-top: 14px;
+  padding-top: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
