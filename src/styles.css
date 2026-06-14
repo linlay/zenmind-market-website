@@ -575,15 +575,15 @@ img {
 }
 
 .market-card {
-  min-height: 204px;
+  min-height: 188px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
-  padding: 18px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -596,19 +596,20 @@ img {
 
 .card-body {
   display: grid;
-  gap: 11px;
+  gap: 9px;
 }
 
 .card-title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 10px;
   min-width: 0;
 }
 
 .card-type-icon {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   flex: 0 0 auto;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -619,20 +620,23 @@ img {
 
 .market-card h2 {
   margin: 0;
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
   font-size: 15px;
   line-height: 1.35;
   min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.market-card h2 span {
+.card-version {
   color: var(--faint);
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   font-weight: 500;
+  line-height: 1.35;
+  padding-top: 2px;
+  white-space: nowrap;
 }
 
 .market-card p {
@@ -664,11 +668,26 @@ img {
 
 .market-card footer {
   border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
-  padding-top: 12px;
+  padding-top: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+}
+
+.market-card footer .link-button,
+.market-card footer .primary-action,
+.market-card footer .secondary-action,
+.market-card footer .dependency-action {
+  min-height: 29px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.market-card footer .primary-action,
+.market-card footer .secondary-action,
+.market-card footer .dependency-action {
+  padding: 0 11px;
 }
 
 .link-button,

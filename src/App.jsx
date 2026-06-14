@@ -964,8 +964,8 @@ function MarketCard({ item, locale, t, installed, missingDependencies, onDetails
           </span>
           <h2>
             {localized(item.name, locale)}
-            <span>v{item.version}</span>
           </h2>
+          <span className="card-version">v{item.version}</span>
         </div>
         <p>{localized(item.description, locale) || t.noDescription}</p>
         <div className="tag-row">
