@@ -10,6 +10,8 @@ npm run dev
 
 Set `VITE_MARKET_API_BASE` to use a non-default API root.
 
+The website uses the backend catalog as its only market data source. If `/api/v1/catalog` is unavailable, the UI shows an error instead of falling back to built-in demo items. Artifact downloads go through the backend resolve/download APIs so the server can serve files from its persistent artifact storage and record download events.
+
 ## Environment
 
 Vite loads `.env` automatically during development and build.
