@@ -72,12 +72,14 @@
 html,
 body,
 #root {
+  height: 100%;
   min-height: 100%;
 }
 
 body {
   margin: 0;
   min-width: 320px;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-size: 14px;
@@ -120,13 +122,18 @@ img {
 }
 
 .market-shell {
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--bg);
 }
 
 .topbar {
+  flex: 0 0 auto;
   min-height: 66px;
   display: grid;
   grid-template-columns: auto minmax(260px, 560px) auto;
@@ -280,13 +287,18 @@ img {
 }
 
 .workspace {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 266px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .sidebar {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-right: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
   background: color-mix(in srgb, var(--surface) 72%, var(--bg));
   padding: 24px 18px;
@@ -496,12 +508,14 @@ img {
 .content-pane {
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: color-mix(in srgb, var(--bg) 88%, var(--surface));
 }
 
 .content-header {
+  flex: 0 0 auto;
   min-height: 66px;
   padding: 16px 30px;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
@@ -564,7 +578,9 @@ img {
 .catalog-scroll {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 30px;
 }
 
@@ -1140,15 +1156,20 @@ img {
 .dependency-modal,
 .publish-modal {
   width: min(620px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-head {
+  flex: 0 0 auto;
   padding: 18px;
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -1170,6 +1191,9 @@ img {
 }
 
 .dependency-install-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   padding: 16px 18px;
 }
 
@@ -1414,6 +1438,9 @@ img {
 }
 
 .publish-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   padding: 18px;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1503,9 +1530,11 @@ img {
 
   .workspace {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .sidebar {
+    max-height: min(34dvh, 260px);
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
