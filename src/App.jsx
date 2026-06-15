@@ -683,19 +683,27 @@ function DetailModal({ item, locale, t, videoPlaying, onToggleVideo, onClose, on
 function PublishModal({ t, onClose, onSubmit, isPublishing }) {
   const [type, setType] = useState('agent');
   const [archiveType, setArchiveType] = useState(defaultArchiveTypeFor('agent'));
+  const [sandboxKind, setSandboxKind] = useState('environment-template');
   const [websiteKind, setWebsiteKind] = useState('local-app');
 
   function handleTypeChange(event) {
     const nextType = normalizeType(event.target.value);
     setType(nextType);
-    setArchiveType(defaultArchiveTypeFor(nextType));
+    setArchiveType(defaultArchiveTypeFor(nextType, { sandboxKind: 'environment-template' }));
+    if (nextType === 'sandbox-image') setSandboxKind('environment-template');
     if (nextType === 'website-app') setWebsiteKind('local-app');
+  }
+
+  function handleSandboxKindChange(event) {
+    const nextKind = event.target.value === 'container-image' ? 'container-image' : 'environment-template';
+    setSandboxKind(nextKind);
+    setArchiveType(defaultArchiveTypeFor('sandbox-image', { sandboxKind: nextKind }));
   }
 
   function handleWebsiteKindChange(event) {
     const nextKind = event.target.value;
     setWebsiteKind(nextKind);
-    setArchiveType(nextKind === 'external' ? 'tar.gz' : 'website-app');
+    setArchiveType(defaultArchiveTypeFor('website-app'));
   }
 
   return (
@@ -734,7 +742,7 @@ function PublishModal({ t, onClose, onSubmit, isPublishing }) {
           <label>
             <span>{t.archiveType}</span>
             <select name="archiveType" value={archiveType} onChange={(event) => setArchiveType(event.target.value)}>
-              {archiveOptionsFor(type).map((option) => <option value={option} key={option}>{option}</option>)}
+              {archiveOptionsFor(type, { sandboxKind }).map((option) => <option value={option} key={option}>{option}</option>)}
             </select>
           </label>
           <label>
@@ -744,7 +752,7 @@ function PublishModal({ t, onClose, onSubmit, isPublishing }) {
           {type === 'sandbox-image' ? (
             <label>
               <span>{t.sandboxKind}</span>
-              <select name="sandboxKind" defaultValue="environment-template">
+              <select name="sandboxKind" value={sandboxKind} onChange={handleSandboxKindChange}>
                 <option value="environment-template">environment-template</option>
                 <option value="container-image">container-image</option>
               </select>
@@ -982,29 +990,24 @@ function parseTags(value) {
     .filter(Boolean);
 }
 
-function archiveOptionsFor(type) {
+function archiveOptionsFor(type, options = {}) {
   switch (normalizeType(type)) {
     case 'skill':
-      return ['tar.gz', 'zip', 'skill', 'md'];
     case 'plugin':
-      return ['tar.gz', 'zip'];
     case 'agent':
-      return ['agent', 'tar.gz', 'zip'];
-    case 'sandbox-image':
-      return ['sandbox-template', 'container-image', 'tar.gz', 'zip'];
     case 'pet':
-      return ['zip'];
     case 'cli-tool':
-      return ['tar.gz', 'zip'];
     case 'website-app':
-      return ['website-app', 'zip', 'tar.gz'];
+      return ['zip'];
+    case 'sandbox-image':
+      return options.sandboxKind === 'container-image' ? ['tar.gz'] : ['zip'];
     default:
-      return ['tar.gz'];
+      return ['zip'];
   }
 }
 
-function defaultArchiveTypeFor(type) {
-  return archiveOptionsFor(type)[0] || 'tar.gz';
+function defaultArchiveTypeFor(type, options = {}) {
+  return archiveOptionsFor(type, options)[0] || 'zip';
 }
 
 function savedAdminToken() {
