@@ -6,12 +6,15 @@ import {
   Bot,
   Box,
   Brain,
+  Calendar,
   Cat,
   CheckCircle2,
   Download,
   File,
   Folder,
   Globe,
+  HardDrive,
+  Heart,
   Info,
   Languages,
   LayoutGrid,
@@ -25,6 +28,7 @@ import {
   Sun,
   Terminal,
   Upload,
+  User,
   X,
 } from 'lucide-react';
 
@@ -92,8 +96,14 @@ const translations = {
     depRequired: '必需',
     depOptional: '可选',
     developer: '开发者',
+    createdAt: '创建日期',
     size: '大小',
     downloads: '下载',
+    favorites: '收藏',
+    favoriteAction: '收藏',
+    unfavoriteAction: '取消收藏',
+    favoriteFailed: (reason) => `收藏失败：${reason}`,
+    favoriteAuthRequired: '需要登录或授权后才能收藏。',
     features: '核心特性',
     dependencies: '依赖图谱',
     assets: '制品内容',
@@ -125,6 +135,24 @@ const translations = {
     artifactRequired: '请选择要上传的制品包。',
     archiveType: '制品类型',
     platformKey: '平台',
+    platforms: '平台支持',
+    currentPlatform: '当前平台',
+    selectedPlatform: '已选平台',
+    os: '系统',
+    arch: '架构',
+    minDesktopVersion: '最低桌面版本',
+    platformDescription: '平台说明',
+    platformMetadata: '平台元数据 JSON',
+    platformDependencies: '平台依赖 JSON',
+    installProtocol: '安装协议',
+    installCommand: '安装命令',
+    uninstallCommand: '卸载命令',
+    detectCommands: '检测命令',
+    versionCommand: '版本命令',
+    noPlatformDetails: '暂无平台详情。',
+    noInstallProtocol: '暂无安装脚本。',
+    artifactOptional: '未选择制品时将发布元数据。',
+    invalidJSON: (field) => `${field} 不是有效 JSON。`,
     tags: '标签',
     readme: 'README',
     author: '作者',
@@ -174,8 +202,14 @@ const translations = {
     depRequired: 'Required',
     depOptional: 'Optional',
     developer: 'Developer',
+    createdAt: 'Created',
     size: 'Size',
     downloads: 'Downloads',
+    favorites: 'Favorites',
+    favoriteAction: 'Favorite',
+    unfavoriteAction: 'Unfavorite',
+    favoriteFailed: (reason) => `Favorite failed: ${reason}`,
+    favoriteAuthRequired: 'Sign in or authorize this session before favoriting.',
     features: 'Core features',
     dependencies: 'Dependency graph',
     assets: 'Artifacts',
@@ -207,6 +241,24 @@ const translations = {
     artifactRequired: 'Choose an artifact package to upload.',
     archiveType: 'Archive type',
     platformKey: 'Platform',
+    platforms: 'Platforms',
+    currentPlatform: 'Current platform',
+    selectedPlatform: 'Selected platform',
+    os: 'OS',
+    arch: 'Arch',
+    minDesktopVersion: 'Minimum desktop',
+    platformDescription: 'Platform description',
+    platformMetadata: 'Platform metadata JSON',
+    platformDependencies: 'Platform dependencies JSON',
+    installProtocol: 'Install protocol',
+    installCommand: 'Install command',
+    uninstallCommand: 'Uninstall command',
+    detectCommands: 'Detect commands',
+    versionCommand: 'Version command',
+    noPlatformDetails: 'No platform details.',
+    noInstallProtocol: 'No install script.',
+    artifactOptional: 'Publishing metadata only when no artifact is selected.',
+    invalidJSON: (field) => `${field} is not valid JSON.`,
     tags: 'Tags',
     readme: 'README',
     author: 'Author',
@@ -259,11 +311,13 @@ export function App() {
   const [theme, setTheme] = useState(initialTheme);
   const [locale, setLocale] = useState(initialLocale);
   const [selected, setSelected] = useState(null);
+  const [selectedPlatformKey, setSelectedPlatformKey] = useState('');
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [toast, setToast] = useState(null);
   const [isPublishOpen, setPublishOpen] = useState(false);
   const [isPublishing, setPublishing] = useState(false);
   const [downloadingKey, setDownloadingKey] = useState('');
+  const [favoritingKey, setFavoritingKey] = useState('');
 
   const t = translations[locale];
 
@@ -325,7 +379,9 @@ export function App() {
     return [...result].sort((a, b) => {
       if (sortMode === 'latest') return dateValue(b.updatedAt || b.publishedAt) - dateValue(a.updatedAt || a.publishedAt);
       if (sortMode === 'rating') return localized(a.name, locale).localeCompare(localized(b.name, locale));
-      return parseDownloads(b.downloads) - parseDownloads(a.downloads);
+      return (parseCount(b.downloads) - parseCount(a.downloads))
+        || (parseCount(b.favoriteCount) - parseCount(a.favoriteCount))
+        || localized(a.name, locale).localeCompare(localized(b.name, locale));
     });
   }, [activeCategory, catalog, locale, query, sortMode]);
 
@@ -342,35 +398,66 @@ export function App() {
 
   function openDetails(item) {
     setSelected(item);
+    setSelectedPlatformKey(preferredPlatformKey(item));
     setVideoPlaying(false);
   }
 
   function closeDetails() {
     setSelected(null);
+    setSelectedPlatformKey('');
     setVideoPlaying(false);
   }
 
-  async function handleDownload(item) {
+  async function handleDownload(item, platformOverride = '') {
     if (!item || downloadingKey) return;
-    if (!hasArtifact(item)) {
+    const platform = preferredPlatformKey(item, platformOverride);
+    if (!hasArtifact(item, platform)) {
       notify(t.downloadUnavailable, 'error');
       return;
     }
-    const key = `${item.type}:${item.id}`;
+    const key = `${item.type}:${item.id}:${platform || 'any'}`;
     setDownloadingKey(key);
     try {
       const route = marketRoute(item.type);
       const id = encodeURIComponent(item.id);
-      const resolved = await requestJSON(`${apiBase}/${route}/${id}/resolve`);
+      const platformQuery = platform ? `?platform=${encodeURIComponent(platform)}` : '';
+      const resolved = await requestJSON(`${apiBase}/${route}/${id}/resolve${platformQuery}`);
       if (!resolved?.asset?.url) {
         throw new Error(t.downloadUnavailable);
       }
-      triggerBrowserDownload(`${apiBase}/${route}/${id}/download`);
-      notify(t.downloadStarted(localized(item.name, locale) || item.id), 'success');
+      const resolvedPlatform = resolved.platform || platform;
+      const downloadQuery = resolvedPlatform ? `?platform=${encodeURIComponent(resolvedPlatform)}` : '';
+      triggerBrowserDownload(`${apiBase}/${route}/${id}/download${downloadQuery}`);
+      notify(t.downloadStarted(`${localized(item.name, locale) || item.id}${resolvedPlatform ? ` (${resolvedPlatform})` : ''}`), 'success');
     } catch (reason) {
       notify(t.downloadFailed(errorMessage(reason)), 'error');
     } finally {
       setDownloadingKey('');
+    }
+  }
+
+  async function handleFavorite(item) {
+    if (!item || favoritingKey) return;
+    const key = `${item.type}:${item.id}`;
+    setFavoritingKey(key);
+    try {
+      const route = marketRoute(item.type);
+      const id = encodeURIComponent(item.id);
+      const updated = await requestJSON(`${apiBase}/${route}/${id}/favorite`, {
+        method: item.favorited ? 'DELETE' : 'POST',
+      });
+      const updatedType = normalizeType(updated.type);
+      setApiItems((items) => items.map((entry) => (
+        normalizeType(entry.type) === updatedType && entry.id === updated.id ? updated : entry
+      )));
+      const merged = mergeCatalogItem(updated);
+      setSelected((current) => (
+        current && current.id === merged.id && current.type === merged.type ? merged : current
+      ));
+    } catch (reason) {
+      notify(reason?.status === 401 ? t.favoriteAuthRequired : t.favoriteFailed(errorMessage(reason)), 'error');
+    } finally {
+      setFavoritingKey('');
     }
   }
 
@@ -386,14 +473,42 @@ export function App() {
     const description = String(form.get('description') || '').trim();
     const token = String(form.get('adminToken') || '').trim();
     const artifact = form.get('artifact');
+    const hasSelectedArtifact = artifact instanceof File && artifact.size > 0;
     if (!token) {
       notify(t.adminTokenRequired, 'error');
       return;
     }
-    if (!(artifact instanceof File) || artifact.size === 0) {
+    if (artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim() }) && !hasSelectedArtifact) {
       notify(t.artifactRequired, 'error');
       return;
     }
+    let platformMetadata;
+    let platformDependencies;
+    try {
+      platformMetadata = parseJSONField(form.get('platformMetadata'), {}, t.platformMetadata, 'object', t.invalidJSON);
+      platformDependencies = parseJSONField(form.get('platformDependencies'), [], t.platformDependencies, 'array', t.invalidJSON);
+    } catch (reason) {
+      notify(errorMessage(reason), 'error');
+      return;
+    }
+
+    const platformKey = String(form.get('platformKey') || '').trim() || 'universal';
+    const platformMinDesktopVersion = String(form.get('platformMinDesktopVersion') || '').trim();
+    const install = scriptSpecFromCommand(form.get('installCommand'));
+    const uninstall = scriptSpecFromCommand(form.get('uninstallCommand'));
+    const detect = detectSpecFromForm(form);
+    const platform = {
+      key: platformKey,
+      os: String(form.get('platformOS') || '').trim(),
+      arch: String(form.get('platformArch') || '').trim(),
+      description: String(form.get('platformDescription') || '').trim(),
+      minDesktopVersion: platformMinDesktopVersion,
+      metadata: platformMetadata,
+      dependencies: platformDependencies,
+    };
+    if (install) platform.install = install;
+    if (uninstall) platform.uninstall = uninstall;
+    if (detect) platform.detect = detect;
 
     const metadata = {
       id,
@@ -403,31 +518,44 @@ export function App() {
       description,
       readme: String(form.get('readme') || '').trim(),
       tags: parseTags(form.get('tags')),
-      minDesktopVersion: '',
+      minDesktopVersion: platformMinDesktopVersion,
       sandboxKind: type === 'sandbox-image' ? String(form.get('sandboxKind') || '').trim() || 'environment-template' : '',
       websiteKind: type === 'website-app' ? String(form.get('websiteKind') || '').trim() || 'local-app' : '',
-      platformKey: String(form.get('platformKey') || '').trim() || 'universal',
+      platformKey,
       assetRole: 'primary',
       archiveType: String(form.get('archiveType') || '').trim() || defaultArchiveTypeFor(type),
       metadata: {},
-      dependencies: [],
+      dependencies: platformDependencies,
+      platform,
     };
+    if (type === 'cli-tool') {
+      if (install) metadata.install = install;
+      if (uninstall) metadata.uninstall = uninstall;
+      if (detect) metadata.detect = detect;
+    }
     const author = String(form.get('author') || '').trim();
     const metadataUrl = String(form.get('metadataUrl') || '').trim();
     if (author) metadata.metadata.author = author;
     if (metadataUrl) metadata.metadata.url = metadataUrl;
 
-    const body = new FormData();
-    body.append('metadata', JSON.stringify(metadata));
-    body.append('artifact', artifact);
-
     setPublishing(true);
     try {
-      await requestJSON(`${apiBase}/admin/${marketRoute(type)}/publish`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body,
-      });
+      if (hasSelectedArtifact) {
+        const body = new FormData();
+        body.append('metadata', JSON.stringify(metadata));
+        body.append('artifact', artifact);
+        await requestJSON(`${apiBase}/admin/${marketRoute(type)}/publish`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body,
+        });
+      } else {
+        await requestJSON(`${apiBase}/admin/${marketRoute(type)}/publish`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+          body: JSON.stringify(metadata),
+        });
+      }
       saveAdminToken(token);
       await loadCatalog();
       setActiveCategory(type);
@@ -526,7 +654,9 @@ export function App() {
                     t={t}
                     onDetails={() => openDetails(item)}
                     onDownload={() => handleDownload(item)}
-                    isDownloading={downloadingKey === `${item.type}:${item.id}`}
+                    onFavorite={() => handleFavorite(item)}
+                    isDownloading={downloadingKey === `${item.type}:${item.id}:${preferredPlatformKey(item) || 'any'}`}
+                    isFavoriting={favoritingKey === `${item.type}:${item.id}`}
                   />
                 ))}
               </div>
@@ -547,10 +677,14 @@ export function App() {
           locale={locale}
           t={t}
           videoPlaying={videoPlaying}
+          selectedPlatformKey={selectedPlatformKey || preferredPlatformKey(selected)}
+          onPlatformChange={setSelectedPlatformKey}
           onToggleVideo={() => setVideoPlaying((value) => !value)}
           onClose={closeDetails}
-          onDownload={() => handleDownload(selected)}
-          isDownloading={downloadingKey === `${selected.type}:${selected.id}`}
+          onDownload={() => handleDownload(selected, selectedPlatformKey)}
+          onFavorite={() => handleFavorite(selected)}
+          isDownloading={downloadingKey === `${selected.type}:${selected.id}:${preferredPlatformKey(selected, selectedPlatformKey) || 'any'}`}
+          isFavoriting={favoritingKey === `${selected.type}:${selected.id}`}
         />
       ) : null}
 
@@ -560,10 +694,12 @@ export function App() {
   );
 }
 
-function MarketCard({ item, locale, t, onDetails, onDownload, isDownloading }) {
+function MarketCard({ item, locale, t, onDetails, onDownload, onFavorite, isDownloading, isFavoriting }) {
   const category = categoryMeta.find((entry) => entry.id === item.type);
   const Icon = category?.icon || PackageOpen;
-  const canDownload = hasArtifact(item);
+  const platform = preferredPlatformKey(item);
+  const canDownload = hasArtifact(item, platform);
+  const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   return (
     <article className="market-card">
       <div className="card-body">
@@ -579,6 +715,24 @@ function MarketCard({ item, locale, t, onDetails, onDownload, isDownloading }) {
         <p>{localized(item.description, locale) || t.noDescription}</p>
         <div className="tag-row">
           {(item.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
+          {platform ? <span className="platform-chip">{platform}</span> : null}
+        </div>
+        <div className="card-stats">
+          <span className="stat-pill" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
+            <Download size={13} />
+            <span>{formatCount(item.downloads)}</span>
+          </span>
+          <button
+            className={item.favorited ? 'stat-pill stat-button is-active' : 'stat-pill stat-button'}
+            type="button"
+            onClick={onFavorite}
+            disabled={isFavoriting}
+            title={favoriteLabel}
+            aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
+          >
+            <Heart size={13} fill={item.favorited ? 'currentColor' : 'none'} />
+            <span>{formatCount(item.favoriteCount)}</span>
+          </button>
         </div>
       </div>
       <footer>
@@ -595,10 +749,15 @@ function MarketCard({ item, locale, t, onDetails, onDownload, isDownloading }) {
   );
 }
 
-function DetailModal({ item, locale, t, videoPlaying, onToggleVideo, onClose, onDownload, isDownloading }) {
+function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onDownload, onFavorite, isDownloading, isFavoriting }) {
   const Icon = categoryMeta.find((category) => category.id === item.type)?.icon || PackageOpen;
-  const deps = item.dependencies || [];
-  const canDownload = hasArtifact(item);
+  const platformKeys = availablePlatformKeys(item);
+  const activePlatformKey = preferredPlatformKey(item, selectedPlatformKey);
+  const activePlatform = platformForKey(item, activePlatformKey);
+  const deps = platformDependencies(activePlatform, item);
+  const commands = commandEntries(activePlatform, t);
+  const canDownload = hasArtifact(item, activePlatformKey);
+  const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="detail-modal" role="dialog" aria-modal="true" aria-label={localized(item.name, locale)} onMouseDown={(event) => event.stopPropagation()}>
@@ -630,10 +789,67 @@ function DetailModal({ item, locale, t, videoPlaying, onToggleVideo, onClose, on
             </div>
 
             <div className="meta-grid">
-              <span>{t.developer}: {item.author || 'ZenMind'}</span>
-              <span>{t.size}: {item.size || formatAssetSize(item)}</span>
-              <span>{t.downloads}: {formatDownloads(item.downloads)}</span>
+              <div className="meta-row">
+                <User size={14} />
+                <span>{t.developer}</span>
+                <strong>{item.author || 'ZenMind'}</strong>
+              </div>
+              <div className="meta-row">
+                <Calendar size={14} />
+                <span>{t.createdAt}</span>
+                <strong>{formatDate(item.createdAt || item.publishedAt, locale)}</strong>
+              </div>
+              <div className="meta-row">
+                <HardDrive size={14} />
+                <span>{t.size}</span>
+                <strong>{formatAssetSizeForPlatform(item, activePlatformKey) || item.size || formatAssetSize(item)}</strong>
+              </div>
+              <div className="meta-row">
+                <Download size={14} />
+                <span>{t.downloads}</span>
+                <strong>{formatCount(item.downloads)}</strong>
+              </div>
+              <button
+                className={item.favorited ? 'meta-row meta-button is-active' : 'meta-row meta-button'}
+                type="button"
+                onClick={onFavorite}
+                disabled={isFavoriting}
+                title={favoriteLabel}
+                aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
+              >
+                <Heart size={14} fill={item.favorited ? 'currentColor' : 'none'} />
+                <span>{t.favorites}</span>
+                <strong>{formatCount(item.favoriteCount)}</strong>
+              </button>
             </div>
+
+            <section className="side-section">
+              <h3>{t.platforms}</h3>
+              {platformKeys.length ? (
+                <div className="platform-detail">
+                  {platformKeys.length > 1 ? (
+                    <label className="platform-select">
+                      <span>{t.currentPlatform}</span>
+                      <select value={activePlatformKey} onChange={(event) => onPlatformChange(event.target.value)}>
+                        {platformKeys.map((platform) => <option value={platform} key={platform}>{platform}</option>)}
+                      </select>
+                    </label>
+                  ) : (
+                    <div className="platform-single">
+                      <Box size={13} />
+                      <span>{activePlatformKey}</span>
+                    </div>
+                  )}
+                  <div className="platform-facts">
+                    {activePlatform?.os ? <span>{t.os}: {activePlatform.os}</span> : null}
+                    {activePlatform?.arch ? <span>{t.arch}: {activePlatform.arch}</span> : null}
+                    {activePlatform?.minDesktopVersion ? <span>{t.minDesktopVersion}: {activePlatform.minDesktopVersion}</span> : null}
+                    {hasArtifact(item, activePlatformKey) ? <span>{t.assets}: {formatAssetSizeForPlatform(item, activePlatformKey)}</span> : null}
+                  </div>
+                  {activePlatform?.description ? <p className="platform-copy">{activePlatform.description}</p> : null}
+                </div>
+              ) : <p className="empty-detail">{t.noPlatformDetails}</p>}
+            </section>
 
             <section className="side-section">
               <h3>{t.dependencies}</h3>
@@ -651,16 +867,33 @@ function DetailModal({ item, locale, t, videoPlaying, onToggleVideo, onClose, on
               </div>
             </section>
 
+            {commands.length ? (
+              <section className="side-section">
+                <h3>{t.installProtocol}</h3>
+                <div className="command-list">
+                  {commands.map((entry) => (
+                    <div className="command-row" key={`${entry.label}:${entry.value}`}>
+                      <Terminal size={13} />
+                      <div>
+                        <small>{entry.label}</small>
+                        <code>{entry.value}</code>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
             <section className="side-section">
               <h3>{t.assets}</h3>
               <div className="asset-tree">
-                {(assetList(item) || []).map((asset) => {
-                  const isDir = asset.includes('/');
+                {(assetEntries(item) || []).map((asset) => {
+                  const isDir = asset.label.includes('/');
                   const AssetIcon = isDir ? Folder : File;
                   return (
-                    <div key={asset}>
+                    <div className={asset.platform === activePlatformKey ? 'is-selected' : ''} key={asset.label}>
                       <AssetIcon size={14} />
-                      <span>{asset}</span>
+                      <span>{asset.label}</span>
                     </div>
                   );
                 })}
@@ -749,6 +982,30 @@ function PublishModal({ t, onClose, onSubmit, isPublishing }) {
             <span>{t.platformKey}</span>
             <input name="platformKey" defaultValue="universal" placeholder="universal" />
           </label>
+          <label>
+            <span>{t.os}</span>
+            <select name="platformOS" defaultValue="">
+              <option value="">auto</option>
+              <option value="darwin">darwin</option>
+              <option value="linux">linux</option>
+              <option value="windows">windows</option>
+              <option value="universal">universal</option>
+            </select>
+          </label>
+          <label>
+            <span>{t.arch}</span>
+            <select name="platformArch" defaultValue="">
+              <option value="">auto</option>
+              <option value="arm64">arm64</option>
+              <option value="amd64">amd64</option>
+              <option value="arm">arm</option>
+              <option value="386">386</option>
+            </select>
+          </label>
+          <label>
+            <span>{t.minDesktopVersion}</span>
+            <input name="platformMinDesktopVersion" placeholder="1.2.0" />
+          </label>
           {type === 'sandbox-image' ? (
             <label>
               <span>{t.sandboxKind}</span>
@@ -783,12 +1040,45 @@ function PublishModal({ t, onClose, onSubmit, isPublishing }) {
           </label>
           <label className="full">
             <span>{t.artifact}</span>
-            <input name="artifact" type="file" required />
+            <input name="artifact" type="file" required={artifactRequiredFor(type, { websiteKind })} />
+            {!artifactRequiredFor(type, { websiteKind }) ? <small className="field-hint">{t.artifactOptional}</small> : null}
           </label>
           <label className="full">
             <span>{t.description}</span>
             <textarea name="description" rows="4" required />
           </label>
+          <label className="full">
+            <span>{t.platformDescription}</span>
+            <textarea name="platformDescription" rows="3" />
+          </label>
+          <label className="full">
+            <span>{t.platformMetadata}</span>
+            <textarea name="platformMetadata" rows="4" defaultValue="{}" spellCheck="false" />
+          </label>
+          <label className="full">
+            <span>{t.platformDependencies}</span>
+            <textarea name="platformDependencies" rows="5" defaultValue="[]" spellCheck="false" />
+          </label>
+          {type === 'cli-tool' ? (
+            <>
+              <label className="full">
+                <span>{t.installCommand}</span>
+                <input name="installCommand" placeholder="brew install zmctl" />
+              </label>
+              <label className="full">
+                <span>{t.uninstallCommand}</span>
+                <input name="uninstallCommand" placeholder="brew uninstall zmctl" />
+              </label>
+              <label className="full">
+                <span>{t.detectCommands}</span>
+                <textarea name="detectCommands" rows="3" placeholder="zmctl" />
+              </label>
+              <label className="full">
+                <span>{t.versionCommand}</span>
+                <input name="versionCommand" placeholder="zmctl --version" />
+              </label>
+            </>
+          ) : null}
           <label className="full">
             <span>{t.readme}</span>
             <textarea name="readme" rows="5" />
@@ -828,7 +1118,11 @@ function Toast({ toast }) {
 
 function mergeCatalogItem(apiItem) {
   const type = normalizeType(apiItem.type);
-  const assets = Object.entries(apiItem.assets || {}).map(([platform, asset]) => `${platform}/${asset.archiveType || 'artifact'} ${formatBytes(asset.sizeBytes)}`);
+  const assetMap = apiItem.assets || {};
+  const platformMap = synthesizePlatformMap(apiItem.platforms || {}, assetMap);
+  const assets = Object.entries(assetMap).map(([platform, asset]) => `${platform}/${asset.archiveType || 'artifact'} ${formatBytes(asset.sizeBytes)}`);
+  const downloadCount = parseCount(apiItem.downloadCount ?? apiItem.metadata?.downloads ?? 0);
+  const favoriteCount = parseCount(apiItem.favoriteCount ?? apiItem.metadata?.favorites ?? 0);
   const dependencies = apiItem.dependencies?.length ? apiItem.dependencies.map((dep) => ({
     ...dep,
     id: dep.id || dep.serviceId || dep.command || dep.runtime || dep.capability || dep.kind,
@@ -842,13 +1136,19 @@ function mergeCatalogItem(apiItem) {
     readme: apiItem.readme || '',
     tags: apiItem.tags || [],
     assets,
-    assetMap: apiItem.assets || {},
+    assetMap,
+    platformMap,
+    platformOptions: sortPlatformKeys(Object.keys(platformMap)),
     dependencies,
     screenshot: apiItem.metadata?.screenshot || defaultMediaImage,
     videoThumb: apiItem.metadata?.videoThumb || apiItem.metadata?.screenshot || defaultMediaImage,
-    author: apiItem.metadata?.author || 'ZenMind',
+    author: apiItem.author || apiItem.metadata?.author || 'ZenMind',
+    createdAt: apiItem.createdAt || apiItem.publishedAt || '',
     size: formatAssetSize(apiItem),
-    downloads: apiItem.downloadCount ?? apiItem.metadata?.downloads ?? 0,
+    downloadCount,
+    downloads: downloadCount,
+    favoriteCount,
+    favorited: Boolean(apiItem.favorited),
   };
 }
 
@@ -892,6 +1192,143 @@ function displayType(type, t) {
   return t?.categories?.[type] || (type === 'website-app' ? 'webapps' : type);
 }
 
+function synthesizePlatformMap(platforms = {}, assets = {}) {
+  const result = {};
+  for (const [key, spec] of Object.entries(platforms || {})) {
+    const platform = sanitizePlatformKey(spec?.platform || key) || 'universal';
+    result[platform] = normalizePlatformSpec(platform, spec);
+  }
+  for (const [key] of Object.entries(assets || {})) {
+    const platform = sanitizePlatformKey(key) || 'universal';
+    if (!result[platform]) {
+      result[platform] = normalizePlatformSpec(platform, { platform });
+    }
+  }
+  return result;
+}
+
+function normalizePlatformSpec(platform, spec = {}) {
+  return {
+    platform,
+    os: spec.os || inferOSFromPlatform(platform),
+    arch: spec.arch || inferArchFromPlatform(platform),
+    description: spec.description || '',
+    readme: spec.readme || '',
+    minDesktopVersion: spec.minDesktopVersion || '',
+    metadata: spec.metadata || {},
+    dependencies: normalizeDependenciesForUI(spec.dependencies || []),
+    install: spec.install || null,
+    uninstall: spec.uninstall || null,
+    detect: spec.detect || null,
+  };
+}
+
+function normalizeDependenciesForUI(dependencies) {
+  return (dependencies || []).map((dep) => ({
+    ...dep,
+    id: dep.id || dep.serviceId || dep.command || dep.runtime || dep.capability || dep.kind,
+    name: dep.displayName || dep.id || dep.serviceId || dep.command || dep.runtime || dep.capability || dep.kind,
+  }));
+}
+
+function availablePlatformKeys(item) {
+  const keys = item?.platformOptions?.length
+    ? item.platformOptions
+    : sortPlatformKeys([
+      ...Object.keys(item?.platformMap || {}),
+      ...Object.keys(item?.assetMap || {}),
+    ]);
+  return keys;
+}
+
+function sortPlatformKeys(keys) {
+  return [...new Set(keys.map(sanitizePlatformKey).filter(Boolean))].sort((a, b) => {
+    if (a === 'universal') return -1;
+    if (b === 'universal') return 1;
+    return a.localeCompare(b);
+  });
+}
+
+function preferredPlatformKey(item, requested = '') {
+  const keys = availablePlatformKeys(item);
+  if (!keys.length) return '';
+  const detected = detectClientPlatform();
+  const preferred = requested || detected.key;
+  for (const candidate of platformFallbackCandidates(preferred)) {
+    if (keys.includes(candidate)) return candidate;
+  }
+  for (const candidate of platformFallbackCandidates(detected.os)) {
+    if (keys.includes(candidate)) return candidate;
+  }
+  if (keys.includes('universal')) return 'universal';
+  return keys[0];
+}
+
+function platformForKey(item, key) {
+  const resolvedKey = preferredPlatformKey(item, key);
+  return item?.platformMap?.[resolvedKey] || (resolvedKey ? normalizePlatformSpec(resolvedKey, { platform: resolvedKey }) : null);
+}
+
+function platformDependencies(platform, item) {
+  if (platform?.dependencies?.length) return platform.dependencies;
+  return item?.dependencies || [];
+}
+
+function platformFallbackCandidates(platform) {
+  platform = sanitizePlatformKey(platform);
+  if (!platform || platform === 'universal') return ['universal'];
+  const candidates = [];
+  const add = (value) => {
+    value = sanitizePlatformKey(value);
+    if (value && !candidates.includes(value)) candidates.push(value);
+  };
+  add(platform);
+  const parts = platform.split('-');
+  if (parts.length >= 2) add(`${parts[0]}-${parts[1]}`);
+  if (parts.length >= 1) add(parts[0]);
+  add('universal');
+  return candidates;
+}
+
+function detectClientPlatform() {
+  const rawPlatform = `${navigator.platform || ''} ${navigator.userAgent || ''}`.toLowerCase();
+  let os = 'universal';
+  if (rawPlatform.includes('mac') || rawPlatform.includes('darwin')) os = 'darwin';
+  else if (rawPlatform.includes('win')) os = 'windows';
+  else if (rawPlatform.includes('linux') || rawPlatform.includes('x11')) os = 'linux';
+
+  let arch = '';
+  if (rawPlatform.includes('arm64') || rawPlatform.includes('aarch64')) arch = 'arm64';
+  else if (rawPlatform.includes('x86_64') || rawPlatform.includes('x64') || rawPlatform.includes('win64') || rawPlatform.includes('amd64')) arch = 'amd64';
+  else if (rawPlatform.includes('i686') || rawPlatform.includes('i386')) arch = '386';
+  if (!arch && os === 'darwin') arch = 'arm64';
+  if (!arch && os !== 'universal') arch = 'amd64';
+
+  return { os, arch, key: os === 'universal' ? 'universal' : `${os}-${arch}` };
+}
+
+function sanitizePlatformKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function inferOSFromPlatform(platform) {
+  const key = sanitizePlatformKey(platform);
+  if (key.startsWith('darwin')) return 'darwin';
+  if (key.startsWith('linux')) return 'linux';
+  if (key.startsWith('windows') || key.startsWith('win32')) return 'windows';
+  return key === 'universal' ? 'universal' : '';
+}
+
+function inferArchFromPlatform(platform) {
+  const parts = sanitizePlatformKey(platform).split('-');
+  return parts.find((part) => ['arm64', 'amd64', '386', 'arm'].includes(part)) || '';
+}
+
 function marketRoute(type) {
   switch (normalizeType(type)) {
     case 'skill':
@@ -917,15 +1354,41 @@ function dependencyKey(dep) {
   return dep.id || dep.serviceId || dep.command || dep.runtime || dep.capability || dep.kind || 'unknown';
 }
 
+function commandEntries(platform, t) {
+  const entries = [];
+  if (platform?.install?.command) entries.push({ label: t.installCommand, value: platform.install.command });
+  if (platform?.uninstall?.command) entries.push({ label: t.uninstallCommand, value: platform.uninstall.command });
+  for (const command of platform?.detect?.commands || []) {
+    if (command) entries.push({ label: t.detectCommands, value: command });
+  }
+  if (platform?.detect?.versionCommand) entries.push({ label: t.versionCommand, value: platform.detect.versionCommand });
+  return entries;
+}
+
 function assetList(item) {
   if (Array.isArray(item.assets)) return item.assets;
   return Object.entries(item.assets || {}).map(([platform, asset]) => `${platform}/${asset.archiveType || 'artifact'}`);
+}
+
+function assetEntries(item) {
+  const assets = item.assetMap || item.assets || {};
+  if (Array.isArray(assets)) return assets.map((label) => ({ label, platform: label.split('/')[0] }));
+  return Object.entries(assets).map(([platform, asset]) => ({
+    platform,
+    label: `${platform}/${asset.archiveType || 'artifact'} ${formatBytes(asset.sizeBytes)}`,
+    asset,
+  }));
 }
 
 function formatAssetSize(item) {
   const values = Object.values(item.assets || {});
   if (!values.length || !values[0]?.sizeBytes) return 'size unknown';
   return formatBytes(values.reduce((sum, asset) => sum + (asset.sizeBytes || 0), 0));
+}
+
+function formatAssetSizeForPlatform(item, platformKey) {
+  const asset = getAssetForPlatform(item, platformKey);
+  return asset?.sizeBytes ? formatBytes(asset.sizeBytes) : '';
 }
 
 function formatBytes(value) {
@@ -935,12 +1398,26 @@ function formatBytes(value) {
   return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function parseDownloads(value) {
+function parseCount(value) {
   return Number(String(value || '0').replace(/[^0-9]/g, '')) || 0;
 }
 
+function parseDownloads(value) {
+  return parseCount(value);
+}
+
+function formatCount(value) {
+  return parseCount(value).toLocaleString();
+}
+
 function formatDownloads(value) {
-  return parseDownloads(value).toLocaleString();
+  return formatCount(value);
+}
+
+function formatDate(value, locale) {
+  const timestamp = dateValue(value);
+  if (!timestamp) return locale === 'zh-CN' ? '未知' : 'Unknown';
+  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(timestamp));
 }
 
 function dateValue(value) {
@@ -948,8 +1425,19 @@ function dateValue(value) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
-function hasArtifact(item) {
-  return assetList(item).length > 0;
+function getAssetForPlatform(item, platformKey = '') {
+  const assetMap = item?.assetMap || {};
+  if (!Object.keys(assetMap).length) return null;
+  if (!platformKey) return Object.values(assetMap)[0] || null;
+  for (const candidate of platformFallbackCandidates(platformKey)) {
+    if (assetMap[candidate]) return assetMap[candidate];
+  }
+  return null;
+}
+
+function hasArtifact(item, platformKey = '') {
+  if (platformKey) return Boolean(getAssetForPlatform(item, platformKey));
+  return Boolean(Object.keys(item?.assetMap || {}).length || assetList(item).length);
 }
 
 async function requestJSON(url, options = {}) {
@@ -964,7 +1452,9 @@ async function requestJSON(url, options = {}) {
     }
   }
   if (!response.ok) {
-    throw new Error(data?.error?.message || data?.message || `HTTP ${response.status}`);
+    const error = new Error(data?.error?.message || data?.message || `HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
   return data;
 }
@@ -988,6 +1478,46 @@ function parseTags(value) {
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean);
+}
+
+function parseJSONField(value, fallback, label, expectedType, invalidJSON) {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(invalidJSON ? invalidJSON(label) : `${label} is not valid JSON.`);
+  }
+  if (expectedType === 'array' && !Array.isArray(parsed)) {
+    throw new Error(invalidJSON ? invalidJSON(label) : `${label} must be an array.`);
+  }
+  if (expectedType === 'object' && (Array.isArray(parsed) || parsed === null || typeof parsed !== 'object')) {
+    throw new Error(invalidJSON ? invalidJSON(label) : `${label} must be an object.`);
+  }
+  return parsed;
+}
+
+function scriptSpecFromCommand(value) {
+  const command = String(value || '').trim();
+  return command ? { command } : null;
+}
+
+function detectSpecFromForm(form) {
+  const commands = String(form.get('detectCommands') || '')
+    .split(/\n|,/)
+    .map((command) => command.trim())
+    .filter(Boolean);
+  const versionCommand = String(form.get('versionCommand') || '').trim();
+  if (!commands.length && !versionCommand) return null;
+  return { commands, versionCommand };
+}
+
+function artifactRequiredFor(type, options = {}) {
+  type = normalizeType(type);
+  if (type === 'cli-tool') return false;
+  if (type === 'website-app' && options.websiteKind === 'external') return false;
+  return true;
 }
 
 function archiveOptionsFor(type, options = {}) {
