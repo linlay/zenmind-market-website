@@ -469,7 +469,7 @@ export function App() {
     const type = normalizeType(form.get('type'));
     const id = String(form.get('id') || '').trim().toLowerCase();
     const name = String(form.get('name') || '').trim();
-    const version = String(form.get('version') || '').trim() || '1.0.0';
+    const version = canonicalVersion(form.get('version')) || '1.0.0';
     const description = String(form.get('description') || '').trim();
     const token = String(form.get('adminToken') || '').trim();
     const artifact = form.get('artifact');
@@ -710,7 +710,7 @@ function MarketCard({ item, locale, t, onDetails, onDownload, onFavorite, isDown
           <h2>
             {localized(item.name, locale)}
           </h2>
-          <span className="card-version">v{item.version}</span>
+          <span className="card-version">{formatVersionLabel(item.version)}</span>
         </div>
         <p>{localized(item.description, locale) || t.noDescription}</p>
         <div className="tag-row">
@@ -1192,6 +1192,17 @@ function formatBrandLabel(value) {
 
 function displayType(type, t) {
   return t?.categories?.[type] || (type === 'website-app' ? 'webapps' : type);
+}
+
+function canonicalVersion(value) {
+  const version = String(value || '').trim();
+  if (/^[vV]\d/.test(version)) return version.slice(1);
+  return version;
+}
+
+function formatVersionLabel(value) {
+  const version = canonicalVersion(value);
+  return version ? `v${version}` : '';
 }
 
 function synthesizePlatformMap(platforms = {}, assets = {}) {
