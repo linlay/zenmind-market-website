@@ -110,7 +110,7 @@ const translations = {
     readmeFallback: '组件核心特性',
     noDescription: '暂无描述。',
     noDependencies: '暂无依赖。',
-    downloadArtifact: '下载制品',
+    downloadArtifact: '下载',
     downloading: '准备下载...',
     noArtifact: '暂无制品',
     downloadStarted: (name) => `[${name}] 制品下载已开始。`,
@@ -216,7 +216,7 @@ const translations = {
     readmeFallback: 'Component highlights',
     noDescription: 'No description provided.',
     noDependencies: 'No dependencies.',
-    downloadArtifact: 'Download artifact',
+    downloadArtifact: 'Download',
     downloading: 'Preparing...',
     noArtifact: 'No artifact',
     downloadStarted: (name) => `[${name}] artifact download started.`,
@@ -717,29 +717,31 @@ function MarketCard({ item, locale, t, onDetails, onDownload, onFavorite, isDown
           {(item.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
           {platform ? <span className="platform-chip">{platform}</span> : null}
         </div>
-        <div className="card-stats">
-          <span className="stat-pill" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
-            <Download size={13} />
-            <span>{formatCount(item.downloads)}</span>
-          </span>
-          <button
-            className={item.favorited ? 'stat-pill stat-button is-active' : 'stat-pill stat-button'}
-            type="button"
-            onClick={onFavorite}
-            disabled={isFavoriting}
-            title={favoriteLabel}
-            aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
-          >
-            <Heart size={13} fill={item.favorited ? 'currentColor' : 'none'} />
-            <span>{formatCount(item.favoriteCount)}</span>
-          </button>
-        </div>
       </div>
       <footer>
-        <button className="link-button" type="button" onClick={onDetails}>
-          <span>{t.details}</span>
-          <ArrowRight size={13} />
-        </button>
+        <div className="card-footer-meta">
+          <button className="link-button" type="button" onClick={onDetails}>
+            <span>{t.details}</span>
+            <ArrowRight size={13} />
+          </button>
+          <div className="card-stats">
+            <span className="stat-pill" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
+              <Download size={13} />
+              <span>{formatCount(item.downloads)}</span>
+            </span>
+            <button
+              className={item.favorited ? 'stat-pill stat-button is-active' : 'stat-pill stat-button'}
+              type="button"
+              onClick={onFavorite}
+              disabled={isFavoriting}
+              title={favoriteLabel}
+              aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
+            >
+              <Heart size={13} fill={item.favorited ? 'currentColor' : 'none'} />
+              <span>{formatCount(item.favoriteCount)}</span>
+            </button>
+          </div>
+        </div>
         <button className="primary-action" type="button" disabled={!canDownload || isDownloading} onClick={onDownload}>
           <Download size={13} />
           <span>{canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>

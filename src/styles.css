@@ -593,7 +593,7 @@ img {
 }
 
 .market-card {
-  min-height: 188px;
+  min-height: 166px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -692,10 +692,12 @@ img {
 }
 
 .card-stats {
-  min-height: 28px;
+  min-height: 26px;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .stat-pill {
@@ -723,6 +725,11 @@ img {
   font: inherit;
 }
 
+.stat-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .stat-button:hover,
 .stat-button:focus-visible {
   color: var(--rose);
@@ -742,22 +749,47 @@ img {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
+}
+
+.card-footer-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1 1 auto;
 }
 
 .market-card footer .link-button,
 .market-card footer .primary-action,
 .market-card footer .secondary-action,
 .market-card footer .dependency-action {
-  min-height: 29px;
+  min-height: 28px;
   border-radius: 7px;
   font-size: 11px;
+}
+
+.market-card footer .link-button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  background: var(--surface-muted);
+  padding: 0 9px;
+  font-weight: 650;
+}
+
+.market-card footer .link-button:hover,
+.market-card footer .link-button:focus-visible {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--brand) 28%, var(--line));
+  background: var(--surface-soft);
+  outline: 0;
 }
 
 .market-card footer .primary-action,
 .market-card footer .secondary-action,
 .market-card footer .dependency-action {
   padding: 0 11px;
+  flex: 0 0 auto;
 }
 
 .link-button,
@@ -1819,7 +1851,6 @@ img {
     grid-template-columns: 1fr;
   }
 
-  .market-card footer,
   .dependency-install-row,
   .modal-actions {
     align-items: stretch;
@@ -1832,6 +1863,21 @@ img {
   .dependency-action,
   .dependency-install-row button {
     width: 100%;
+  }
+
+  .market-card footer {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .card-footer-meta {
+    flex: 1 1 176px;
+  }
+
+  .market-card footer .link-button,
+  .market-card footer .primary-action {
+    width: auto;
   }
 
   .detail-modal {
