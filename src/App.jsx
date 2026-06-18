@@ -9,6 +9,7 @@ import {
   Calendar,
   Cat,
   CheckCircle2,
+  Copy,
   Download,
   File,
   Folder,
@@ -116,6 +117,10 @@ const translations = {
     downloadStarted: (name) => `[${name}] 制品下载已开始。`,
     downloadUnavailable: '后端未返回可下载制品。',
     downloadFailed: (reason) => `下载失败：${reason}`,
+    installWithADP: '一键安装',
+    installCopied: (command) => `已复制安装命令：${command}`,
+    installCopyFailed: (reason) => `复制安装命令失败：${reason}`,
+    installUnavailable: '该组件暂无 ADP 安装协议。',
     videoPlaying: '演示运行中',
     publishTitle: '发布到市场',
     publishBody: '填写组件元数据并上传制品包，发布后写入后端 SQLite。',
@@ -133,6 +138,9 @@ const translations = {
     adminTokenRequired: '请输入管理员 Token。',
     artifact: '制品包',
     artifactRequired: '请选择要上传的制品包。',
+    adpManifest: 'ADP 安装协议',
+    adpManifestRequired: 'CLI 工具和技能必须上传 adp.yaml。',
+    adpManifestHint: '上传 adp.yaml；服务器会绑定本次制品 URL 和 SHA-256。',
     archiveType: '制品类型',
     platformKey: '平台',
     platforms: '平台支持',
@@ -222,6 +230,10 @@ const translations = {
     downloadStarted: (name) => `[${name}] artifact download started.`,
     downloadUnavailable: 'The backend did not return a downloadable artifact.',
     downloadFailed: (reason) => `Download failed: ${reason}`,
+    installWithADP: 'Install',
+    installCopied: (command) => `Install command copied: ${command}`,
+    installCopyFailed: (reason) => `Failed to copy install command: ${reason}`,
+    installUnavailable: 'This item has no ADP install protocol.',
     videoPlaying: 'Demo running',
     publishTitle: 'Publish to local market',
     publishBody: 'Add metadata, upload an artifact, and persist it to the backend SQLite catalog.',
@@ -239,6 +251,9 @@ const translations = {
     adminTokenRequired: 'Enter an admin token.',
     artifact: 'Artifact package',
     artifactRequired: 'Choose an artifact package to upload.',
+    adpManifest: 'ADP manifest',
+    adpManifestRequired: 'CLI tools and skills must upload adp.yaml.',
+    adpManifestHint: 'Upload adp.yaml; the server binds this artifact URL and SHA-256.',
     archiveType: 'Archive type',
     platformKey: 'Platform',
     platforms: 'Platforms',
@@ -436,6 +451,20 @@ export function App() {
     }
   }
 
+  async function handleInstall(item) {
+    const command = adpInstallCommand(item);
+    if (!command) {
+      notify(t.installUnavailable, 'error');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(command);
+      notify(t.installCopied(command), 'success');
+    } catch (reason) {
+      notify(t.installCopyFailed(errorMessage(reason)), 'error');
+    }
+  }
+
   async function handleFavorite(item) {
     if (!item || favoritingKey) return;
     const key = `${item.type}:${item.id}`;
@@ -474,12 +503,18 @@ export function App() {
     const token = String(form.get('adminToken') || '').trim();
     const artifact = form.get('artifact');
     const hasSelectedArtifact = artifact instanceof File && artifact.size > 0;
+    const adpManifest = form.get('adpManifest');
+    const hasSelectedADPManifest = adpManifest instanceof File && adpManifest.size > 0;
     if (!token) {
       notify(t.adminTokenRequired, 'error');
       return;
     }
     if (artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim() }) && !hasSelectedArtifact) {
       notify(t.artifactRequired, 'error');
+      return;
+    }
+    if (adpRequiredFor(type) && !hasSelectedADPManifest) {
+      notify(t.adpManifestRequired, 'error');
       return;
     }
     let platformMetadata;
@@ -537,6 +572,9 @@ export function App() {
     const metadataUrl = String(form.get('metadataUrl') || '').trim();
     if (author) metadata.metadata.author = author;
     if (metadataUrl) metadata.metadata.url = metadataUrl;
+    if (hasSelectedADPManifest && !hasSelectedArtifact) {
+      metadata.adpYaml = await adpManifest.text();
+    }
 
     setPublishing(true);
     try {
@@ -544,6 +582,7 @@ export function App() {
         const body = new FormData();
         body.append('metadata', JSON.stringify(metadata));
         body.append('artifact', artifact);
+        if (hasSelectedADPManifest) body.append('adp', adpManifest);
         await requestJSON(`${apiBase}/admin/${marketRoute(type)}/publish`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
@@ -653,6 +692,7 @@ export function App() {
                     locale={locale}
                     t={t}
                     onDetails={() => openDetails(item)}
+                    onInstall={() => handleInstall(item)}
                     onDownload={() => handleDownload(item)}
                     onFavorite={() => handleFavorite(item)}
                     isDownloading={downloadingKey === `${item.type}:${item.id}:${preferredPlatformKey(item) || 'any'}`}
@@ -682,6 +722,7 @@ export function App() {
           onToggleVideo={() => setVideoPlaying((value) => !value)}
           onClose={closeDetails}
           onDownload={() => handleDownload(selected, selectedPlatformKey)}
+          onInstall={() => handleInstall(selected)}
           onFavorite={() => handleFavorite(selected)}
           isDownloading={downloadingKey === `${selected.type}:${selected.id}:${preferredPlatformKey(selected, selectedPlatformKey) || 'any'}`}
           isFavoriting={favoritingKey === `${selected.type}:${selected.id}`}
@@ -694,11 +735,12 @@ export function App() {
   );
 }
 
-function MarketCard({ item, locale, t, onDetails, onDownload, onFavorite, isDownloading, isFavoriting }) {
+function MarketCard({ item, locale, t, onDetails, onInstall, onDownload, onFavorite, isDownloading, isFavoriting }) {
   const category = categoryMeta.find((entry) => entry.id === item.type);
   const Icon = category?.icon || PackageOpen;
   const platform = preferredPlatformKey(item);
   const canDownload = hasArtifact(item, platform);
+  const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   return (
     <article className="market-card">
@@ -724,6 +766,11 @@ function MarketCard({ item, locale, t, onDetails, onDownload, onFavorite, isDown
             <span>{t.details}</span>
             <ArrowRight size={13} />
           </button>
+          {canInstall && canDownload ? (
+            <button className="link-button" type="button" onClick={onDownload} disabled={isDownloading}>
+              <span>{isDownloading ? t.downloading : t.downloadArtifact}</span>
+            </button>
+          ) : null}
           <div className="card-stats">
             <span className="stat-pill" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
               <Download size={13} />
@@ -742,16 +789,16 @@ function MarketCard({ item, locale, t, onDetails, onDownload, onFavorite, isDown
             </button>
           </div>
         </div>
-        <button className="primary-action" type="button" disabled={!canDownload || isDownloading} onClick={onDownload}>
-          <Download size={13} />
-          <span>{canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
+        <button className="primary-action" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
+          {canInstall ? <Copy size={13} /> : <Download size={13} />}
+          <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
         </button>
       </footer>
     </article>
   );
 }
 
-function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onDownload, onFavorite, isDownloading, isFavoriting }) {
+function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onInstall, onDownload, onFavorite, isDownloading, isFavoriting }) {
   const Icon = categoryMeta.find((category) => category.id === item.type)?.icon || PackageOpen;
   const platformKeys = availablePlatformKeys(item);
   const activePlatformKey = preferredPlatformKey(item, selectedPlatformKey);
@@ -759,6 +806,7 @@ function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPla
   const deps = platformDependencies(activePlatform, item);
   const commands = commandEntries(activePlatform, t);
   const canDownload = hasArtifact(item, activePlatformKey);
+  const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
@@ -903,10 +951,16 @@ function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPla
             </section>
 
             <div className="detail-action">
-              <button className="primary-action wide" type="button" disabled={!canDownload || isDownloading} onClick={onDownload}>
-                <Download size={16} />
-                <span>{canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
+              <button className="primary-action wide" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
+                {canInstall ? <Copy size={16} /> : <Download size={16} />}
+                <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
               </button>
+              {canInstall && canDownload ? (
+                <button className="secondary-action wide" type="button" disabled={isDownloading} onClick={onDownload}>
+                  <Download size={16} />
+                  <span>{isDownloading ? t.downloading : t.downloadArtifact}</span>
+                </button>
+              ) : null}
             </div>
           </section>
         </div>
@@ -1045,6 +1099,13 @@ function PublishModal({ t, onClose, onSubmit, isPublishing }) {
             <input name="artifact" type="file" required={artifactRequiredFor(type, { websiteKind })} />
             {!artifactRequiredFor(type, { websiteKind }) ? <small className="field-hint">{t.artifactOptional}</small> : null}
           </label>
+          {adpRequiredFor(type) ? (
+            <label className="full">
+              <span>{t.adpManifest}</span>
+              <input name="adpManifest" type="file" accept=".yaml,.yml,text/yaml,application/x-yaml" required />
+              <small className="field-hint">{t.adpManifestHint}</small>
+            </label>
+          ) : null}
           <label className="full">
             <span>{t.description}</span>
             <textarea name="description" rows="4" required />
@@ -1486,6 +1547,24 @@ function triggerBrowserDownload(url) {
   link.remove();
 }
 
+function canInstallWithADP(item) {
+  return Boolean(item?.adpInstallUrl && (item.type === 'cli-tool' || item.type === 'skill'));
+}
+
+function adpInstallCommand(item) {
+  if (!canInstallWithADP(item)) return '';
+  return `adp install ${absoluteInstallURL(item.adpInstallUrl)}`;
+}
+
+function absoluteInstallURL(value) {
+  if (!value) return '';
+  try {
+    return new URL(value, window.location.origin).toString();
+  } catch {
+    return String(value);
+  }
+}
+
 function parseTags(value) {
   return String(value || '')
     .split(',')
@@ -1531,6 +1610,11 @@ function artifactRequiredFor(type, options = {}) {
   if (type === 'cli-tool') return false;
   if (type === 'website-app' && options.websiteKind === 'external') return false;
   return true;
+}
+
+function adpRequiredFor(type) {
+  type = normalizeType(type);
+  return type === 'cli-tool' || type === 'skill';
 }
 
 function archiveOptionsFor(type, options = {}) {
