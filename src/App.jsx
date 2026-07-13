@@ -19,25 +19,33 @@ import {
   Info,
   Languages,
   LayoutGrid,
+  LogIn,
+  LogOut,
   Moon,
   PackageOpen,
   Play,
   Plus,
   Puzzle,
+  RefreshCw,
   Search,
   Shapes,
+  ShieldCheck,
   Sun,
   Terminal,
+  Trash2,
   Upload,
   User,
+  BarChart3,
+  ListChecks,
+  Store,
   X,
 } from 'lucide-react';
 
 const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/api/v1';
 const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
 const locales = ['zh-CN', 'en-US'];
-const canonicalTypes = ['skill', 'plugin', 'agent', 'sandbox-image', 'pet', 'cli-tool', 'website-app'];
-const adminTokenStorageKey = 'zenmind-market:admin-token';
+const canonicalTypes = ['skill', 'plugin', 'agent', 'sandbox-image', 'pet', 'cli-tool', 'website-app', 'software-package'];
+const authSessionStorageKey = 'zenmind-market:auth-session';
 const defaultMediaImage = svgDataUri(`
   <svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
     <defs>
@@ -68,7 +76,147 @@ const translations = {
   'zh-CN': {
     searchPlaceholder: '搜索扩展、插件、沙箱、工具...',
     publish: '开发者发布',
+    login: '登录',
+    logout: '退出登录',
+    loginTitle: '本地登录',
+    loginBody: '先用本地账号模拟登录；之后可以替换为内部统一登录。',
+    loginUserId: '用户 ID',
+    loginRole: '角色',
+    loginAsCreator: '普通用户',
+    loginAsAdmin: '管理员',
+    loginSuccess: '登录成功。',
+    loginFailed: (reason) => `登录失败：${reason}`,
+    loginRequired: '请先登录。',
+    adminReviewEntry: '审核管理',
+    adminOnly: '需要管理员角色。',
+    creatorCenter: '创作者中心',
+    backToMarket: '返回市场',
+    creatorTitle: '创作者中心',
+    creatorSubtitle: '管理本地市场中的组件供给、发布质量和基础表现。',
+    creatorDashboard: '工作台',
+    creatorInventory: '我的组件',
+    creatorQuality: '发布检查',
+    creatorTotalItems: '已发布组件',
+    creatorTotalDownloads: '总下载量',
+    creatorTotalFavorites: '总收藏量',
+    creatorSkillPackages: '技能包',
+    creatorRecent: '最近更新',
+    creatorTypeFilter: '组件类型',
+    creatorAllTypes: '全部类型',
+    creatorOpenMarket: '查看',
+    creatorEmptyTitle: '还没有组件',
+    creatorEmptyBody: '先发布一个技能、插件或工具，创作者中心会自动汇总它的表现。',
+    creatorQualityImage: '补充展示图片',
+    creatorQualityReadme: '完善 README',
+    creatorQualityArtifact: '补充可下载制品',
+    creatorQualityADP: '补充 ADP 安装协议',
+    creatorQualityGood: '基础信息完整',
+    creatorNoIssues: '暂无待优化项',
+    creatorVersion: '版本',
+    creatorUpdatedAt: '更新时间',
+    creatorSearch: '搜索我的组件',
+    creatorAnalytics: '数据分析',
+    creatorTopDownloads: '下载排行',
+    creatorTypeBreakdown: '类型分布',
+    creatorReady: '完整组件',
+    creatorNeedsWork: '待优化组件',
+    creatorVersions: '版本',
+    creatorVersionHistory: '版本历史',
+    creatorLoadVersions: '查看版本',
+    creatorNoVersions: '暂无版本记录',
+    creatorCurrentVersion: '当前版本',
+    creatorPublishedAt: '发布时间',
+    creatorProfile: '创作者资料',
+    creatorProfileName: 'ZenMind 创作者',
+    creatorProfileBio: '当前为本地创作者视图。登录体系接入后，这里会展示真实创作者身份、认证状态和公开主页信息。',
+    creatorLocalMode: '本地模式',
+    creatorLocalModeBody: '当前使用本地登录模拟创作者身份，后续会接入内部登录系统。',
+    reviewCenter: '审核中心',
+    reviewStatus: '审核状态',
+    reviewPending: '待审核',
+    reviewApproved: '已通过',
+    reviewRejected: '已驳回',
+    reviewApprove: '通过',
+    reviewReject: '驳回',
+    reviewRejectReason: '驳回原因',
+    reviewSubmitMode: '发布方式',
+    reviewSubmitPending: '提交审核',
+    reviewSubmitApproved: '直接发布',
+    reviewUpdateSuccess: '审核状态已更新。',
+    reviewUpdateFailed: (reason) => `审核更新失败：${reason}`,
+    reviewNotePrompt: '请输入驳回原因',
+    reviewAdminTokenHint: '管理员可以查看待审核组件，并执行通过或驳回操作。',
+    reviewLoadAdminData: '加载审核数据',
+    reviewLoadSuccess: '审核数据已加载。',
+    reviewLoadFailed: (reason) => `审核数据加载失败：${reason}`,
+    adminManagement: '管理中心',
+    adminManagementSubtitle: '审批待发布组件，并管理已上架制品。',
+    adminPendingPublications: '待审核发布',
+    adminPublishedComponents: '已上架组件',
+    adminNoPendingPublications: '当前没有待审核发布。',
+    adminNoPublishedComponents: '当前没有已上架组件。',
+    adminSearchPublished: '搜索已上架组件',
+    adminUnpublishLatest: '下架最新版本',
+    adminUnpublishConfirm: (name, version) => `确认下架「${name}」的最新版本 ${version} 吗？若存在已发布的历史版本，市场将自动回退到该版本。`,
+    adminUnpublishSuccess: '最新版本已下架，市场列表已刷新。',
+    adminUnpublishFailed: (reason) => `下架失败：${reason}`,
     categoriesTitle: '市场分类',
+    skillKindTitle: '技能类型',
+    skillCategoryTitle: '技能分类',
+    skillSingle: '单个技能',
+    skillPackage: '技能包',
+    skillIncluded: '包含以下技能',
+    includedSkills: '选择包含技能',
+    includedSkillsHint: '可多选当前市场中已发布的单个技能。',
+    includedSkillsSearch: '搜索技能名称或 ID',
+    includedSkillsSelected: (count) => `已选择 ${count} 个技能`,
+    includedSkillsRequired: '请至少选择一个要包含的技能。',
+    noAvailableSkills: '暂无可关联的单个技能，请先发布技能。',
+    skillScenario: '使用场景',
+    skillLevel: '难度',
+    skillFeatured: '官方推荐',
+    skillCategories: {
+      all: '全部技能',
+      document: '文档处理',
+      data: '数据分析',
+      coding: '编程开发',
+      browser: '浏览器自动化',
+      office: '办公效率',
+      content: '内容创作',
+      media: '图像多媒体',
+      search: '搜索阅读',
+      system: '系统操作',
+      integration: 'API 集成',
+      automation: '自动化',
+      other: '其他',
+    },
+    skillCuratedTitles: {
+      document: '文档严选技能',
+      data: '数据严选技能',
+      coding: '编程严选技能',
+      browser: '浏览器严选技能',
+      office: '办公严选技能',
+      content: '内容严选技能',
+      media: '多媒体严选技能',
+      search: '搜索阅读严选技能',
+      system: '系统严选技能',
+      integration: 'API 严选技能',
+      automation: '自动化严选技能',
+      other: '其他严选技能',
+    },
+    skillScenarios: {
+      productivity: '效率',
+      developer: '开发者',
+      research: '研究',
+      enterprise: '企业',
+      education: '教育',
+      creator: '创作者',
+    },
+    skillLevels: {
+      beginner: '入门',
+      intermediate: '进阶',
+      advanced: '高级',
+    },
     footer: '© 2026 ZenMind Technologies.\n标准扩展协议 v1.0',
     sortLabel: '排序:',
     sortPopular: '热门推荐',
@@ -123,7 +271,41 @@ const translations = {
     installUnavailable: '该组件暂无 ADP 安装协议。',
     videoPlaying: '演示运行中',
     publishTitle: '发布到市场',
-    publishBody: '填写组件元数据并上传制品包，发布后写入后端 SQLite。',
+    publishBody: '先选择组件类型，再填写该类型需要的发布信息。',
+    publishStepType: '选择类型',
+    publishStepDetails: '填写信息',
+    publishChooseType: '选择要发布的组件',
+    publishChooseTypeBody: '不同组件需要提交的内容不同，先选类型可以减少不必要的配置项。',
+    publishBackToTypes: '返回类型选择',
+    publishBasicInfo: '基础信息',
+    publishRequiredAssets: '必需材料',
+    publishTypeSettings: '类型设置',
+    publishAdvanced: '高级选项',
+    publishShowAdvanced: '展开高级选项',
+    publishHideAdvanced: '收起高级选项',
+    publishTypeRequirements: '需要准备',
+    publishTypeDescriptions: {
+      skill: '上传单个技能，支持一键安装。',
+      'skill-package': '关联已有技能，生成可一键下载的技能组合。',
+      plugin: '上传插件制品，提供扩展能力。',
+      agent: '上传智能体定义和运行资源。',
+      'sandbox-image': '发布运行环境模板或容器镜像。',
+      pet: '上传桌面宠物资源包。',
+      'cli-tool': '发布命令行工具和 ADP 安装协议。',
+      'website-app': '发布本地网站应用或外部链接。',
+      'software-package': '发布 Python、Node.js 等软件依赖包。',
+    },
+    publishTypeRequirementsMap: {
+      skill: 'zip 制品、SKILL.md、adp.yaml',
+      'skill-package': '至少 1 个已存在技能 ID',
+      plugin: 'zip 制品、manifest.json',
+      agent: 'zip 制品、agent.yml / agent.yaml',
+      'sandbox-image': 'environment.json 或 tar.gz 镜像',
+      pet: 'pet.json、pet-idle.png',
+      'cli-tool': 'adp.yaml，可选 zip 制品',
+      'website-app': 'website.json 或外部 URL',
+      'software-package': 'zip / tar.gz 依赖包',
+    },
     type: '类型',
     componentId: '组件 ID',
     name: '名称',
@@ -134,9 +316,8 @@ const translations = {
     publishSuccess: (name) => `组件 [${name}] 发布成功并上架！`,
     publishFailed: (reason) => `发布失败：${reason}`,
     publishing: '正在发布...',
-    adminToken: '管理员 Token',
-    adminTokenRequired: '请输入管理员 Token。',
     artifact: '制品包',
+    image: '展示图片',
     artifactRequired: '请选择要上传的制品包。',
     adpManifest: 'ADP 0.1 最新协议',
     adpManifestRequired: 'CLI 工具和技能必须上传 ADP 0.1 最新协议 adp.yaml。',
@@ -176,12 +357,153 @@ const translations = {
       pet: '桌面宠物',
       'cli-tool': 'CLI 工具',
       'website-app': '网站应用',
+      'software-package': '软件依赖包',
     },
   },
   'en-US': {
     searchPlaceholder: 'Search extensions, plugins, sandboxes, tools...',
     publish: 'Developer publish',
+    login: 'Sign in',
+    logout: 'Sign out',
+    loginTitle: 'Local sign-in',
+    loginBody: 'Use a local account for now; this can be replaced by internal SSO later.',
+    loginUserId: 'User ID',
+    loginRole: 'Role',
+    loginAsCreator: 'User',
+    loginAsAdmin: 'Admin',
+    loginSuccess: 'Signed in.',
+    loginFailed: (reason) => `Sign-in failed: ${reason}`,
+    loginRequired: 'Sign in first.',
+    adminReviewEntry: 'Review Admin',
+    adminOnly: 'Admin role required.',
+    creatorCenter: 'Creator Center',
+    backToMarket: 'Back to Market',
+    creatorTitle: 'Creator Center',
+    creatorSubtitle: 'Manage local market supply, publishing quality, and basic performance.',
+    creatorDashboard: 'Dashboard',
+    creatorInventory: 'My Components',
+    creatorQuality: 'Publish checks',
+    creatorTotalItems: 'Published items',
+    creatorTotalDownloads: 'Total downloads',
+    creatorTotalFavorites: 'Total favorites',
+    creatorSkillPackages: 'Skill packages',
+    creatorRecent: 'Recently updated',
+    creatorTypeFilter: 'Type',
+    creatorAllTypes: 'All types',
+    creatorOpenMarket: 'View',
+    creatorEmptyTitle: 'No components yet',
+    creatorEmptyBody: 'Publish a skill, plugin, or tool first; Creator Center will summarize its performance automatically.',
+    creatorQualityImage: 'Add display image',
+    creatorQualityReadme: 'Improve README',
+    creatorQualityArtifact: 'Add downloadable artifact',
+    creatorQualityADP: 'Add ADP install protocol',
+    creatorQualityGood: 'Basic information complete',
+    creatorNoIssues: 'No issues',
+    creatorVersion: 'Version',
+    creatorUpdatedAt: 'Updated',
+    creatorSearch: 'Search my components',
+    creatorAnalytics: 'Analytics',
+    creatorTopDownloads: 'Top downloads',
+    creatorTypeBreakdown: 'Type breakdown',
+    creatorReady: 'Ready items',
+    creatorNeedsWork: 'Needs work',
+    creatorVersions: 'Versions',
+    creatorVersionHistory: 'Version history',
+    creatorLoadVersions: 'View versions',
+    creatorNoVersions: 'No version records yet',
+    creatorCurrentVersion: 'Current version',
+    creatorPublishedAt: 'Published',
+    creatorProfile: 'Creator profile',
+    creatorProfileName: 'ZenMind Creator',
+    creatorProfileBio: 'This is currently a local creator view. After authentication is connected, it will show the real creator identity, verification state, and public profile.',
+    creatorLocalMode: 'Local mode',
+    creatorLocalModeBody: 'Local sign-in is simulating creator identity for now; internal SSO can replace it later.',
+    reviewCenter: 'Review Center',
+    reviewStatus: 'Review status',
+    reviewPending: 'Pending',
+    reviewApproved: 'Approved',
+    reviewRejected: 'Rejected',
+    reviewApprove: 'Approve',
+    reviewReject: 'Reject',
+    reviewRejectReason: 'Rejection reason',
+    reviewSubmitMode: 'Publish mode',
+    reviewSubmitPending: 'Submit for review',
+    reviewSubmitApproved: 'Publish directly',
+    reviewUpdateSuccess: 'Review status updated.',
+    reviewUpdateFailed: (reason) => `Review update failed: ${reason}`,
+    reviewNotePrompt: 'Enter rejection reason',
+    reviewAdminTokenHint: 'Admins can review pending submissions and approve or reject them.',
+    reviewLoadAdminData: 'Load review data',
+    reviewLoadSuccess: 'Review data loaded.',
+    reviewLoadFailed: (reason) => `Failed to load review data: ${reason}`,
+    adminManagement: 'Management Center',
+    adminManagementSubtitle: 'Review pending publications and manage published artifacts.',
+    adminPendingPublications: 'Pending publications',
+    adminPublishedComponents: 'Published components',
+    adminNoPendingPublications: 'There are no pending publications.',
+    adminNoPublishedComponents: 'There are no published components.',
+    adminSearchPublished: 'Search published components',
+    adminUnpublishLatest: 'Unpublish latest version',
+    adminUnpublishConfirm: (name, version) => `Unpublish the latest version ${version} of “${name}”? The market will fall back to an earlier published version when available.`,
+    adminUnpublishSuccess: 'Latest version unpublished and the market list refreshed.',
+    adminUnpublishFailed: (reason) => `Unpublish failed: ${reason}`,
     categoriesTitle: 'Market Categories',
+    skillKindTitle: 'Skill Type',
+    skillCategoryTitle: 'Skill Categories',
+    skillSingle: 'Single skill',
+    skillPackage: 'Skill package',
+    skillIncluded: 'Included skills',
+    includedSkills: 'Included skills',
+    includedSkillsHint: 'Select one or more published single skills from the current market.',
+    includedSkillsSearch: 'Search skill name or ID',
+    includedSkillsSelected: (count) => `${count} selected`,
+    includedSkillsRequired: 'Select at least one included skill.',
+    noAvailableSkills: 'No single skills available. Publish a skill first.',
+    skillScenario: 'Scenario',
+    skillLevel: 'Level',
+    skillFeatured: 'Featured',
+    skillCategories: {
+      all: 'All skills',
+      document: 'Documents',
+      data: 'Data analysis',
+      coding: 'Coding',
+      browser: 'Browser automation',
+      office: 'Office',
+      content: 'Content',
+      media: 'Media',
+      search: 'Search',
+      system: 'System',
+      integration: 'API integration',
+      automation: 'Automation',
+      other: 'Other',
+    },
+    skillCuratedTitles: {
+      document: 'Selected document skills',
+      data: 'Selected data skills',
+      coding: 'Selected coding skills',
+      browser: 'Selected browser skills',
+      office: 'Selected office skills',
+      content: 'Selected content skills',
+      media: 'Selected media skills',
+      search: 'Selected search skills',
+      system: 'Selected system skills',
+      integration: 'Selected API skills',
+      automation: 'Selected automation skills',
+      other: 'Selected other skills',
+    },
+    skillScenarios: {
+      productivity: 'Productivity',
+      developer: 'Developer',
+      research: 'Research',
+      enterprise: 'Enterprise',
+      education: 'Education',
+      creator: 'Creator',
+    },
+    skillLevels: {
+      beginner: 'Beginner',
+      intermediate: 'Intermediate',
+      advanced: 'Advanced',
+    },
     footer: '© 2026 ZenMind Technologies.\nStandard Extension Protocol v1.0',
     sortLabel: 'Sort:',
     sortPopular: 'Popular',
@@ -236,7 +558,41 @@ const translations = {
     installUnavailable: 'This item has no ADP install protocol.',
     videoPlaying: 'Demo running',
     publishTitle: 'Publish to local market',
-    publishBody: 'Add metadata, upload an artifact, and persist it to the backend SQLite catalog.',
+    publishBody: 'Choose a component type first, then fill in the fields required for that type.',
+    publishStepType: 'Choose type',
+    publishStepDetails: 'Details',
+    publishChooseType: 'Choose what to publish',
+    publishChooseTypeBody: 'Different component types need different inputs. Starting with the type keeps the form focused.',
+    publishBackToTypes: 'Back to types',
+    publishBasicInfo: 'Basic info',
+    publishRequiredAssets: 'Required assets',
+    publishTypeSettings: 'Type settings',
+    publishAdvanced: 'Advanced options',
+    publishShowAdvanced: 'Show advanced options',
+    publishHideAdvanced: 'Hide advanced options',
+    publishTypeRequirements: 'Requires',
+    publishTypeDescriptions: {
+      skill: 'Upload a single skill with ADP install support.',
+      'skill-package': 'Link existing skills into a downloadable package.',
+      plugin: 'Upload a plugin artifact for extension capabilities.',
+      agent: 'Upload an agent definition and runtime resources.',
+      'sandbox-image': 'Publish an environment template or container image.',
+      pet: 'Upload a desktop pet resource package.',
+      'cli-tool': 'Publish a CLI tool and ADP install protocol.',
+      'website-app': 'Publish a local web app or external URL.',
+      'software-package': 'Publish software dependencies such as Python or Node.js.',
+    },
+    publishTypeRequirementsMap: {
+      skill: 'zip artifact, SKILL.md, adp.yaml',
+      'skill-package': 'At least one existing skill ID',
+      plugin: 'zip artifact, manifest.json',
+      agent: 'zip artifact, agent.yml / agent.yaml',
+      'sandbox-image': 'environment.json or tar.gz image',
+      pet: 'pet.json, pet-idle.png',
+      'cli-tool': 'adp.yaml, optional zip artifact',
+      'website-app': 'website.json or external URL',
+      'software-package': 'zip / tar.gz dependency package',
+    },
     type: 'Type',
     componentId: 'Component ID',
     name: 'Name',
@@ -247,9 +603,8 @@ const translations = {
     publishSuccess: (name) => `Component [${name}] published!`,
     publishFailed: (reason) => `Publish failed: ${reason}`,
     publishing: 'Publishing...',
-    adminToken: 'Admin token',
-    adminTokenRequired: 'Enter an admin token.',
     artifact: 'Artifact package',
+    image: 'Display image',
     artifactRequired: 'Choose an artifact package to upload.',
     adpManifest: 'ADP 0.1 latest manifest',
     adpManifestRequired: 'CLI tools and skills must upload an ADP 0.1 latest-protocol adp.yaml.',
@@ -289,6 +644,7 @@ const translations = {
       pet: 'Desktop Pets',
       'cli-tool': 'CLI Tools',
       'website-app': 'WebApps',
+      'software-package': 'Software Packages',
     },
   },
 };
@@ -302,7 +658,27 @@ const categoryMeta = [
   { id: 'pet', icon: Cat, colorClass: 'is-amber' },
   { id: 'cli-tool', icon: Terminal, colorClass: 'is-rose' },
   { id: 'website-app', icon: Globe, colorClass: 'is-cyan' },
+  { id: 'software-package', icon: HardDrive, colorClass: 'is-emerald' },
 ];
+
+function publishTypeOptions() {
+  return [
+    { id: 'skill', type: 'skill', skillKind: 'single', icon: Brain, label: (t) => t.skillSingle },
+    { id: 'skill-package', type: 'skill', skillKind: 'package', icon: PackageOpen, label: (t) => t.skillPackage },
+    { id: 'plugin', type: 'plugin', icon: Puzzle, label: (t) => t.categories.plugin },
+    { id: 'agent', type: 'agent', icon: Bot, label: (t) => t.categories.agent },
+    { id: 'sandbox-image', type: 'sandbox-image', icon: Box, label: (t) => t.categories['sandbox-image'] },
+    { id: 'cli-tool', type: 'cli-tool', icon: Terminal, label: (t) => t.categories['cli-tool'] },
+    { id: 'website-app', type: 'website-app', icon: Globe, label: (t) => t.categories['website-app'] },
+    { id: 'software-package', type: 'software-package', icon: HardDrive, label: (t) => t.categories['software-package'] },
+    { id: 'pet', type: 'pet', icon: Cat, label: (t) => t.categories.pet },
+  ];
+}
+
+const sidebarCategoryMeta = categoryMeta.filter((category) => category.id !== 'pet');
+const skillCategoryFilters = ['all', 'document', 'data', 'coding', 'browser', 'office', 'content', 'media', 'search', 'system', 'integration', 'automation', 'other'];
+const skillScenarioOptions = ['productivity', 'developer', 'research', 'enterprise', 'education', 'creator'];
+const skillLevelOptions = ['beginner', 'intermediate', 'advanced'];
 
 function initialTheme() {
   const saved = localStorage.getItem('zenmind-market:theme');
@@ -321,6 +697,7 @@ export function App() {
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
+  const [activeSkillCategory, setActiveSkillCategory] = useState('all');
   const [query, setQuery] = useState('');
   const [sortMode, setSortMode] = useState('popular');
   const [theme, setTheme] = useState(initialTheme);
@@ -331,6 +708,16 @@ export function App() {
   const [toast, setToast] = useState(null);
   const [isPublishOpen, setPublishOpen] = useState(false);
   const [isPublishing, setPublishing] = useState(false);
+  const [isCreatorOpen, setCreatorOpen] = useState(false);
+  const [isAdminOpen, setAdminOpen] = useState(false);
+  const [isLoginOpen, setLoginOpen] = useState(false);
+  const [loginIntent, setLoginIntent] = useState('');
+  const [authSession, setAuthSession] = useState(() => savedAuthSession());
+  const [creatorItems, setCreatorItems] = useState([]);
+  const [adminItems, setAdminItems] = useState([]);
+  const [isLoadingAdminReviews, setLoadingAdminReviews] = useState(false);
+  const [reviewingKey, setReviewingKey] = useState('');
+  const [unpublishingKey, setUnpublishingKey] = useState('');
   const [downloadingKey, setDownloadingKey] = useState('');
   const [favoritingKey, setFavoritingKey] = useState('');
 
@@ -351,6 +738,67 @@ export function App() {
     }
   }, []);
 
+  const loadCreatorItems = useCallback(async (signal, sessionOverride = null) => {
+    const session = sessionOverride || authSession;
+    if (!session?.token) {
+      setCreatorItems([]);
+      return { ok: false, reason: 'missing-token' };
+    }
+    try {
+      const data = await requestJSON(`${apiBase}/creator/items`, {
+        signal,
+        headers: authHeaders(session),
+      });
+      setCreatorItems(Array.isArray(data.items) ? data.items : []);
+      return { ok: true };
+    } catch (reason) {
+      if (reason?.name === 'AbortError') return { ok: false, reason };
+      setCreatorItems([]);
+      return { ok: false, reason };
+    }
+  }, [authSession]);
+
+  const loadAdminReviews = useCallback(async (signal, sessionOverride = null) => {
+    const session = sessionOverride || authSession;
+    if (!session?.token || session.user?.role !== 'admin') {
+      setAdminItems([]);
+      return { ok: false, reason: 'missing-token' };
+    }
+    try {
+      const data = await requestJSON(`${apiBase}/admin/reviews?status=pending`, {
+        signal,
+        headers: authHeaders(session),
+      });
+      setAdminItems(Array.isArray(data.items) ? data.items : []);
+      return { ok: true };
+    } catch (reason) {
+      if (reason?.name === 'AbortError') return { ok: false, reason };
+      setAdminItems([]);
+      return { ok: false, reason };
+    }
+  }, [authSession]);
+
+  const handleLoadAdminReviews = useCallback(async () => {
+    if (!authSession?.token || authSession.user?.role !== 'admin') {
+      notify(t.adminOnly, 'error');
+      return;
+    }
+    setLoadingAdminReviews(true);
+    try {
+      const result = await loadAdminReviews(undefined, authSession);
+      if (result.ok) {
+        await loadCatalog();
+        notify(t.reviewLoadSuccess, 'success');
+      } else {
+        notify(t.reviewLoadFailed(errorMessage(result.reason)), 'error');
+      }
+    } catch {
+      notify(t.reviewLoadFailed('unknown error'), 'error');
+    } finally {
+      setLoadingAdminReviews(false);
+    }
+  }, [authSession, loadAdminReviews, loadCatalog, t]);
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
@@ -368,9 +816,35 @@ export function App() {
     return () => controller.abort();
   }, [loadCatalog]);
 
+  useEffect(() => {
+    if (!isCreatorOpen) return undefined;
+    const controller = new AbortController();
+    loadCreatorItems(controller.signal);
+    return () => controller.abort();
+  }, [isCreatorOpen, loadCreatorItems]);
+
+  useEffect(() => {
+    if (!isAdminOpen || authSession?.user?.role !== 'admin') return undefined;
+    const controller = new AbortController();
+    loadAdminReviews(controller.signal);
+    return () => controller.abort();
+  }, [isAdminOpen, authSession, loadAdminReviews]);
+
   const catalog = useMemo(() => {
     return apiItems.map((item) => mergeCatalogItem(item));
   }, [apiItems]);
+
+  const creatorCatalog = useMemo(() => {
+    return creatorItems.map((item) => mergeCatalogItem(item));
+  }, [creatorItems]);
+
+  const publishableSkills = useMemo(() => {
+    return catalog.filter((item) => item.type === 'skill' && item.skillKind !== 'package');
+  }, [catalog]);
+
+  const adminReviewCatalog = useMemo(() => {
+    return adminItems.map((item) => mergeCatalogItem(item));
+  }, [adminItems]);
 
   const categoryCounts = useMemo(() => {
     const counts = { all: catalog.length };
@@ -378,16 +852,32 @@ export function App() {
     return counts;
   }, [catalog]);
 
+  const skillCounts = useMemo(() => {
+    const skills = catalog.filter((item) => item.type === 'skill');
+    const categories = { all: skills.length };
+    for (const category of skillCategoryFilters) categories[category] = category === 'all' ? skills.length : 0;
+    for (const item of skills) {
+      categories[item.skillCategory] = (categories[item.skillCategory] || 0) + 1;
+    }
+    return { categories };
+  }, [catalog]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const result = catalog.filter((item) => {
       if (activeCategory !== 'all' && item.type !== activeCategory) return false;
+      if (activeCategory === 'skill') {
+        if (activeSkillCategory !== 'all' && item.skillCategory !== activeSkillCategory) return false;
+      }
       if (!needle) return true;
       return [
         item.id,
         localized(item.name, locale),
         localized(item.description, locale),
         item.author,
+        item.skillKind,
+        item.skillCategory,
+        item.skillScenario,
         ...(item.tags || []),
       ].join(' ').toLowerCase().includes(needle);
     });
@@ -398,7 +888,7 @@ export function App() {
         || (parseCount(b.favoriteCount) - parseCount(a.favoriteCount))
         || localized(a.name, locale).localeCompare(localized(b.name, locale));
     });
-  }, [activeCategory, catalog, locale, query, sortMode]);
+  }, [activeCategory, activeSkillCategory, catalog, locale, query, sortMode]);
 
   const currentCategoryName = activeCategory === 'all' ? t.all : t.categories[activeCategory];
   const emptyCopy = catalog.length === 0
@@ -409,6 +899,62 @@ export function App() {
   function notify(message, tone = 'info') {
     const id = window.setTimeout(() => setToast(null), 3000);
     setToast({ message, tone, id });
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      const session = await requestJSON(`${apiBase}/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          userId: String(form.get('userId') || '').trim() || 'local-creator',
+          role: String(form.get('role') || 'creator'),
+        }),
+      });
+      const nextSession = { token: session.token, user: session.user };
+      saveAuthSession(nextSession);
+      setAuthSession(nextSession);
+      setLoginOpen(false);
+      notify(t.loginSuccess, 'success');
+      if (loginIntent === 'creator') {
+        setCreatorOpen(true);
+        setAdminOpen(false);
+        await loadCreatorItems(undefined, nextSession);
+        } else if (loginIntent === 'publish') {
+          setPublishOpen(true);
+          setCreatorOpen(false);
+          setAdminOpen(false);
+        } else {
+        if (isCreatorOpen) await loadCreatorItems(undefined, nextSession);
+        if (isAdminOpen && nextSession.user?.role === 'admin') await loadAdminReviews(undefined, nextSession);
+      }
+      setLoginIntent('');
+    } catch (reason) {
+      notify(t.loginFailed(errorMessage(reason)), 'error');
+    }
+  }
+
+  function handleLogout() {
+    saveAuthSession(null);
+    setAuthSession(null);
+    setCreatorItems([]);
+    setAdminItems([]);
+    setAdminOpen(false);
+    setCreatorOpen(false);
+  }
+
+  function closeLogin() {
+    setLoginOpen(false);
+    setLoginIntent('');
+  }
+
+  function chooseCategory(category) {
+    setActiveCategory(category);
+    if (category !== 'skill') {
+      setActiveSkillCategory('all');
+    }
   }
 
   function openDetails(item) {
@@ -425,6 +971,19 @@ export function App() {
 
   async function handleDownload(item, platformOverride = '') {
     if (!item || downloadingKey) return;
+    if (item.type === 'skill' && item.skillKind === 'package') {
+      const key = `${item.type}:${item.id}:package`;
+      setDownloadingKey(key);
+      try {
+        triggerBrowserDownload(`${apiBase}/skills/${encodeURIComponent(item.id)}/package/download`);
+        notify(t.downloadStarted(localized(item.name, locale) || item.id), 'success');
+      } catch (reason) {
+        notify(t.downloadFailed(errorMessage(reason)), 'error');
+      } finally {
+        setDownloadingKey('');
+      }
+      return;
+    }
     const platform = preferredPlatformKey(item, platformOverride);
     if (!hasArtifact(item, platform)) {
       notify(t.downloadUnavailable, 'error');
@@ -490,6 +1049,69 @@ export function App() {
     }
   }
 
+  async function handleReviewUpdate(item, status) {
+    if (!item || reviewingKey) return;
+    if (!authSession?.token || authSession.user?.role !== 'admin') {
+      notify(t.adminOnly, 'error');
+      return;
+    }
+    let note = '';
+    if (status === 'rejected') {
+      note = window.prompt(t.reviewNotePrompt, item.reviewNote || '') || '';
+    }
+    const key = `${item.type}:${item.id}`;
+    setReviewingKey(key);
+    try {
+      await requestJSON(`${apiBase}/admin/reviews/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`, {
+        method: 'POST',
+        headers: { ...authHeaders(authSession), 'content-type': 'application/json' },
+        body: JSON.stringify({ status, note }),
+      });
+      await loadCatalog();
+      await loadCreatorItems(undefined, authSession);
+      await loadAdminReviews(undefined, authSession);
+      notify(t.reviewUpdateSuccess, 'success');
+    } catch (reason) {
+      notify(t.reviewUpdateFailed(errorMessage(reason)), 'error');
+    } finally {
+      setReviewingKey('');
+    }
+  }
+
+  async function handleUnpublishLatest(item) {
+    if (!item || unpublishingKey) return;
+    if (!authSession?.token || authSession.user?.role !== 'admin') {
+      notify(t.adminOnly, 'error');
+      return;
+    }
+    const version = item.latestVersion || item.version;
+    if (!version) {
+      notify(t.adminUnpublishFailed('missing latest version'), 'error');
+      return;
+    }
+    const name = localized(item.name, locale) || item.id;
+    if (!window.confirm(t.adminUnpublishConfirm(name, formatVersionLabel(version)))) return;
+
+    const key = `${item.type}:${item.id}`;
+    setUnpublishingKey(key);
+    try {
+      await requestJSON(`${apiBase}/admin/unpublish`, {
+        method: 'POST',
+        headers: { ...authHeaders(authSession), 'content-type': 'application/json' },
+        body: JSON.stringify({ type: item.type, id: item.id, version }),
+      });
+      await Promise.all([
+        loadCatalog(),
+        loadAdminReviews(undefined, authSession),
+      ]);
+      notify(t.adminUnpublishSuccess, 'success');
+    } catch (reason) {
+      notify(t.adminUnpublishFailed(errorMessage(reason)), 'error');
+    } finally {
+      setUnpublishingKey('');
+    }
+  }
+
   async function handlePublish(event) {
     event.preventDefault();
     if (isPublishing) return;
@@ -500,20 +1122,36 @@ export function App() {
     const name = String(form.get('name') || '').trim();
     const version = canonicalVersion(form.get('version')) || '1.0.0';
     const description = String(form.get('description') || '').trim();
-    const token = String(form.get('adminToken') || '').trim();
     const artifact = form.get('artifact');
     const hasSelectedArtifact = artifact instanceof File && artifact.size > 0;
+    const image = form.get('image');
+    const hasSelectedImage = image instanceof File && image.size > 0;
     const adpManifest = form.get('adpManifest');
     const hasSelectedADPManifest = adpManifest instanceof File && adpManifest.size > 0;
-    if (!token) {
-      notify(t.adminTokenRequired, 'error');
+    const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';
+    const skill = type === 'skill' ? {
+      kind: skillKind,
+      category: String(form.get('skillCategory') || 'other').trim(),
+      scenario: String(form.get('skillScenario') || 'productivity').trim(),
+      level: String(form.get('skillLevel') || 'beginner').trim(),
+      packageMode: skillKind === 'package' ? 'collection' : '',
+      featured: form.get('skillFeatured') === 'on',
+      includedSkills: parseIncludedSkills(form.getAll('includedSkills')),
+    } : null;
+    if (skill?.kind === 'package' && !skill.includedSkills.length) {
+      notify(t.includedSkillsRequired, 'error');
       return;
     }
-    if (artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim() }) && !hasSelectedArtifact) {
+    if (!authSession?.token) {
+      notify(t.loginRequired, 'error');
+      setLoginOpen(true);
+      return;
+    }
+    if (artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill }) && !hasSelectedArtifact) {
       notify(t.artifactRequired, 'error');
       return;
     }
-    if (adpRequiredFor(type) && !hasSelectedADPManifest) {
+    if (adpRequiredFor(type, { skill }) && !hasSelectedADPManifest) {
       notify(t.adpManifestRequired, 'error');
       return;
     }
@@ -562,7 +1200,9 @@ export function App() {
       metadata: {},
       dependencies: platformDependencies,
       platform,
+      reviewStatus: authSession.user?.role === 'admin' ? String(form.get('reviewStatus') || 'approved').trim() : 'pending',
     };
+    if (skill) metadata.skill = skill;
     if (type === 'cli-tool') {
       if (install) metadata.install = install;
       if (uninstall) metadata.uninstall = uninstall;
@@ -578,25 +1218,27 @@ export function App() {
 
     setPublishing(true);
     try {
-      if (hasSelectedArtifact) {
+      if (hasSelectedArtifact || hasSelectedImage) {
         const body = new FormData();
         body.append('metadata', JSON.stringify(metadata));
-        body.append('artifact', artifact);
+        if (hasSelectedArtifact) body.append('artifact', artifact);
+        if (hasSelectedImage) body.append('image', image);
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
-        await requestJSON(`${apiBase}/admin/${marketRoute(type)}/publish`, {
+        await requestJSON(authSession.user?.role === 'admin' ? `${apiBase}/admin/${marketRoute(type)}/publish` : `${apiBase}/creator/publish`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders(authSession),
           body,
         });
       } else {
-        await requestJSON(`${apiBase}/admin/${marketRoute(type)}/publish`, {
+        await requestJSON(authSession.user?.role === 'admin' ? `${apiBase}/admin/${marketRoute(type)}/publish` : `${apiBase}/creator/publish`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+          headers: { ...authHeaders(authSession), 'content-type': 'application/json' },
           body: JSON.stringify(metadata),
         });
       }
-      saveAdminToken(token);
       await loadCatalog();
+      await loadCreatorItems(undefined, authSession);
+      if (authSession.user?.role === 'admin') await loadAdminReviews(undefined, authSession);
       setActiveCategory(type);
       setPublishOpen(false);
       formElement.reset();
@@ -631,24 +1273,111 @@ export function App() {
             <Languages size={15} />
             <span>{locale === 'zh-CN' ? '中' : 'EN'}</span>
           </button>
-          <button className="publish-button" type="button" onClick={() => setPublishOpen(true)}>
+          {authSession ? (
+            <button className="language-button" type="button" onClick={handleLogout} title={t.logout}>
+              <LogOut size={15} />
+              <span>{authSession.user?.role === 'admin' ? t.loginAsAdmin : t.loginAsCreator}</span>
+            </button>
+          ) : (
+            <button className="language-button" type="button" onClick={() => setLoginOpen(true)}>
+              <LogIn size={15} />
+              <span>{t.login}</span>
+            </button>
+          )}
+          {authSession?.user?.role === 'admin' ? (
+            <button className="creator-button" type="button" onClick={() => { setAdminOpen((value) => !value); setCreatorOpen(false); }}>
+              <ShieldCheck size={15} />
+              <span>{isAdminOpen ? t.backToMarket : t.adminReviewEntry}</span>
+            </button>
+          ) : null}
+          <button
+            className="creator-button"
+            type="button"
+            onClick={() => {
+              if (!authSession?.token) {
+                setLoginIntent('creator');
+                setLoginOpen(true);
+                notify(t.loginRequired, 'error');
+                return;
+              }
+              setCreatorOpen((value) => !value);
+              setAdminOpen(false);
+            }}
+          >
+            {isCreatorOpen ? <Store size={15} /> : <User size={15} />}
+            <span>{isCreatorOpen ? t.backToMarket : t.creatorCenter}</span>
+          </button>
+          <button
+            className="publish-button"
+            type="button"
+            onClick={() => {
+              if (!authSession?.token) {
+                setLoginIntent('publish');
+                setLoginOpen(true);
+                notify(t.loginRequired, 'error');
+                return;
+              }
+              setCreatorOpen(false);
+              setAdminOpen(false);
+              setPublishOpen(true);
+            }}
+          >
             <Plus size={15} />
             <span>{t.publish}</span>
           </button>
         </div>
       </header>
 
+      {isPublishOpen ? (
+        <PublishPage
+          t={t}
+          locale={locale}
+          authSession={authSession}
+          availableSkills={publishableSkills}
+          onClose={() => setPublishOpen(false)}
+          onSubmit={handlePublish}
+          isPublishing={isPublishing}
+        />
+      ) : isAdminOpen ? (
+        <AdminCenter
+          pendingItems={adminReviewCatalog}
+          publishedItems={catalog}
+          locale={locale}
+          t={t}
+          onBack={() => setAdminOpen(false)}
+          onPublish={() => { setPublishOpen(true); setAdminOpen(false); }}
+          onDetails={openDetails}
+          onReview={handleReviewUpdate}
+          reviewingKey={reviewingKey}
+          onUnpublishLatest={handleUnpublishLatest}
+          unpublishingKey={unpublishingKey}
+          onLoadAdminReviews={handleLoadAdminReviews}
+          isLoadingAdminReviews={isLoadingAdminReviews}
+        />
+      ) : isCreatorOpen ? (
+        <CreatorCenter
+          mode="creator"
+          items={creatorCatalog}
+          locale={locale}
+          t={t}
+          onBack={() => setCreatorOpen(false)}
+          onPublish={() => { setPublishOpen(true); setCreatorOpen(false); }}
+          onDetails={openDetails}
+          onReview={null}
+          reviewingKey={reviewingKey}
+        />
+      ) : (
       <div className="workspace">
         <aside className="sidebar">
           <div className="sidebar-main">
             <section>
               <h3>{t.categoriesTitle}</h3>
               <nav className="category-nav" aria-label={t.categoriesTitle}>
-                {categoryMeta.map((category) => {
+                {sidebarCategoryMeta.map((category) => {
                   const Icon = category.icon;
                   const active = activeCategory === category.id;
                   return (
-                    <button key={category.id} className={active ? 'category-button is-active' : 'category-button'} type="button" onClick={() => setActiveCategory(category.id)}>
+                    <button key={category.id} className={active ? 'category-button is-active' : 'category-button'} type="button" onClick={() => chooseCategory(category.id)}>
                       <span className="category-label">
                         <Icon className={category.colorClass} size={15} />
                         <span>{category.id === 'all' ? t.all : t.categories[category.id]}</span>
@@ -679,27 +1408,60 @@ export function App() {
             </label>
           </div>
 
+          {activeCategory === 'skill' ? (
+            <section className="skill-filter-panel" aria-label={t.skillCategoryTitle}>
+              <div className="skill-chip-row">
+                {skillCategoryFilters.map((category) => (
+                  <button
+                    key={category}
+                    className={activeSkillCategory === category ? 'is-active' : ''}
+                    type="button"
+                    onClick={() => setActiveSkillCategory(category)}
+                  >
+                    <span>{t.skillCategories[category]}</span>
+                    <small>{skillCounts.categories[category] || 0}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           {status === 'loading' ? <StateNotice title={t.loadingTitle} body={t.loadingBody} /> : null}
           {status === 'error' ? <StateNotice tone="error" title={t.loadingErrorTitle} body={`${t.loadingErrorBody} ${error ? `(${error})` : ''}`} /> : null}
 
           <div className="catalog-scroll">
             {filtered.length ? (
-              <div className="catalog-grid">
-                {filtered.map((item) => (
-                  <MarketCard
-                    key={`${item.type}:${item.id}`}
-                    item={item}
-                    locale={locale}
-                    t={t}
-                    onDetails={() => openDetails(item)}
-                    onInstall={() => handleInstall(item)}
-                    onDownload={() => handleDownload(item)}
-                    onFavorite={() => handleFavorite(item)}
-                    isDownloading={downloadingKey === `${item.type}:${item.id}:${preferredPlatformKey(item) || 'any'}`}
-                    isFavoriting={favoritingKey === `${item.type}:${item.id}`}
-                  />
-                ))}
-              </div>
+              activeCategory === 'skill' ? (
+                <SkillCatalogView
+                  items={filtered}
+                  activeSkillCategory={activeSkillCategory}
+                  locale={locale}
+                  t={t}
+                  onDetails={openDetails}
+                  onInstall={handleInstall}
+                  onDownload={handleDownload}
+                  onFavorite={handleFavorite}
+                  downloadingKey={downloadingKey}
+                  favoritingKey={favoritingKey}
+                />
+              ) : (
+                <div className="catalog-grid">
+                  {filtered.map((item) => (
+                    <MarketCard
+                      key={`${item.type}:${item.id}`}
+                      item={item}
+                      locale={locale}
+                      t={t}
+                      onDetails={() => openDetails(item)}
+                      onInstall={() => handleInstall(item)}
+                      onDownload={() => handleDownload(item)}
+                      onFavorite={() => handleFavorite(item)}
+                      isDownloading={downloadingKey === downloadKeyForItem(item)}
+                      isFavoriting={favoritingKey === `${item.type}:${item.id}`}
+                    />
+                  ))}
+                </div>
+              )
             ) : (
               <div className="empty-state">
                 <PackageOpen size={34} />
@@ -710,6 +1472,7 @@ export function App() {
           </div>
         </section>
       </div>
+      )}
 
       {selected ? (
         <DetailModal
@@ -724,30 +1487,586 @@ export function App() {
           onDownload={() => handleDownload(selected, selectedPlatformKey)}
           onInstall={() => handleInstall(selected)}
           onFavorite={() => handleFavorite(selected)}
-          isDownloading={downloadingKey === `${selected.type}:${selected.id}:${preferredPlatformKey(selected, selectedPlatformKey) || 'any'}`}
+          isDownloading={downloadingKey === downloadKeyForItem(selected, selectedPlatformKey)}
           isFavoriting={favoritingKey === `${selected.type}:${selected.id}`}
         />
       ) : null}
 
-      {isPublishOpen ? <PublishModal t={t} onClose={() => setPublishOpen(false)} onSubmit={handlePublish} isPublishing={isPublishing} /> : null}
+      {isLoginOpen ? <LoginModal t={t} onClose={closeLogin} onSubmit={handleLogin} /> : null}
       {toast ? <Toast toast={toast} /> : null}
     </main>
   );
 }
 
-function MarketCard({ item, locale, t, onDetails, onInstall, onDownload, onFavorite, isDownloading, isFavoriting }) {
+function AdminCenter({
+  pendingItems,
+  publishedItems,
+  locale,
+  t,
+  onBack,
+  onPublish,
+  onDetails,
+  onReview,
+  reviewingKey,
+  onUnpublishLatest,
+  unpublishingKey,
+  onLoadAdminReviews,
+  isLoadingAdminReviews,
+}) {
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [itemQuery, setItemQuery] = useState('');
+  const [versionState, setVersionState] = useState({ item: null, status: 'idle', versions: [], error: '' });
+  const published = useMemo(
+    () => [...publishedItems].sort((a, b) => dateValue(b.updatedAt || b.publishedAt) - dateValue(a.updatedAt || a.publishedAt)),
+    [publishedItems],
+  );
+  const visiblePublished = published.filter((item) => {
+    if (typeFilter !== 'all' && item.type !== typeFilter) return false;
+    const needle = itemQuery.trim().toLowerCase();
+    if (!needle) return true;
+    return [item.id, localized(item.name, locale), localized(item.description, locale), displayType(item.type, t), ...(item.tags || [])]
+      .join(' ').toLowerCase().includes(needle);
+  });
+
+  async function openVersions(item) {
+    setVersionState({ item, status: 'loading', versions: [], error: '' });
+    try {
+      const data = await requestJSON(`${apiBase}/${marketRoute(item.type)}/${encodeURIComponent(item.id)}/versions`);
+      setVersionState({ item, status: 'ready', versions: Array.isArray(data.versions) ? data.versions : [], error: '' });
+    } catch (reason) {
+      setVersionState({ item, status: 'error', versions: [], error: errorMessage(reason) });
+    }
+  }
+
+  return (
+    <section className="creator-center admin-center">
+      <div className="creator-hero">
+        <div>
+          <span className="section-kicker"><ShieldCheck size={14} />{t.adminManagement}</span>
+          <h1>{t.adminManagement}</h1>
+          <p>{t.adminManagementSubtitle}</p>
+        </div>
+        <div className="creator-actions">
+          <button className="secondary-action" type="button" onClick={onBack}><Store size={15} /><span>{t.backToMarket}</span></button>
+          <button className="primary-action" type="button" onClick={onPublish}><Upload size={15} /><span>{t.publish}</span></button>
+        </div>
+      </div>
+
+      <div className="admin-scroll">
+        <section className="creator-table-section">
+          <div className="table-head">
+            <div>
+              <span className="section-kicker"><ListChecks size={14} />{t.adminPendingPublications}</span>
+              <h2>{t.adminPendingPublications}</h2>
+            </div>
+            <button className="table-action" type="button" onClick={onLoadAdminReviews} disabled={isLoadingAdminReviews}>
+              <RefreshCw size={13} /><span>{t.reviewLoadAdminData}</span>
+            </button>
+          </div>
+          {pendingItems.length ? (
+            <div className="admin-table" role="table" aria-label={t.adminPendingPublications}>
+              <div className="admin-table-row is-head" role="row"><span>{t.name}</span><span>{t.type}</span><span>{t.creatorVersion}</span><span>{t.creatorUpdatedAt}</span><span>{t.manage}</span></div>
+              {pendingItems.map((item) => (
+                <div className="admin-table-row" role="row" key={`${item.type}:${item.id}`}>
+                  <ComponentCell item={item} locale={locale} />
+                  <span>{isSkillPackage(item) ? t.skillPackage : displayType(item.type, t)}</span>
+                  <span>{formatVersionLabel(item.version || item.latestVersion) || '-'}</span>
+                  <span>{formatDate(item.updatedAt || item.publishedAt, locale)}</span>
+                  <span className="table-actions">
+                    <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'approved')}><CheckCircle2 size={14} /><span>{t.reviewApprove}</span></button>
+                    <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'rejected')}><AlertCircle size={14} /><span>{t.reviewReject}</span></button>
+                    <button className="table-action" type="button" onClick={() => onDetails(item)}><ArrowRight size={14} /><span>{t.creatorOpenMarket}</span></button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : <EmptyInline title={t.adminNoPendingPublications} body={t.reviewAdminTokenHint} />}
+        </section>
+
+        <section className="creator-table-section">
+          <div className="table-head">
+            <div>
+              <span className="section-kicker"><Folder size={14} />{t.adminPublishedComponents}</span>
+              <h2>{t.adminPublishedComponents}</h2>
+            </div>
+            <div className="creator-filters">
+              <label className="creator-search"><Search size={15} /><input value={itemQuery} onChange={(event) => setItemQuery(event.target.value)} placeholder={t.adminSearchPublished} /></label>
+              <label className="sort-control"><span>{t.creatorTypeFilter}</span><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="all">{t.creatorAllTypes}</option>{canonicalTypes.filter((type) => type !== 'pet').map((type) => <option value={type} key={type}>{displayType(type, t)}</option>)}</select></label>
+            </div>
+          </div>
+          {visiblePublished.length ? (
+            <div className="admin-table admin-published-table" role="table" aria-label={t.adminPublishedComponents}>
+              <div className="admin-table-row is-head" role="row"><span>{t.name}</span><span>{t.type}</span><span>{t.creatorVersion}</span><span>{t.creatorUpdatedAt}</span><span>{t.manage}</span></div>
+              {visiblePublished.map((item) => {
+                const key = `${item.type}:${item.id}`;
+                return <div className="admin-table-row" role="row" key={key}>
+                  <ComponentCell item={item} locale={locale} />
+                  <span>{isSkillPackage(item) ? t.skillPackage : displayType(item.type, t)}</span>
+                  <span>{formatVersionLabel(item.latestVersion || item.version) || '-'}</span>
+                  <span>{formatDate(item.updatedAt || item.publishedAt, locale)}</span>
+                  <span className="table-actions">
+                    <button className="table-action" type="button" onClick={() => openVersions(item)}><Calendar size={14} /><span>{t.creatorVersions}</span></button>
+                    <button className="table-action" type="button" onClick={() => onDetails(item)}><ArrowRight size={14} /><span>{t.creatorOpenMarket}</span></button>
+                    <button className="table-action is-danger" type="button" disabled={unpublishingKey === key} onClick={() => onUnpublishLatest(item)}><Trash2 size={14} /><span>{t.adminUnpublishLatest}</span></button>
+                  </span>
+                </div>;
+              })}
+            </div>
+          ) : <EmptyInline title={t.adminNoPublishedComponents} body={t.emptyBody} />}
+        </section>
+      </div>
+      {versionState.item ? <VersionHistoryModal state={versionState} locale={locale} t={t} onClose={() => setVersionState({ item: null, status: 'idle', versions: [], error: '' })} /> : null}
+    </section>
+  );
+}
+
+function ComponentCell({ item, locale }) {
+  return <span className="component-cell"><img src={item.icon || item.screenshot} alt="" /><span><strong>{localized(item.name, locale) || item.id}</strong><small>{item.id}</small></span></span>;
+}
+
+function CreatorCenter({
+  mode = 'creator',
+  items,
+  locale,
+  t,
+  onBack,
+  onPublish,
+  onDetails,
+  onReview,
+  reviewingKey,
+  onLoadAdminReviews,
+  isLoadingAdminReviews,
+}) {
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [itemQuery, setItemQuery] = useState('');
+  const [versionState, setVersionState] = useState({ item: null, status: 'idle', versions: [], error: '' });
+  const creatorItems = useMemo(() => [...items].sort((a, b) => dateValue(b.updatedAt || b.publishedAt) - dateValue(a.updatedAt || a.publishedAt)), [items]);
+  const visibleItems = creatorItems.filter((item) => {
+    if (typeFilter !== 'all' && item.type !== typeFilter) return false;
+    const needle = itemQuery.trim().toLowerCase();
+    if (!needle) return true;
+    return [
+      item.id,
+      localized(item.name, locale),
+      localized(item.description, locale),
+      displayType(item.type, t),
+      ...(item.tags || []),
+    ].join(' ').toLowerCase().includes(needle);
+  });
+  const totalDownloads = creatorItems.reduce((sum, item) => sum + parseCount(item.downloads), 0);
+  const totalFavorites = creatorItems.reduce((sum, item) => sum + parseCount(item.favoriteCount), 0);
+  const skillPackages = creatorItems.filter(isSkillPackage).length;
+  const pendingReviews = creatorItems.filter((item) => item.reviewStatus === 'pending').length;
+  const rejectedReviews = creatorItems.filter((item) => item.reviewStatus === 'rejected').length;
+  const recentItems = creatorItems.slice(0, 4);
+  const qualityRows = creatorItems.map((item) => ({ item, issues: creatorQualityIssues(item, t) }));
+  const qualityRowsWithIssues = qualityRows.filter((row) => row.issues.length);
+  const issueCount = qualityRowsWithIssues.reduce((sum, row) => sum + row.issues.length, 0);
+  const topDownloads = [...creatorItems].sort((a, b) => parseCount(b.downloads) - parseCount(a.downloads)).slice(0, 5);
+  const topFavorites = [...creatorItems].sort((a, b) => parseCount(b.favoriteCount) - parseCount(a.favoriteCount)).slice(0, 5);
+  const maxDownloads = Math.max(1, ...topDownloads.map((item) => parseCount(item.downloads)));
+  const maxFavorites = Math.max(1, ...topFavorites.map((item) => parseCount(item.favoriteCount)));
+  const typeBreakdown = canonicalTypes.filter((type) => type !== 'pet').map((type) => ({
+    type,
+    count: creatorItems.filter((item) => item.type === type).length,
+  })).filter((entry) => entry.count);
+  const metricCards = [
+    { label: t.creatorTotalItems, value: formatCount(creatorItems.length), icon: Folder },
+    { label: t.creatorTotalDownloads, value: formatCount(totalDownloads), icon: Download },
+    { label: t.creatorTotalFavorites, value: formatCount(totalFavorites), icon: Heart },
+    { label: t.creatorSkillPackages, value: formatCount(skillPackages), icon: PackageOpen },
+    { label: t.reviewPending, value: formatCount(pendingReviews), icon: ListChecks },
+    { label: t.reviewRejected, value: formatCount(rejectedReviews), icon: AlertCircle },
+  ];
+  const isAdminMode = mode === 'admin';
+
+  async function openVersions(item) {
+    setVersionState({ item, status: 'loading', versions: [], error: '' });
+    try {
+      const route = marketRoute(item.type);
+      const data = await requestJSON(`${apiBase}/${route}/${encodeURIComponent(item.id)}/versions`);
+      setVersionState({ item, status: 'ready', versions: Array.isArray(data.versions) ? data.versions : [], error: '' });
+    } catch (reason) {
+      setVersionState({ item, status: 'error', versions: [], error: errorMessage(reason) });
+    }
+  }
+
+  return (
+    <section className="creator-center">
+      <div className="creator-hero">
+        <div>
+          <span className="section-kicker">{isAdminMode ? <ShieldCheck size={14} /> : <User size={14} />}{isAdminMode ? t.reviewCenter : t.creatorDashboard}</span>
+          <h1>{isAdminMode ? t.reviewCenter : t.creatorTitle}</h1>
+          <p>{isAdminMode ? t.reviewAdminTokenHint : t.creatorSubtitle}</p>
+        </div>
+        <div className="creator-actions">
+          <button className="secondary-action" type="button" onClick={onBack}>
+            <Store size={15} />
+            <span>{t.backToMarket}</span>
+          </button>
+          <button className="primary-action" type="button" onClick={onPublish}>
+            <Upload size={15} />
+            <span>{t.publish}</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="creator-scroll">
+        <aside className="creator-side">
+          <section className="creator-profile-panel">
+            <div className="creator-profile-avatar"><User size={22} /></div>
+            <div>
+              <span className="section-kicker"><User size={14} />{t.creatorProfile}</span>
+              <h2>{t.creatorProfileName}</h2>
+              <p>{t.creatorProfileBio}</p>
+            </div>
+          </section>
+
+          <section className="creator-local-banner">
+            <AlertCircle size={17} />
+            <div className="creator-local-copy">
+              <strong>{t.creatorLocalMode}</strong>
+              <small>{t.creatorLocalModeBody}</small>
+            </div>
+            {isAdminMode ? (
+              <div className="creator-review-loader">
+                <button className="table-action" type="button" onClick={onLoadAdminReviews} disabled={isLoadingAdminReviews}>
+                  <RefreshCw size={13} />
+                  <span>{t.reviewLoadAdminData}</span>
+                </button>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="creator-panel compact">
+            <div className="panel-head">
+              <span><LayoutGrid size={16} />{t.creatorTypeBreakdown}</span>
+            </div>
+            {typeBreakdown.length ? (
+              <div className="type-breakdown">
+                {typeBreakdown.map((entry) => (
+                  <div className="type-breakdown-row" key={entry.type}>
+                    <span>{displayType(entry.type, t)}</span>
+                    <strong>{formatCount(entry.count)}</strong>
+                    <i style={{ width: `${Math.max(8, (entry.count / Math.max(creatorItems.length, 1)) * 100)}%` }} />
+                  </div>
+                ))}
+              </div>
+            ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
+          </section>
+        </aside>
+
+        <div className="creator-main">
+          <section className="creator-metrics" aria-label={t.creatorDashboard}>
+            {metricCards.map(({ label, value, icon: Icon }) => (
+              <div className="metric-card" key={label}>
+                <span className="metric-icon"><Icon size={17} /></span>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </section>
+
+          <div className="creator-panel-grid">
+            <section className="creator-panel">
+              <div className="panel-head">
+                <span><BarChart3 size={16} />{t.creatorRecent}</span>
+              </div>
+              {recentItems.length ? (
+                <div className="recent-list">
+                  {recentItems.map((item) => (
+                    <button className="recent-row" type="button" key={`${item.type}:${item.id}`} onClick={() => onDetails(item)}>
+                      <img src={item.icon || item.screenshot} alt="" />
+                      <span>
+                        <strong>{localized(item.name, locale) || item.id}</strong>
+                        <small>{displayType(item.type, t)} · {formatDate(item.updatedAt || item.publishedAt, locale)}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
+            </section>
+
+            <section className="creator-panel">
+              <div className="panel-head">
+                <span><ListChecks size={16} />{t.creatorQuality}</span>
+                <small>{issueCount ? `${issueCount}` : t.creatorNoIssues}</small>
+              </div>
+              {qualityRows.length ? (
+                <div className="quality-list">
+                  {(qualityRowsWithIssues.length ? qualityRowsWithIssues : qualityRows).slice(0, 6).map(({ item, issues }) => (
+                    <div className="quality-row" key={`${item.type}:${item.id}`}>
+                      <span>
+                        <strong>{localized(item.name, locale) || item.id}</strong>
+                        <small>{issues.length ? issues.join(' · ') : t.creatorQualityGood}</small>
+                      </span>
+                      <CheckCircle2 className={issues.length ? 'is-warning' : 'is-ok'} size={16} />
+                    </div>
+                  ))}
+                </div>
+              ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
+            </section>
+
+            <section className="creator-panel">
+              <div className="panel-head">
+                <span><BarChart3 size={16} />{t.creatorTopDownloads}</span>
+              </div>
+              {topDownloads.length ? (
+                <div className="chart-list">
+                  {topDownloads.map((item, index) => (
+                    <button className="chart-row" type="button" key={`${item.type}:${item.id}`} onClick={() => onDetails(item)}>
+                      <strong>{index + 1}</strong>
+                      <span>
+                        <b>{localized(item.name, locale) || item.id}</b>
+                        <small>{displayType(item.type, t)}</small>
+                      </span>
+                      <em>{formatCount(item.downloads)}</em>
+                      <i style={{ width: `${Math.max(4, (parseCount(item.downloads) / maxDownloads) * 100)}%` }} />
+                    </button>
+                  ))}
+                </div>
+              ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
+            </section>
+
+            <section className="creator-panel">
+              <div className="panel-head">
+                <span><Heart size={16} />{t.favorites}</span>
+              </div>
+              {topFavorites.length ? (
+                <div className="chart-list">
+                  {topFavorites.map((item, index) => (
+                    <button className="chart-row is-favorite" type="button" key={`${item.type}:${item.id}`} onClick={() => onDetails(item)}>
+                      <strong>{index + 1}</strong>
+                      <span>
+                        <b>{localized(item.name, locale) || item.id}</b>
+                        <small>{displayType(item.type, t)}</small>
+                      </span>
+                      <em>{formatCount(item.favoriteCount)}</em>
+                      <i style={{ width: `${Math.max(4, (parseCount(item.favoriteCount) / maxFavorites) * 100)}%` }} />
+                    </button>
+                  ))}
+                </div>
+              ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
+            </section>
+          </div>
+
+          <section className="creator-table-section">
+            <div className="table-head">
+              <div>
+                <span className="section-kicker"><Folder size={14} />{t.creatorInventory}</span>
+                <h2>{t.creatorInventory}</h2>
+              </div>
+              <div className="creator-filters">
+                <label className="creator-search">
+                  <Search size={15} />
+                  <input value={itemQuery} onChange={(event) => setItemQuery(event.target.value)} placeholder={t.creatorSearch} />
+                </label>
+                <label className="sort-control">
+                  <span>{t.creatorTypeFilter}</span>
+                  <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+                    <option value="all">{t.creatorAllTypes}</option>
+                    {canonicalTypes.filter((type) => type !== 'pet').map((type) => (
+                      <option value={type} key={type}>{displayType(type, t)}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+            {visibleItems.length ? (
+              <div className="creator-table" role="table" aria-label={t.creatorInventory}>
+                <div className="creator-table-row is-head" role="row">
+                  <span>{t.name}</span>
+                  <span>{t.type}</span>
+                  <span>{t.reviewStatus}</span>
+                  <span>{t.creatorVersion}</span>
+                  <span>{t.downloads}</span>
+                  <span>{t.favorites}</span>
+                  <span>{t.creatorUpdatedAt}</span>
+                  <span>{t.manage}</span>
+                </div>
+                {visibleItems.map((item) => (
+                  <div className="creator-table-row" role="row" key={`${item.type}:${item.id}`}>
+                    <span className="component-cell">
+                      <img src={item.icon || item.screenshot} alt="" />
+                      <span>
+                        <strong>{localized(item.name, locale) || item.id}</strong>
+                        <small>{item.id}</small>
+                    </span>
+                  </span>
+                  <span>{isSkillPackage(item) ? t.skillPackage : displayType(item.type, t)}</span>
+                  <span className="review-status-cell">
+                    <ReviewBadge status={item.reviewStatus} t={t} />
+                    {item.reviewStatus === 'rejected' && item.reviewNote ? (
+                      <small title={`${t.reviewRejectReason}: ${item.reviewNote}`}>{t.reviewRejectReason}: {item.reviewNote}</small>
+                    ) : null}
+                  </span>
+                  <span>{formatVersionLabel(item.version || item.latestVersion) || '-'}</span>
+                  <span>{formatCount(item.downloads)}</span>
+                    <span>{formatCount(item.favoriteCount)}</span>
+                    <span>{formatDate(item.updatedAt || item.publishedAt, locale)}</span>
+                    <span>
+                      <span className="table-actions">
+                        {isAdminMode && onReview && item.reviewStatus !== 'approved' ? (
+                          <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'approved')}>
+                            <CheckCircle2 size={14} />
+                            <span>{t.reviewApprove}</span>
+                          </button>
+                        ) : null}
+                        {isAdminMode && onReview && item.reviewStatus !== 'rejected' ? (
+                          <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'rejected')}>
+                            <AlertCircle size={14} />
+                            <span>{t.reviewReject}</span>
+                          </button>
+                        ) : null}
+                        <button className="table-action" type="button" onClick={() => openVersions(item)}>
+                          <Calendar size={14} />
+                          <span>{t.creatorVersions}</span>
+                        </button>
+                        <button className="table-action" type="button" onClick={() => onDetails(item)}>
+                          <ArrowRight size={14} />
+                          <span>{t.creatorOpenMarket}</span>
+                        </button>
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
+          </section>
+        </div>
+      </div>
+      {versionState.item ? (
+        <VersionHistoryModal
+          state={versionState}
+          locale={locale}
+          t={t}
+          onClose={() => setVersionState({ item: null, status: 'idle', versions: [], error: '' })}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function VersionHistoryModal({ state, locale, t, onClose }) {
+  const item = state.item;
+  return (
+    <div className="modal-backdrop centered" role="presentation" onMouseDown={onClose}>
+      <section className="version-modal" role="dialog" aria-modal="true" aria-label={t.creatorVersionHistory} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <h2>{t.creatorVersionHistory}</h2>
+            <p>{localized(item?.name, locale) || item?.id}</p>
+          </div>
+          <button className="modal-close inline" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
+        </div>
+        {state.status === 'loading' ? <StateNotice title={t.loadingTitle} body={t.loadingBody} /> : null}
+        {state.status === 'error' ? <StateNotice tone="error" title={t.loadingErrorTitle} body={state.error} /> : null}
+        {state.status === 'ready' && state.versions.length ? (
+          <div className="version-list">
+            {state.versions.map((version) => (
+              <div className="version-row" key={version.version}>
+                <span>
+                  <strong>{formatVersionLabel(version.version)}</strong>
+                  {version.version === (item.version || item.latestVersion) ? <small>{t.creatorCurrentVersion}</small> : null}
+                </span>
+                <span>{formatDate(version.publishedAt, locale)}</span>
+                <span>{Object.keys(version.assets || {}).length || Object.keys(version.platforms || {}).length} {t.assets}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {state.status === 'ready' && !state.versions.length ? <EmptyInline title={t.creatorNoVersions} body={t.emptyBody} /> : null}
+      </section>
+    </div>
+  );
+}
+
+function ReviewBadge({ status, t }) {
+  const normalized = normalizeReviewStatusForUI(status);
+  const label = normalized === 'approved' ? t.reviewApproved : normalized === 'rejected' ? t.reviewRejected : t.reviewPending;
+  return <span className={`review-badge is-${normalized}`}>{label}</span>;
+}
+
+function EmptyInline({ title, body }) {
+  return (
+    <div className="empty-inline">
+      <strong>{title}</strong>
+      <span>{body}</span>
+    </div>
+  );
+}
+
+function SkillCatalogView({ items, activeSkillCategory, locale, t, onDetails, onInstall, onDownload, onFavorite, downloadingKey, favoritingKey }) {
+  const packages = items.filter((item) => item.skillKind === 'package');
+  const regularSkills = items.filter((item) => item.skillKind !== 'package');
+  const categories = (activeSkillCategory === 'all' ? skillCategoryFilters.filter((category) => category !== 'all') : [activeSkillCategory])
+    .map((category) => ({
+      id: category,
+      title: t.skillCuratedTitles[category] || `${t.skillCategories[category] || category} ${t.skillSingle}`,
+      items: regularSkills.filter((item) => item.skillCategory === category),
+    }))
+    .filter((section) => section.items.length);
+
+  const renderCards = (sectionItems, variant = 'skill') => sectionItems.map((item) => (
+    <MarketCard
+      key={`${item.type}:${item.id}`}
+      item={item}
+      locale={locale}
+      t={t}
+      variant={variant}
+      onDetails={() => onDetails(item)}
+      onInstall={() => onInstall(item)}
+      onDownload={() => onDownload(item)}
+      onFavorite={() => onFavorite(item)}
+      isDownloading={downloadingKey === downloadKeyForItem(item)}
+      isFavoriting={favoritingKey === `${item.type}:${item.id}`}
+    />
+  ));
+
+  return (
+    <div className="skill-catalog-layout">
+      {packages.length ? (
+        <section className="skill-section">
+          <div className="skill-section-title">
+            <PackageOpen size={18} />
+            <h2>{t.skillPackage}</h2>
+          </div>
+          <div className="skill-package-grid">
+            {renderCards(packages, 'package')}
+          </div>
+        </section>
+      ) : null}
+      {categories.map((section) => (
+        <section className="skill-section" key={section.id}>
+          <div className="skill-section-title">
+            <Brain size={18} />
+            <h2>{section.title}</h2>
+          </div>
+          <div className="skill-single-grid">
+            {renderCards(section.items)}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function MarketCard({ item, locale, t, onDetails, onInstall, onDownload, onFavorite, isDownloading, isFavoriting, variant = '' }) {
   const category = categoryMeta.find((entry) => entry.id === item.type);
   const Icon = category?.icon || PackageOpen;
   const platform = preferredPlatformKey(item);
-  const canDownload = hasArtifact(item, platform);
+  const canDownload = hasArtifact(item, platform) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
+  const skillLabel = item.type === 'skill' ? skillKindLabel(item.skillKind, t) : '';
+  const skillCategory = item.type === 'skill' ? skillCategoryLabel(item.skillCategory, t) : '';
+  const cardClassName = ['market-card', variant ? `is-${variant}` : ''].filter(Boolean).join(' ');
   return (
-    <article className="market-card">
+    <article className={cardClassName}>
       <div className="card-body">
         <div className="card-title-row">
-          <span className={`card-type-icon ${category?.colorClass || 'is-muted'}`} title={displayType(item.type, t)} aria-label={displayType(item.type, t)}>
-            <Icon size={16} />
+          <span className="card-artwork" title={displayType(item.type, t)} aria-label={displayType(item.type, t)}>
+            {item.icon ? <img src={item.icon} alt="" /> : <Icon className={category?.colorClass || 'is-muted'} size={18} />}
           </span>
           <h2>
             {localized(item.name, locale)}
@@ -756,39 +2075,42 @@ function MarketCard({ item, locale, t, onDetails, onInstall, onDownload, onFavor
         </div>
         <p>{localized(item.description, locale) || t.noDescription}</p>
         <div className="tag-row">
+          {skillLabel ? <span className={item.skillKind === 'package' ? 'skill-kind-chip package' : 'skill-kind-chip'}>{skillLabel}</span> : null}
+          {skillCategory ? <span>{skillCategory}</span> : null}
           {(item.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
           {platform ? <span className="platform-chip">{platform}</span> : null}
         </div>
+        <div className="card-stats">
+          <span className="stat-pill" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
+            <Download size={13} />
+            <span>{formatCount(item.downloads)}</span>
+          </span>
+          <button
+            className={item.favorited ? 'stat-pill stat-button is-active' : 'stat-pill stat-button'}
+            type="button"
+            onClick={onFavorite}
+            disabled={isFavoriting}
+            title={favoriteLabel}
+            aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
+          >
+            <Heart size={13} fill={item.favorited ? 'currentColor' : 'none'} />
+            <span>{formatCount(item.favoriteCount)}</span>
+          </button>
+        </div>
+        {item.skillKind === 'package' && item.includedSkills.length ? (
+          <div className="card-included">
+            <strong>{t.skillIncluded}</strong>
+            {item.includedSkills.slice(0, 4).map((skill) => (
+              <span key={skill.id}>{skill.name || skill.id}</span>
+            ))}
+          </div>
+        ) : null}
       </div>
       <footer>
-        <div className="card-footer-meta">
-          <button className="link-button" type="button" onClick={onDetails}>
-            <span>{t.details}</span>
-            <ArrowRight size={13} />
-          </button>
-          {canInstall && canDownload ? (
-            <button className="link-button" type="button" onClick={onDownload} disabled={isDownloading}>
-              <span>{isDownloading ? t.downloading : t.downloadArtifact}</span>
-            </button>
-          ) : null}
-          <div className="card-stats">
-            <span className="stat-pill" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
-              <Download size={13} />
-              <span>{formatCount(item.downloads)}</span>
-            </span>
-            <button
-              className={item.favorited ? 'stat-pill stat-button is-active' : 'stat-pill stat-button'}
-              type="button"
-              onClick={onFavorite}
-              disabled={isFavoriting}
-              title={favoriteLabel}
-              aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
-            >
-              <Heart size={13} fill={item.favorited ? 'currentColor' : 'none'} />
-              <span>{formatCount(item.favoriteCount)}</span>
-            </button>
-          </div>
-        </div>
+        <button className="link-button" type="button" onClick={onDetails}>
+          <span>{t.details}</span>
+          <ArrowRight size={13} />
+        </button>
         <button className="primary-action" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
           {canInstall ? <Copy size={13} /> : <Download size={13} />}
           <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
@@ -805,7 +2127,7 @@ function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPla
   const activePlatform = platformForKey(item, activePlatformKey);
   const deps = platformDependencies(activePlatform, item);
   const commands = commandEntries(activePlatform, t);
-  const canDownload = hasArtifact(item, activePlatformKey);
+  const canDownload = hasArtifact(item, activePlatformKey) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   return (
@@ -817,10 +2139,12 @@ function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPla
             <div className="media-panel">
               <img src={item.screenshot} alt="" />
             </div>
-            <button className="video-panel" type="button" onClick={onToggleVideo}>
-              <img src={item.videoThumb} alt="" />
-              {videoPlaying ? <span className="video-running">{t.videoPlaying}</span> : <span className="play-overlay"><Play size={26} fill="currentColor" /></span>}
-            </button>
+            {item.hasVideo ? (
+              <button className="video-panel" type="button" onClick={onToggleVideo}>
+                <img src={item.videoThumb} alt="" />
+                {videoPlaying ? <span className="video-running">{t.videoPlaying}</span> : <span className="play-overlay"><Play size={26} fill="currentColor" /></span>}
+              </button>
+            ) : null}
             <section className="readme-section">
               <h3>{localized(item.readmeTitle, locale) || t.readmeFallback}</h3>
               <p>{localized(item.readme, locale)}</p>
@@ -872,6 +2196,30 @@ function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPla
                 <strong>{formatCount(item.favoriteCount)}</strong>
               </button>
             </div>
+
+            {item.type === 'skill' ? (
+              <section className="side-section">
+                <h3>{t.skillCategoryTitle}</h3>
+                <div className="skill-facts">
+                  <span>{skillKindLabel(item.skillKind, t)}</span>
+                  <span>{skillCategoryLabel(item.skillCategory, t)}</span>
+                  {item.skillScenario ? <span>{t.skillScenarios[item.skillScenario] || item.skillScenario}</span> : null}
+                  {item.skillLevel ? <span>{t.skillLevels[item.skillLevel] || item.skillLevel}</span> : null}
+                  {item.skillFeatured ? <span>{t.skillFeatured}</span> : null}
+                </div>
+                {item.skillKind === 'package' ? (
+                  <div className="included-skill-list">
+                    <strong>{t.skillIncluded}</strong>
+                    {item.includedSkills.length ? item.includedSkills.map((skill) => (
+                      <div className="included-skill" key={skill.id}>
+                        <span>{skill.name || skill.id}</span>
+                        <small>{skill.id}</small>
+                      </div>
+                    )) : <p className="empty-detail">{t.noDependencies}</p>}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
 
             <section className="side-section">
               <h3>{t.platforms}</h3>
@@ -969,18 +2317,79 @@ function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPla
   );
 }
 
-function PublishModal({ t, onClose, onSubmit, isPublishing }) {
+function LoginModal({ t, onClose, onSubmit }) {
+  return (
+    <div className="modal-backdrop centered" role="presentation" onMouseDown={onClose}>
+      <section className="publish-modal auth-modal" role="dialog" aria-modal="true" aria-label={t.loginTitle} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <h2>{t.loginTitle}</h2>
+            <p>{t.loginBody}</p>
+          </div>
+          <button className="modal-close inline" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
+        </div>
+        <form className="publish-form" onSubmit={onSubmit}>
+          <label className="full">
+            <span>{t.loginUserId}</span>
+            <input name="userId" defaultValue="local-creator" placeholder="local-creator" />
+          </label>
+          <label className="full">
+            <span>{t.loginRole}</span>
+            <select name="role" defaultValue="creator">
+              <option value="creator">{t.loginAsCreator}</option>
+              <option value="admin">{t.loginAsAdmin}</option>
+            </select>
+          </label>
+          <div className="modal-actions">
+            <button className="secondary-action" type="button" onClick={onClose}>{t.cancel}</button>
+            <button className="primary-action" type="submit"><LogIn size={15} /><span>{t.login}</span></button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function PublishPage({ t, locale, authSession, availableSkills = [], onClose, onSubmit, isPublishing }) {
+  const [step, setStep] = useState('type');
   const [type, setType] = useState('agent');
   const [archiveType, setArchiveType] = useState(defaultArchiveTypeFor('agent'));
   const [sandboxKind, setSandboxKind] = useState('environment-template');
   const [websiteKind, setWebsiteKind] = useState('local-app');
+  const [skillKind, setSkillKind] = useState('single');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [skillSearch, setSkillSearch] = useState('');
+  const [selectedSkillIDs, setSelectedSkillIDs] = useState([]);
 
-  function handleTypeChange(event) {
-    const nextType = normalizeType(event.target.value);
+  const publishTypes = publishTypeOptions();
+  const selectedTypeID = type === 'skill' && skillKind === 'package' ? 'skill-package' : type;
+  const selectedType = publishTypes.find((entry) => entry.id === selectedTypeID) || publishTypes[0];
+  const SelectedIcon = selectedType?.icon || PackageOpen;
+  const artifactRequired = artifactRequiredFor(type, { websiteKind, skill: { kind: skillKind } });
+  const adpRequired = adpRequiredFor(type, { skill: { kind: skillKind } });
+  const showAssetSection = !(type === 'skill' && skillKind === 'package') || adpRequired;
+  const filteredSkills = filterPublishSkills(availableSkills, skillSearch, locale);
+
+  function applyPublishType(option) {
+    const nextType = normalizeType(option.type);
+    const nextSkillKind = option.skillKind || 'single';
     setType(nextType);
-    setArchiveType(defaultArchiveTypeFor(nextType, { sandboxKind: 'environment-template' }));
-    if (nextType === 'sandbox-image') setSandboxKind('environment-template');
-    if (nextType === 'website-app') setWebsiteKind('local-app');
+    setSkillKind(nextType === 'skill' ? nextSkillKind : 'single');
+    const nextSandboxKind = nextType === 'sandbox-image' ? 'environment-template' : sandboxKind;
+    const nextWebsiteKind = nextType === 'website-app' ? 'local-app' : websiteKind;
+    if (nextType === 'sandbox-image') setSandboxKind(nextSandboxKind);
+    if (nextType === 'website-app') setWebsiteKind(nextWebsiteKind);
+    setArchiveType(defaultArchiveTypeFor(nextType, { sandboxKind: nextSandboxKind, websiteKind: nextWebsiteKind }));
+    setShowAdvanced(false);
+    setSkillSearch('');
+    setSelectedSkillIDs([]);
+    setStep('details');
+  }
+
+  function toggleIncludedSkill(skillID) {
+    setSelectedSkillIDs((current) => (
+      current.includes(skillID) ? current.filter((id) => id !== skillID) : [...current, skillID]
+    ));
   }
 
   function handleSandboxKindChange(event) {
@@ -995,73 +2404,171 @@ function PublishModal({ t, onClose, onSubmit, isPublishing }) {
     setArchiveType(defaultArchiveTypeFor('website-app'));
   }
 
+  function renderStepIndicator() {
+    return (
+      <div className="publish-steps" aria-label={t.publishTitle}>
+        <span className="is-active"><strong>1</strong>{t.publishStepType}</span>
+        <i />
+        <span className={step === 'details' ? 'is-active' : ''}><strong>2</strong>{t.publishStepDetails}</span>
+      </div>
+    );
+  }
+
+  function renderTypePicker() {
+    return (
+      <div className="publish-picker">
+        <div className="publish-picker-head">
+          <h3>{t.publishChooseType}</h3>
+          <p>{t.publishChooseTypeBody}</p>
+        </div>
+        <div className="publish-type-grid">
+          {publishTypes.map((option) => {
+            const Icon = option.icon;
+            return (
+              <button className="publish-type-card" type="button" key={option.id} onClick={() => applyPublishType(option)}>
+                <span className="publish-type-icon"><Icon size={20} /></span>
+                <strong>{option.label(t)}</strong>
+                <small>{t.publishTypeDescriptions[option.id]}</small>
+                <em>{t.publishTypeRequirements}: {t.publishTypeRequirementsMap[option.id]}</em>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="modal-backdrop centered" role="presentation" onMouseDown={onClose}>
-      <section className="publish-modal" role="dialog" aria-modal="true" aria-label={t.publishTitle} onMouseDown={(event) => event.stopPropagation()}>
-        <div className="modal-head">
+      <section className="publish-page" aria-label={t.publishTitle}>
+        <div className="publish-page-head">
           <div>
             <h2>{t.publishTitle}</h2>
             <p>{t.publishBody}</p>
           </div>
-          <button className="modal-close inline" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
+          <button className="secondary-action" type="button" onClick={onClose} disabled={isPublishing}>
+            <ArrowRight size={14} />
+            <span>{t.backToMarket}</span>
+          </button>
         </div>
-        <form className="publish-form" onSubmit={onSubmit}>
-          <label className="full">
-            <span>{t.adminToken}</span>
-            <input name="adminToken" type="password" required defaultValue={savedAdminToken()} autoComplete="off" />
-          </label>
-          <label>
-            <span>{t.type}</span>
-            <select name="type" value={type} onChange={handleTypeChange}>
-              {canonicalTypes.map((type) => <option value={type} key={type}>{t.categories[type]}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>{t.componentId}</span>
-            <input name="id" required placeholder="my-agent" pattern="[a-z0-9._-]+" />
-          </label>
-          <label>
-            <span>{t.name}</span>
-            <input name="name" required placeholder="My Agent" />
-          </label>
-          <label>
-            <span>{t.version}</span>
-            <input name="version" defaultValue="1.0.0" />
-          </label>
-          <label>
-            <span>{t.archiveType}</span>
-            <select name="archiveType" value={archiveType} onChange={(event) => setArchiveType(event.target.value)}>
-              {archiveOptionsFor(type, { sandboxKind }).map((option) => <option value={option} key={option}>{option}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>{t.platformKey}</span>
-            <input name="platformKey" defaultValue="universal" placeholder="universal" />
-          </label>
-          <label>
-            <span>{t.os}</span>
-            <select name="platformOS" defaultValue="">
-              <option value="">auto</option>
-              <option value="darwin">darwin</option>
-              <option value="linux">linux</option>
-              <option value="windows">windows</option>
-              <option value="universal">universal</option>
-            </select>
-          </label>
-          <label>
-            <span>{t.arch}</span>
-            <select name="platformArch" defaultValue="">
-              <option value="">auto</option>
-              <option value="arm64">arm64</option>
-              <option value="amd64">amd64</option>
-              <option value="arm">arm</option>
-              <option value="386">386</option>
-            </select>
-          </label>
-          <label>
-            <span>{t.minDesktopVersion}</span>
-            <input name="platformMinDesktopVersion" placeholder="1.2.0" />
-          </label>
+        {renderStepIndicator()}
+        {step === 'type' ? renderTypePicker() : null}
+        {step === 'details' ? (
+        <form className="publish-form publish-form-guided" onSubmit={onSubmit} key={`${type}:${skillKind}`}>
+          <div className="publish-selected full">
+            <button className="secondary-action" type="button" onClick={() => setStep('type')} disabled={isPublishing}>
+              <ArrowRight size={14} />
+              <span>{t.publishBackToTypes}</span>
+            </button>
+            <span className="publish-selected-card">
+              <SelectedIcon size={18} />
+              <strong>{selectedType.label(t)}</strong>
+              <small>{t.publishTypeRequirementsMap[selectedType.id]}</small>
+            </span>
+          </div>
+          <input name="type" type="hidden" value={type} />
+          <input name="archiveType" type="hidden" value={archiveType} />
+          {type === 'skill' ? <input name="skillKind" type="hidden" value={skillKind} /> : null}
+          {authSession?.user?.role === 'admin' ? (
+            <label className="publish-field-card full">
+              <span>{t.reviewSubmitMode}</span>
+              <select name="reviewStatus" defaultValue="approved">
+                <option value="approved">{t.reviewSubmitApproved}</option>
+                <option value="pending">{t.reviewSubmitPending}</option>
+              </select>
+            </label>
+          ) : null}
+          <section className="publish-section full">
+            <h3>{t.publishBasicInfo}</h3>
+            <div className="publish-section-grid">
+              <label>
+                <span>{t.componentId}</span>
+                <input name="id" required placeholder="my-agent" pattern="[a-z0-9._-]+" />
+              </label>
+              <label>
+                <span>{t.name}</span>
+                <input name="name" required placeholder="My Agent" />
+              </label>
+              <label>
+                <span>{t.version}</span>
+                <input name="version" defaultValue="1.0.0" />
+              </label>
+              <label>
+                <span>{t.image}</span>
+                <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+              </label>
+              <label className="full">
+                <span>{t.description}</span>
+                <textarea name="description" rows="4" required />
+              </label>
+            </div>
+          </section>
+
+          {(type === 'skill' || type === 'sandbox-image' || type === 'website-app' || type === 'software-package') ? (
+            <section className="publish-section full">
+              <h3>{t.publishTypeSettings}</h3>
+              <div className="publish-section-grid">
+          {type === 'skill' ? (
+            <>
+              <label>
+                <span>{t.skillCategoryTitle}</span>
+                <select name="skillCategory" defaultValue="other">
+                  {skillCategoryFilters.filter((category) => category !== 'all').map((category) => <option value={category} key={category}>{t.skillCategories[category]}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{t.skillScenario}</span>
+                <select name="skillScenario" defaultValue="productivity">
+                  {skillScenarioOptions.map((scenario) => <option value={scenario} key={scenario}>{t.skillScenarios[scenario]}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{t.skillLevel}</span>
+                <select name="skillLevel" defaultValue="beginner">
+                  {skillLevelOptions.map((level) => <option value={level} key={level}>{t.skillLevels[level]}</option>)}
+                </select>
+              </label>
+              {skillKind === 'package' ? (
+                <div className="skill-picker full">
+                  <div className="skill-picker-head">
+                    <span>{t.includedSkills}</span>
+                    <small>{t.includedSkillsSelected(selectedSkillIDs.length)}</small>
+                  </div>
+                  <label className="skill-picker-search">
+                    <Search size={14} />
+                    <input value={skillSearch} onChange={(event) => setSkillSearch(event.target.value)} placeholder={t.includedSkillsSearch} />
+                  </label>
+                  <div className="skill-picker-list">
+                    {filteredSkills.length ? filteredSkills.map((skill) => {
+                      const checked = selectedSkillIDs.includes(skill.id);
+                      return (
+                        <label className={checked ? 'skill-picker-option is-selected' : 'skill-picker-option'} key={skill.id}>
+                          <input
+                            name="includedSkills"
+                            type="checkbox"
+                            value={skill.id}
+                            checked={checked}
+                            onChange={() => toggleIncludedSkill(skill.id)}
+                          />
+                          <span>
+                            <strong>{localized(skill.name, locale) || skill.id}</strong>
+                            <small>{skill.id}</small>
+                          </span>
+                          {checked ? <CheckCircle2 size={15} /> : null}
+                        </label>
+                      );
+                    }) : (
+                      <p className="skill-picker-empty">{availableSkills.length ? t.emptyTitle : t.noAvailableSkills}</p>
+                    )}
+                  </div>
+                  <small className="field-hint">{availableSkills.length ? t.includedSkillsHint : t.noAvailableSkills}</small>
+                </div>
+              ) : null}
+              <label className="checkbox-field">
+                <input name="skillFeatured" type="checkbox" />
+                <span>{t.skillFeatured}</span>
+              </label>
+            </>
+          ) : null}
           {type === 'sandbox-image' ? (
             <label>
               <span>{t.sandboxKind}</span>
@@ -1086,42 +2593,95 @@ function PublishModal({ t, onClose, onSubmit, isPublishing }) {
               <input name="metadataUrl" type="url" required placeholder="https://example.com/app" />
             </label>
           ) : null}
-          <label>
-            <span>{t.tags}</span>
-            <input name="tags" placeholder="AI, Tool" />
-          </label>
-          <label>
-            <span>{t.author}</span>
-            <input name="author" placeholder="ZenMind" />
-          </label>
-          <label className="full">
-            <span>{t.artifact}</span>
-            <input name="artifact" type="file" required={artifactRequiredFor(type, { websiteKind })} />
-            {!artifactRequiredFor(type, { websiteKind }) ? <small className="field-hint">{t.artifactOptional}</small> : null}
-          </label>
-          {adpRequiredFor(type) ? (
+          {(type === 'software-package' || type === 'sandbox-image') ? (
+            <label>
+              <span>{t.archiveType}</span>
+              <select name="archiveTypeVisible" value={archiveType} onChange={(event) => setArchiveType(event.target.value)}>
+                {archiveOptionsFor(type, { sandboxKind }).map((option) => <option value={option} key={option}>{option}</option>)}
+              </select>
+            </label>
+          ) : null}
+              </div>
+            </section>
+          ) : null}
+
+          {showAssetSection ? (
+          <section className="publish-section full">
+            <h3>{t.publishRequiredAssets}</h3>
+            <div className="publish-section-grid">
+          {!(type === 'skill' && skillKind === 'package') ? (
+            <label className="full">
+              <span>{t.artifact}</span>
+              <input name="artifact" type="file" required={artifactRequired} />
+              {!artifactRequired ? <small className="field-hint">{t.artifactOptional}</small> : null}
+            </label>
+          ) : null}
+          {adpRequired ? (
             <label className="full">
               <span>{t.adpManifest}</span>
               <input name="adpManifest" type="file" accept=".yaml,.yml,text/yaml,application/x-yaml" required />
               <small className="field-hint">{t.adpManifestHint}</small>
             </label>
           ) : null}
-          <label className="full">
-            <span>{t.description}</span>
-            <textarea name="description" rows="4" required />
-          </label>
-          <label className="full">
-            <span>{t.platformDescription}</span>
-            <textarea name="platformDescription" rows="3" />
-          </label>
-          <label className="full">
-            <span>{t.platformMetadata}</span>
-            <textarea name="platformMetadata" rows="4" defaultValue="{}" spellCheck="false" />
-          </label>
-          <label className="full">
-            <span>{t.platformDependencies}</span>
-            <textarea name="platformDependencies" rows="5" defaultValue="[]" spellCheck="false" />
-          </label>
+            </div>
+          </section>
+          ) : null}
+
+          <section className="publish-section full">
+            <button className="advanced-toggle" type="button" onClick={() => setShowAdvanced((value) => !value)}>
+              <span>{showAdvanced ? t.publishHideAdvanced : t.publishShowAdvanced}</span>
+              <ArrowRight size={14} />
+            </button>
+            {showAdvanced ? (
+              <div className="publish-section-grid">
+                <label>
+                  <span>{t.platformKey}</span>
+                  <input name="platformKey" defaultValue="universal" placeholder="universal" />
+                </label>
+                <label>
+                  <span>{t.os}</span>
+                  <select name="platformOS" defaultValue="">
+                    <option value="">auto</option>
+                    <option value="darwin">darwin</option>
+                    <option value="linux">linux</option>
+                    <option value="windows">windows</option>
+                    <option value="universal">universal</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t.arch}</span>
+                  <select name="platformArch" defaultValue="">
+                    <option value="">auto</option>
+                    <option value="arm64">arm64</option>
+                    <option value="amd64">amd64</option>
+                    <option value="arm">arm</option>
+                    <option value="386">386</option>
+                  </select>
+                </label>
+                <label>
+                  <span>{t.minDesktopVersion}</span>
+                  <input name="platformMinDesktopVersion" placeholder="1.2.0" />
+                </label>
+                <label>
+                  <span>{t.tags}</span>
+                  <input name="tags" placeholder="AI, Tool" />
+                </label>
+                <label>
+                  <span>{t.author}</span>
+                  <input name="author" placeholder="ZenMind" />
+                </label>
+                <label className="full">
+                  <span>{t.platformDescription}</span>
+                  <textarea name="platformDescription" rows="3" />
+                </label>
+                <label className="full">
+                  <span>{t.platformMetadata}</span>
+                  <textarea name="platformMetadata" rows="4" defaultValue="{}" spellCheck="false" />
+                </label>
+                <label className="full">
+                  <span>{t.platformDependencies}</span>
+                  <textarea name="platformDependencies" rows="5" defaultValue="[]" spellCheck="false" />
+                </label>
           {type === 'cli-tool' ? (
             <>
               <label className="full">
@@ -1142,10 +2702,13 @@ function PublishModal({ t, onClose, onSubmit, isPublishing }) {
               </label>
             </>
           ) : null}
-          <label className="full">
-            <span>{t.readme}</span>
-            <textarea name="readme" rows="5" />
-          </label>
+                <label className="full">
+                  <span>{t.readme}</span>
+                  <textarea name="readme" rows="5" />
+                </label>
+              </div>
+            ) : null}
+          </section>
           <footer className="modal-actions">
             <button className="secondary-action" type="button" onClick={onClose} disabled={isPublishing}>{t.cancel}</button>
             <button className="primary-action" type="submit" disabled={isPublishing}>
@@ -1154,8 +2717,8 @@ function PublishModal({ t, onClose, onSubmit, isPublishing }) {
             </button>
           </footer>
         </form>
+        ) : null}
       </section>
-    </div>
   );
 }
 
@@ -1183,6 +2746,7 @@ function mergeCatalogItem(apiItem) {
   const type = normalizeType(apiItem.type);
   const assetMap = apiItem.assets || {};
   const platformMap = synthesizePlatformMap(apiItem.platforms || {}, assetMap);
+  const skill = normalizeSkillProfile(apiItem.skill, type);
   const assets = Object.entries(assetMap).map(([platform, asset]) => `${platform}/${asset.archiveType || 'artifact'} ${formatBytes(asset.sizeBytes)}`);
   const downloadCount = parseCount(apiItem.downloadCount ?? apiItem.metadata?.downloads ?? 0);
   const favoriteCount = parseCount(apiItem.favoriteCount ?? apiItem.metadata?.favorites ?? 0);
@@ -1203,8 +2767,18 @@ function mergeCatalogItem(apiItem) {
     platformMap,
     platformOptions: sortPlatformKeys(Object.keys(platformMap)),
     dependencies,
-    screenshot: apiItem.metadata?.screenshot || defaultMediaImage,
-    videoThumb: apiItem.metadata?.videoThumb || apiItem.metadata?.screenshot || defaultMediaImage,
+    skill,
+    skillKind: skill.kind,
+    skillCategory: skill.category,
+    skillScenario: skill.scenario,
+    skillLevel: skill.level,
+    skillPackageMode: skill.packageMode,
+    skillFeatured: Boolean(skill.featured),
+    includedSkills: skill.includedSkills,
+    icon: apiItem.metadata?.icon || apiItem.metadata?.screenshot || '',
+    screenshot: apiItem.metadata?.screenshot || apiItem.metadata?.icon || defaultMediaImage,
+    videoThumb: apiItem.metadata?.videoThumb || '',
+    hasVideo: Boolean(apiItem.metadata?.videoThumb || apiItem.metadata?.videoUrl),
     author: apiItem.author || apiItem.metadata?.author || 'ZenMind',
     createdAt: apiItem.createdAt || apiItem.publishedAt || '',
     size: formatAssetSize(apiItem),
@@ -1212,13 +2786,43 @@ function mergeCatalogItem(apiItem) {
     downloads: downloadCount,
     favoriteCount,
     favorited: Boolean(apiItem.favorited),
+    reviewStatus: normalizeReviewStatusForUI(apiItem.reviewStatus),
+    reviewNote: apiItem.reviewNote || '',
+    reviewedAt: apiItem.reviewedAt || '',
+    reviewedBy: apiItem.reviewedBy || '',
   };
 }
 
 function normalizeType(type) {
   if (type === 'webapps' || type === 'webapp' || type === 'website' || type === 'website-apps') return 'website-app';
   if (type === 'agents') return 'agent';
+  if (type === 'software' || type === 'softwares' || type === 'software-packages' || type === 'dependency-package' || type === 'dependency-packages') return 'software-package';
   return canonicalTypes.includes(type) ? type : 'skill';
+}
+
+function normalizeSkillProfile(skill, type) {
+  if (type !== 'skill') {
+    return { kind: '', category: '', scenario: '', level: '', packageMode: '', featured: false, includedSkills: [] };
+  }
+  const kind = skill?.kind === 'package' ? 'package' : 'single';
+  const category = skillCategoryFilters.includes(skill?.category) && skill.category !== 'all' ? skill.category : 'other';
+  const scenario = skillScenarioOptions.includes(skill?.scenario) ? skill.scenario : 'productivity';
+  const level = skillLevelOptions.includes(skill?.level) ? skill.level : 'beginner';
+  const packageMode = kind === 'package' ? 'collection' : '';
+  const includedSkills = Array.isArray(skill?.includedSkills)
+    ? skill.includedSkills.map((entry) => ({
+      id: String(entry.id || '').trim(),
+      name: entry.name || '',
+      optional: Boolean(entry.optional),
+      sortOrder: Number(entry.sortOrder || 0),
+    })).filter((entry) => entry.id)
+    : [];
+  return { kind, category, scenario, level, packageMode, featured: Boolean(skill?.featured), includedSkills };
+}
+
+function normalizeReviewStatusForUI(status) {
+  status = String(status || '').trim().toLowerCase();
+  return ['approved', 'rejected', 'pending'].includes(status) ? status : 'approved';
 }
 
 function localized(value, locale) {
@@ -1253,6 +2857,18 @@ function formatBrandLabel(value) {
 
 function displayType(type, t) {
   return t?.categories?.[type] || (type === 'website-app' ? 'webapps' : type);
+}
+
+function skillKindLabel(kind, t) {
+  return kind === 'package' ? t.skillPackage : t.skillSingle;
+}
+
+function skillCategoryLabel(category, t) {
+  return t.skillCategories?.[category] || t.skillCategories?.other || category;
+}
+
+function isSkillPackage(item) {
+  return item?.type === 'skill' && item?.skillKind === 'package';
 }
 
 function canonicalVersion(value) {
@@ -1343,6 +2959,12 @@ function platformForKey(item, key) {
   return item?.platformMap?.[resolvedKey] || (resolvedKey ? normalizePlatformSpec(resolvedKey, { platform: resolvedKey }) : null);
 }
 
+function downloadKeyForItem(item, platformKey = '') {
+  if (!item) return '';
+  if (item.type === 'skill' && item.skillKind === 'package') return `${item.type}:${item.id}:package`;
+  return `${item.type}:${item.id}:${preferredPlatformKey(item, platformKey) || 'any'}`;
+}
+
 function platformDependencies(platform, item) {
   if (platform?.dependencies?.length) return platform.dependencies;
   return item?.dependencies || [];
@@ -1419,6 +3041,8 @@ function marketRoute(type) {
       return 'cli-tools';
     case 'website-app':
       return 'webapps';
+    case 'software-package':
+      return 'software-packages';
     default:
       return 'skills';
   }
@@ -1514,6 +3138,17 @@ function hasArtifact(item, platformKey = '') {
   return Boolean(Object.keys(item?.assetMap || {}).length || assetList(item).length);
 }
 
+function creatorQualityIssues(item, t) {
+  const issues = [];
+  if (!item?.icon) issues.push(t.creatorQualityImage);
+  if (!String(item?.readme || '').trim()) issues.push(t.creatorQualityReadme);
+  if (!isSkillPackage(item) && item?.websiteKind !== 'external' && !hasArtifact(item)) issues.push(t.creatorQualityArtifact);
+  if ((item?.type === 'cli-tool' || (item?.type === 'skill' && item?.skillKind !== 'package')) && !item?.adpInstallUrl) {
+    issues.push(t.creatorQualityADP);
+  }
+  return issues;
+}
+
 async function requestJSON(url, options = {}) {
   const response = await fetch(url, options);
   const text = await response.text();
@@ -1572,6 +3207,26 @@ function parseTags(value) {
     .filter(Boolean);
 }
 
+function filterPublishSkills(skills, query, locale) {
+  const needle = String(query || '').trim().toLowerCase();
+  const sorted = [...(skills || [])].sort((a, b) => localized(a.name, locale).localeCompare(localized(b.name, locale)));
+  if (!needle) return sorted;
+  return sorted.filter((skill) => [
+    skill.id,
+    localized(skill.name, locale),
+    localized(skill.description, locale),
+    ...(skill.tags || []),
+  ].join(' ').toLowerCase().includes(needle));
+}
+
+function parseIncludedSkills(value) {
+  const values = Array.isArray(value) ? value : [value];
+  return values
+    .flatMap((entry) => String(entry || '').split(/[\n,]/))
+    .map((id, index) => ({ id: id.trim().toLowerCase(), sortOrder: index + 1 }))
+    .filter((entry) => entry.id);
+}
+
 function parseJSONField(value, fallback, label, expectedType, invalidJSON) {
   const raw = String(value || '').trim();
   if (!raw) return fallback;
@@ -1609,11 +3264,13 @@ function artifactRequiredFor(type, options = {}) {
   type = normalizeType(type);
   if (type === 'cli-tool') return false;
   if (type === 'website-app' && options.websiteKind === 'external') return false;
+  if (type === 'skill' && options.skill?.kind === 'package') return false;
   return true;
 }
 
-function adpRequiredFor(type) {
+function adpRequiredFor(type, options = {}) {
   type = normalizeType(type);
+  if (type === 'skill' && options.skill?.kind === 'package') return false;
   return type === 'cli-tool' || type === 'skill';
 }
 
@@ -1626,6 +3283,8 @@ function archiveOptionsFor(type, options = {}) {
     case 'cli-tool':
     case 'website-app':
       return ['zip'];
+    case 'software-package':
+      return ['zip', 'tar.gz'];
     case 'sandbox-image':
       return options.sandboxKind === 'container-image' ? ['tar.gz'] : ['zip'];
     default:
@@ -1637,20 +3296,32 @@ function defaultArchiveTypeFor(type, options = {}) {
   return archiveOptionsFor(type, options)[0] || 'zip';
 }
 
-function savedAdminToken() {
+function savedAuthSession() {
   try {
-    return sessionStorage.getItem(adminTokenStorageKey) || '';
+    const raw = localStorage.getItem(authSessionStorageKey);
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    if (!session?.token || !session?.user?.id) return null;
+    return session;
   } catch {
-    return '';
+    return null;
   }
 }
 
-function saveAdminToken(token) {
+function saveAuthSession(session) {
   try {
-    sessionStorage.setItem(adminTokenStorageKey, token);
+    if (!session) {
+      localStorage.removeItem(authSessionStorageKey);
+      return;
+    }
+    localStorage.setItem(authSessionStorageKey, JSON.stringify(session));
   } catch {
-    // Ignore storage failures; the publish request has already succeeded.
+    // Ignore storage failures; the in-memory session is still usable.
   }
+}
+
+function authHeaders(session) {
+  return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
 }
 
 function svgDataUri(markup) {
