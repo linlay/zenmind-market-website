@@ -45,7 +45,6 @@ const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/api/v1';
 const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
 const locales = ['zh-CN', 'en-US'];
 const canonicalTypes = ['skill', 'plugin', 'agent', 'sandbox-image', 'pet', 'cli-tool', 'website-app', 'software-package'];
-const authSessionStorageKey = 'zenmind-market:auth-session';
 const defaultMediaImage = svgDataUri(`
   <svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
     <defs>
@@ -78,14 +77,8 @@ const translations = {
     publish: '开发者发布',
     login: '登录',
     logout: '退出登录',
-    loginTitle: '本地登录',
-    loginBody: '先用本地账号模拟登录；之后可以替换为内部统一登录。',
-    loginUserId: '用户 ID',
-    loginRole: '角色',
     loginAsCreator: '普通用户',
     loginAsAdmin: '管理员',
-    loginSuccess: '登录成功。',
-    loginFailed: (reason) => `登录失败：${reason}`,
     loginRequired: '请先登录。',
     adminReviewEntry: '审核管理',
     adminOnly: '需要管理员角色。',
@@ -117,6 +110,9 @@ const translations = {
     creatorSearch: '搜索我的组件',
     creatorAnalytics: '数据分析',
     creatorTopDownloads: '下载排行',
+    creatorMyFavorites: '我的收藏',
+    creatorNoFavorites: '还没有收藏组件',
+    creatorNoFavoritesBody: '在市场中收藏组件后，会显示在这里。',
     creatorTypeBreakdown: '类型分布',
     creatorReady: '完整组件',
     creatorNeedsWork: '待优化组件',
@@ -128,9 +124,12 @@ const translations = {
     creatorPublishedAt: '发布时间',
     creatorProfile: '创作者资料',
     creatorProfileName: 'ZenMind 创作者',
-    creatorProfileBio: '当前为本地创作者视图。登录体系接入后，这里会展示真实创作者身份、认证状态和公开主页信息。',
-    creatorLocalMode: '本地模式',
-    creatorLocalModeBody: '当前使用本地登录模拟创作者身份，后续会接入内部登录系统。',
+    creatorProfileBio: '当前登录的创作者身份会用于管理组件、发布内容和查看基础表现。',
+    profileEmail: '邮箱',
+    profileRole: '角色',
+    profileUnavailable: '认证中心未提供',
+    creatorLocalMode: '已通过 OIDC 登录',
+    creatorLocalModeBody: '身份由配置的第三方认证服务验证，市场仅使用服务端会话 Cookie。',
     reviewCenter: '审核中心',
     reviewStatus: '审核状态',
     reviewPending: '待审核',
@@ -365,14 +364,8 @@ const translations = {
     publish: 'Developer publish',
     login: 'Sign in',
     logout: 'Sign out',
-    loginTitle: 'Local sign-in',
-    loginBody: 'Use a local account for now; this can be replaced by internal SSO later.',
-    loginUserId: 'User ID',
-    loginRole: 'Role',
     loginAsCreator: 'User',
     loginAsAdmin: 'Admin',
-    loginSuccess: 'Signed in.',
-    loginFailed: (reason) => `Sign-in failed: ${reason}`,
     loginRequired: 'Sign in first.',
     adminReviewEntry: 'Review Admin',
     adminOnly: 'Admin role required.',
@@ -404,6 +397,9 @@ const translations = {
     creatorSearch: 'Search my components',
     creatorAnalytics: 'Analytics',
     creatorTopDownloads: 'Top downloads',
+    creatorMyFavorites: 'My favorites',
+    creatorNoFavorites: 'No favorites yet',
+    creatorNoFavoritesBody: 'Components you favorite in the Market will appear here.',
     creatorTypeBreakdown: 'Type breakdown',
     creatorReady: 'Ready items',
     creatorNeedsWork: 'Needs work',
@@ -415,9 +411,12 @@ const translations = {
     creatorPublishedAt: 'Published',
     creatorProfile: 'Creator profile',
     creatorProfileName: 'ZenMind Creator',
-    creatorProfileBio: 'This is currently a local creator view. After authentication is connected, it will show the real creator identity, verification state, and public profile.',
-    creatorLocalMode: 'Local mode',
-    creatorLocalModeBody: 'Local sign-in is simulating creator identity for now; internal SSO can replace it later.',
+    creatorProfileBio: 'The current creator identity is used to manage components, publish content, and view basic performance.',
+    profileEmail: 'Email',
+    profileRole: 'Role',
+    profileUnavailable: 'Not provided by the identity provider',
+    creatorLocalMode: 'Signed in with OIDC',
+    creatorLocalModeBody: 'Identity is verified by the configured third-party provider; Market uses only a server-side session cookie.',
     reviewCenter: 'Review Center',
     reviewStatus: 'Review status',
     reviewPending: 'Pending',
@@ -710,10 +709,9 @@ export function App() {
   const [isPublishing, setPublishing] = useState(false);
   const [isCreatorOpen, setCreatorOpen] = useState(false);
   const [isAdminOpen, setAdminOpen] = useState(false);
-  const [isLoginOpen, setLoginOpen] = useState(false);
-  const [loginIntent, setLoginIntent] = useState('');
-  const [authSession, setAuthSession] = useState(() => savedAuthSession());
+  const [authSession, setAuthSession] = useState(null);
   const [creatorItems, setCreatorItems] = useState([]);
+  const [favoriteItems, setFavoriteItems] = useState([]);
   const [adminItems, setAdminItems] = useState([]);
   const [isLoadingAdminReviews, setLoadingAdminReviews] = useState(false);
   const [reviewingKey, setReviewingKey] = useState('');
@@ -722,6 +720,7 @@ export function App() {
   const [favoritingKey, setFavoritingKey] = useState('');
 
   const t = translations[locale];
+  const isAuthenticated = Boolean(authSession?.user?.id);
 
   const loadCatalog = useCallback(async (signal) => {
     setStatus('loading');
@@ -740,14 +739,13 @@ export function App() {
 
   const loadCreatorItems = useCallback(async (signal, sessionOverride = null) => {
     const session = sessionOverride || authSession;
-    if (!session?.token) {
+    if (!session?.user?.id) {
       setCreatorItems([]);
       return { ok: false, reason: 'missing-token' };
     }
     try {
       const data = await requestJSON(`${apiBase}/creator/items`, {
         signal,
-        headers: authHeaders(session),
       });
       setCreatorItems(Array.isArray(data.items) ? data.items : []);
       return { ok: true };
@@ -760,14 +758,13 @@ export function App() {
 
   const loadAdminReviews = useCallback(async (signal, sessionOverride = null) => {
     const session = sessionOverride || authSession;
-    if (!session?.token || session.user?.role !== 'admin') {
+    if (!session?.user?.id || session.user?.role !== 'admin') {
       setAdminItems([]);
       return { ok: false, reason: 'missing-token' };
     }
     try {
       const data = await requestJSON(`${apiBase}/admin/reviews?status=pending`, {
         signal,
-        headers: authHeaders(session),
       });
       setAdminItems(Array.isArray(data.items) ? data.items : []);
       return { ok: true };
@@ -778,8 +775,25 @@ export function App() {
     }
   }, [authSession]);
 
+  const loadFavoriteItems = useCallback(async (signal, sessionOverride = null) => {
+    const session = sessionOverride || authSession;
+    if (!session?.user?.id) {
+      setFavoriteItems([]);
+      return { ok: false, reason: 'missing-user' };
+    }
+    try {
+      const data = await requestJSON(`${apiBase}/me/favorites`, { signal });
+      setFavoriteItems(Array.isArray(data.items) ? data.items : []);
+      return { ok: true };
+    } catch (reason) {
+      if (reason?.name === 'AbortError') return { ok: false, reason };
+      setFavoriteItems([]);
+      return { ok: false, reason };
+    }
+  }, [authSession]);
+
   const handleLoadAdminReviews = useCallback(async () => {
-    if (!authSession?.token || authSession.user?.role !== 'admin') {
+    if (!authSession?.user?.id || authSession.user?.role !== 'admin') {
       notify(t.adminOnly, 'error');
       return;
     }
@@ -817,11 +831,29 @@ export function App() {
   }, [loadCatalog]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    requestJSON(`${apiBase}/auth/me`, { signal: controller.signal })
+      .then((data) => {
+        if (data?.user?.id) setAuthSession({ user: data.user });
+      })
+      .catch((reason) => {
+        if (reason?.name !== 'AbortError') setAuthSession(null);
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    loadCatalog();
+  }, [isAuthenticated, loadCatalog]);
+
+  useEffect(() => {
     if (!isCreatorOpen) return undefined;
     const controller = new AbortController();
     loadCreatorItems(controller.signal);
+    loadFavoriteItems(controller.signal);
     return () => controller.abort();
-  }, [isCreatorOpen, loadCreatorItems]);
+  }, [isCreatorOpen, loadCreatorItems, loadFavoriteItems]);
 
   useEffect(() => {
     if (!isAdminOpen || authSession?.user?.role !== 'admin') return undefined;
@@ -837,6 +869,10 @@ export function App() {
   const creatorCatalog = useMemo(() => {
     return creatorItems.map((item) => mergeCatalogItem(item));
   }, [creatorItems]);
+
+  const favoriteCatalog = useMemo(() => {
+    return favoriteItems.map((item) => mergeCatalogItem(item));
+  }, [favoriteItems]);
 
   const publishableSkills = useMemo(() => {
     return catalog.filter((item) => item.type === 'skill' && item.skillKind !== 'package');
@@ -901,53 +937,23 @@ export function App() {
     setToast({ message, tone, id });
   }
 
-  async function handleLogin(event) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    try {
-      const session = await requestJSON(`${apiBase}/auth/login`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          userId: String(form.get('userId') || '').trim() || 'local-creator',
-          role: String(form.get('role') || 'creator'),
-        }),
-      });
-      const nextSession = { token: session.token, user: session.user };
-      saveAuthSession(nextSession);
-      setAuthSession(nextSession);
-      setLoginOpen(false);
-      notify(t.loginSuccess, 'success');
-      if (loginIntent === 'creator') {
-        setCreatorOpen(true);
-        setAdminOpen(false);
-        await loadCreatorItems(undefined, nextSession);
-        } else if (loginIntent === 'publish') {
-          setPublishOpen(true);
-          setCreatorOpen(false);
-          setAdminOpen(false);
-        } else {
-        if (isCreatorOpen) await loadCreatorItems(undefined, nextSession);
-        if (isAdminOpen && nextSession.user?.role === 'admin') await loadAdminReviews(undefined, nextSession);
-      }
-      setLoginIntent('');
-    } catch (reason) {
-      notify(t.loginFailed(errorMessage(reason)), 'error');
-    }
+  function startLogin() {
+    window.location.assign(`${apiBase}/auth/oidc/login`);
   }
 
-  function handleLogout() {
-    saveAuthSession(null);
+  async function handleLogout() {
+    try {
+      await requestJSON(`${apiBase}/auth/oidc/logout`, { method: 'POST' });
+    } catch {
+      // Clear the local view even if the session has already expired server-side.
+    }
     setAuthSession(null);
     setCreatorItems([]);
+    setFavoriteItems([]);
     setAdminItems([]);
     setAdminOpen(false);
     setCreatorOpen(false);
-  }
-
-  function closeLogin() {
-    setLoginOpen(false);
-    setLoginIntent('');
+    await loadCatalog();
   }
 
   function chooseCategory(category) {
@@ -1042,8 +1048,14 @@ export function App() {
       setSelected((current) => (
         current && current.id === merged.id && current.type === merged.type ? merged : current
       ));
+      if (isCreatorOpen) await loadFavoriteItems();
     } catch (reason) {
-      notify(reason?.status === 401 ? t.favoriteAuthRequired : t.favoriteFailed(errorMessage(reason)), 'error');
+      if (reason?.status === 401) {
+        notify(t.favoriteAuthRequired, 'error');
+        startLogin();
+      } else {
+        notify(t.favoriteFailed(errorMessage(reason)), 'error');
+      }
     } finally {
       setFavoritingKey('');
     }
@@ -1051,7 +1063,7 @@ export function App() {
 
   async function handleReviewUpdate(item, status) {
     if (!item || reviewingKey) return;
-    if (!authSession?.token || authSession.user?.role !== 'admin') {
+    if (!authSession?.user?.id || authSession.user?.role !== 'admin') {
       notify(t.adminOnly, 'error');
       return;
     }
@@ -1064,7 +1076,7 @@ export function App() {
     try {
       await requestJSON(`${apiBase}/admin/reviews/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`, {
         method: 'POST',
-        headers: { ...authHeaders(authSession), 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ status, note }),
       });
       await loadCatalog();
@@ -1080,7 +1092,7 @@ export function App() {
 
   async function handleUnpublishLatest(item) {
     if (!item || unpublishingKey) return;
-    if (!authSession?.token || authSession.user?.role !== 'admin') {
+    if (!authSession?.user?.id || authSession.user?.role !== 'admin') {
       notify(t.adminOnly, 'error');
       return;
     }
@@ -1097,7 +1109,7 @@ export function App() {
     try {
       await requestJSON(`${apiBase}/admin/unpublish`, {
         method: 'POST',
-        headers: { ...authHeaders(authSession), 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ type: item.type, id: item.id, version }),
       });
       await Promise.all([
@@ -1142,9 +1154,9 @@ export function App() {
       notify(t.includedSkillsRequired, 'error');
       return;
     }
-    if (!authSession?.token) {
+    if (!isAuthenticated) {
       notify(t.loginRequired, 'error');
-      setLoginOpen(true);
+      startLogin();
       return;
     }
     if (artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill }) && !hasSelectedArtifact) {
@@ -1226,13 +1238,12 @@ export function App() {
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
         await requestJSON(authSession.user?.role === 'admin' ? `${apiBase}/admin/${marketRoute(type)}/publish` : `${apiBase}/creator/publish`, {
           method: 'POST',
-          headers: authHeaders(authSession),
           body,
         });
       } else {
         await requestJSON(authSession.user?.role === 'admin' ? `${apiBase}/admin/${marketRoute(type)}/publish` : `${apiBase}/creator/publish`, {
           method: 'POST',
-          headers: { ...authHeaders(authSession), 'content-type': 'application/json' },
+          headers: { 'content-type': 'application/json' },
           body: JSON.stringify(metadata),
         });
       }
@@ -1279,7 +1290,7 @@ export function App() {
               <span>{authSession.user?.role === 'admin' ? t.loginAsAdmin : t.loginAsCreator}</span>
             </button>
           ) : (
-            <button className="language-button" type="button" onClick={() => setLoginOpen(true)}>
+            <button className="language-button" type="button" onClick={startLogin}>
               <LogIn size={15} />
               <span>{t.login}</span>
             </button>
@@ -1294,10 +1305,9 @@ export function App() {
             className="creator-button"
             type="button"
             onClick={() => {
-              if (!authSession?.token) {
-                setLoginIntent('creator');
-                setLoginOpen(true);
+              if (!isAuthenticated) {
                 notify(t.loginRequired, 'error');
+                startLogin();
                 return;
               }
               setCreatorOpen((value) => !value);
@@ -1311,10 +1321,9 @@ export function App() {
             className="publish-button"
             type="button"
             onClick={() => {
-              if (!authSession?.token) {
-                setLoginIntent('publish');
-                setLoginOpen(true);
+              if (!isAuthenticated) {
                 notify(t.loginRequired, 'error');
+                startLogin();
                 return;
               }
               setCreatorOpen(false);
@@ -1358,6 +1367,8 @@ export function App() {
         <CreatorCenter
           mode="creator"
           items={creatorCatalog}
+          favoriteItems={favoriteCatalog}
+          authSession={authSession}
           locale={locale}
           t={t}
           onBack={() => setCreatorOpen(false)}
@@ -1492,7 +1503,6 @@ export function App() {
         />
       ) : null}
 
-      {isLoginOpen ? <LoginModal t={t} onClose={closeLogin} onSubmit={handleLogin} /> : null}
       {toast ? <Toast toast={toast} /> : null}
     </main>
   );
@@ -1627,6 +1637,8 @@ function ComponentCell({ item, locale }) {
 function CreatorCenter({
   mode = 'creator',
   items,
+  favoriteItems = [],
+  authSession,
   locale,
   t,
   onBack,
@@ -1679,6 +1691,10 @@ function CreatorCenter({
     { label: t.reviewRejected, value: formatCount(rejectedReviews), icon: AlertCircle },
   ];
   const isAdminMode = mode === 'admin';
+  const profile = authSession?.user || {};
+  const profileName = profile.name || profile.username || profile.id || t.creatorProfileName;
+  const profileEmail = profile.email || t.profileUnavailable;
+  const profileRole = profile.role === 'admin' ? t.loginAsAdmin : t.loginAsCreator;
 
   async function openVersions(item) {
     setVersionState({ item, status: 'loading', versions: [], error: '' });
@@ -1717,9 +1733,14 @@ function CreatorCenter({
             <div className="creator-profile-avatar"><User size={22} /></div>
             <div>
               <span className="section-kicker"><User size={14} />{t.creatorProfile}</span>
-              <h2>{t.creatorProfileName}</h2>
+              <h2>{profileName}</h2>
               <p>{t.creatorProfileBio}</p>
             </div>
+          </section>
+
+          <section className="creator-profile-details" aria-label={t.creatorProfile}>
+            <div><span>{t.profileEmail}</span><strong>{profileEmail}</strong></div>
+            <div><span>{t.profileRole}</span><strong>{profileRole}</strong></div>
           </section>
 
           <section className="creator-local-banner">
@@ -1768,7 +1789,7 @@ function CreatorCenter({
           </section>
 
           <div className="creator-panel-grid">
-            <section className="creator-panel">
+          <section className="creator-panel">
               <div className="panel-head">
                 <span><BarChart3 size={16} />{t.creatorRecent}</span>
               </div>
@@ -1932,6 +1953,25 @@ function CreatorCenter({
                 ))}
               </div>
             ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
+          </section>
+
+          <section className="creator-panel">
+            <div className="panel-head">
+              <span><Heart size={16} />{t.creatorMyFavorites}</span>
+            </div>
+            {favoriteItems.length ? (
+              <div className="recent-list">
+                {favoriteItems.slice(0, 5).map((item) => (
+                  <button className="recent-row" type="button" key={`${item.type}:${item.id}`} onClick={() => onDetails(item)}>
+                    <img src={item.icon || item.screenshot} alt="" />
+                    <span>
+                      <strong>{localized(item.name, locale) || item.id}</strong>
+                      <small>{item.author || 'ZenMind'} · {displayType(item.type, t)}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : <EmptyInline title={t.creatorNoFavorites} body={t.creatorNoFavoritesBody} />}
           </section>
         </div>
       </div>
@@ -2313,39 +2353,6 @@ function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPla
           </section>
         </div>
       </aside>
-    </div>
-  );
-}
-
-function LoginModal({ t, onClose, onSubmit }) {
-  return (
-    <div className="modal-backdrop centered" role="presentation" onMouseDown={onClose}>
-      <section className="publish-modal auth-modal" role="dialog" aria-modal="true" aria-label={t.loginTitle} onMouseDown={(event) => event.stopPropagation()}>
-        <div className="modal-head">
-          <div>
-            <h2>{t.loginTitle}</h2>
-            <p>{t.loginBody}</p>
-          </div>
-          <button className="modal-close inline" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
-        </div>
-        <form className="publish-form" onSubmit={onSubmit}>
-          <label className="full">
-            <span>{t.loginUserId}</span>
-            <input name="userId" defaultValue="local-creator" placeholder="local-creator" />
-          </label>
-          <label className="full">
-            <span>{t.loginRole}</span>
-            <select name="role" defaultValue="creator">
-              <option value="creator">{t.loginAsCreator}</option>
-              <option value="admin">{t.loginAsAdmin}</option>
-            </select>
-          </label>
-          <div className="modal-actions">
-            <button className="secondary-action" type="button" onClick={onClose}>{t.cancel}</button>
-            <button className="primary-action" type="submit"><LogIn size={15} /><span>{t.login}</span></button>
-          </div>
-        </form>
-      </section>
     </div>
   );
 }
@@ -3150,7 +3157,7 @@ function creatorQualityIssues(item, t) {
 }
 
 async function requestJSON(url, options = {}) {
-  const response = await fetch(url, options);
+  const response = await fetch(url, { credentials: 'include', ...options });
   const text = await response.text();
   let data = {};
   if (text) {
@@ -3294,34 +3301,6 @@ function archiveOptionsFor(type, options = {}) {
 
 function defaultArchiveTypeFor(type, options = {}) {
   return archiveOptionsFor(type, options)[0] || 'zip';
-}
-
-function savedAuthSession() {
-  try {
-    const raw = localStorage.getItem(authSessionStorageKey);
-    if (!raw) return null;
-    const session = JSON.parse(raw);
-    if (!session?.token || !session?.user?.id) return null;
-    return session;
-  } catch {
-    return null;
-  }
-}
-
-function saveAuthSession(session) {
-  try {
-    if (!session) {
-      localStorage.removeItem(authSessionStorageKey);
-      return;
-    }
-    localStorage.setItem(authSessionStorageKey, JSON.stringify(session));
-  } catch {
-    // Ignore storage failures; the in-memory session is still usable.
-  }
-}
-
-function authHeaders(session) {
-  return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
 }
 
 function svgDataUri(markup) {

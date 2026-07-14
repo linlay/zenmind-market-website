@@ -1127,6 +1127,38 @@ img {
   line-height: 1.55;
 }
 
+.creator-profile-details {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.creator-profile-details div {
+  display: grid;
+  gap: 4px;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--line);
+}
+
+.creator-profile-details div:last-child {
+  border-bottom: 0;
+}
+
+.creator-profile-details span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.creator-profile-details strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .creator-table-section {
   padding: 18px;
   display: grid;
