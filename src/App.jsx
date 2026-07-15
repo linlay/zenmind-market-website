@@ -40,6 +40,7 @@ import {
   Store,
   X,
 } from 'lucide-react';
+import { selectedFormFile } from './fileInputs.js';
 
 const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/api/v1';
 const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
@@ -102,7 +103,6 @@ const translations = {
     creatorQualityImage: '补充展示图片',
     creatorQualityReadme: '完善 README',
     creatorQualityArtifact: '补充可下载制品',
-    creatorQualityADP: '补充 ADP 安装协议',
     creatorQualityGood: '基础信息完整',
     creatorNoIssues: '暂无待优化项',
     creatorVersion: '版本',
@@ -290,18 +290,18 @@ const translations = {
       agent: '上传智能体定义和运行资源。',
       'sandbox-image': '发布运行环境模板或容器镜像。',
       pet: '上传桌面宠物资源包。',
-      'cli-tool': '发布命令行工具和 ADP 安装协议。',
+      'cli-tool': '发布命令行工具；需要额外安装依赖时可附加 ADP 协议。',
       'website-app': '发布本地网站应用或外部链接。',
       'software-package': '发布 Python、Node.js 等软件依赖包。',
     },
     publishTypeRequirementsMap: {
-      skill: 'zip 制品、SKILL.md、adp.yaml',
+      skill: 'zip 制品、SKILL.md；可选 adp.yaml',
       'skill-package': '至少 1 个已存在技能 ID',
       plugin: 'zip 制品、manifest.json',
       agent: 'zip 制品、agent.yml / agent.yaml',
       'sandbox-image': 'environment.json 或 tar.gz 镜像',
       pet: 'pet.json、pet-idle.png',
-      'cli-tool': 'adp.yaml，可选 zip 制品',
+      'cli-tool': '可选 zip 制品、可选 adp.yaml',
       'website-app': 'website.json 或外部 URL',
       'software-package': 'zip / tar.gz 依赖包',
     },
@@ -319,8 +319,7 @@ const translations = {
     image: '展示图片',
     artifactRequired: '请选择要上传的制品包。',
     adpManifest: 'ADP 0.1 最新协议',
-    adpManifestRequired: 'CLI 工具和技能必须上传 ADP 0.1 最新协议 adp.yaml。',
-    adpManifestHint: '上传 ADP 0.1 最新协议 adp.yaml；服务器会校验 hooks 并绑定本次制品 URL 和 SHA-256。',
+    adpManifestHint: '仅在需要额外安装依赖时上传 ADP 0.1 协议 adp.yaml；服务器会校验 hooks 并绑定本次制品 URL 和 SHA-256。',
     archiveType: '制品类型',
     platformKey: '平台',
     platforms: '平台支持',
@@ -389,7 +388,6 @@ const translations = {
     creatorQualityImage: 'Add display image',
     creatorQualityReadme: 'Improve README',
     creatorQualityArtifact: 'Add downloadable artifact',
-    creatorQualityADP: 'Add ADP install protocol',
     creatorQualityGood: 'Basic information complete',
     creatorNoIssues: 'No issues',
     creatorVersion: 'Version',
@@ -571,24 +569,24 @@ const translations = {
     publishHideAdvanced: 'Hide advanced options',
     publishTypeRequirements: 'Requires',
     publishTypeDescriptions: {
-      skill: 'Upload a single skill with ADP install support.',
+      skill: 'Upload a single skill; add ADP only when extra dependencies need installation.',
       'skill-package': 'Link existing skills into a downloadable package.',
       plugin: 'Upload a plugin artifact for extension capabilities.',
       agent: 'Upload an agent definition and runtime resources.',
       'sandbox-image': 'Publish an environment template or container image.',
       pet: 'Upload a desktop pet resource package.',
-      'cli-tool': 'Publish a CLI tool and ADP install protocol.',
+      'cli-tool': 'Publish a CLI tool; add ADP only when extra dependencies need installation.',
       'website-app': 'Publish a local web app or external URL.',
       'software-package': 'Publish software dependencies such as Python or Node.js.',
     },
     publishTypeRequirementsMap: {
-      skill: 'zip artifact, SKILL.md, adp.yaml',
+      skill: 'zip artifact, SKILL.md; optional adp.yaml',
       'skill-package': 'At least one existing skill ID',
       plugin: 'zip artifact, manifest.json',
       agent: 'zip artifact, agent.yml / agent.yaml',
       'sandbox-image': 'environment.json or tar.gz image',
       pet: 'pet.json, pet-idle.png',
-      'cli-tool': 'adp.yaml, optional zip artifact',
+      'cli-tool': 'optional zip artifact and adp.yaml',
       'website-app': 'website.json or external URL',
       'software-package': 'zip / tar.gz dependency package',
     },
@@ -606,8 +604,7 @@ const translations = {
     image: 'Display image',
     artifactRequired: 'Choose an artifact package to upload.',
     adpManifest: 'ADP 0.1 latest manifest',
-    adpManifestRequired: 'CLI tools and skills must upload an ADP 0.1 latest-protocol adp.yaml.',
-    adpManifestHint: 'Upload an ADP 0.1 latest-protocol adp.yaml; the server validates hooks and binds this artifact URL and SHA-256.',
+    adpManifestHint: 'Upload an ADP 0.1 manifest only when extra dependencies need installation; the server validates hooks and binds this artifact URL and SHA-256.',
     archiveType: 'Archive type',
     platformKey: 'Platform',
     platforms: 'Platforms',
@@ -1128,108 +1125,104 @@ export function App() {
     event.preventDefault();
     if (isPublishing) return;
     const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const type = normalizeType(form.get('type'));
-    const id = String(form.get('id') || '').trim().toLowerCase();
-    const name = String(form.get('name') || '').trim();
-    const version = canonicalVersion(form.get('version')) || '1.0.0';
-    const description = String(form.get('description') || '').trim();
-    const artifact = form.get('artifact');
-    const hasSelectedArtifact = artifact instanceof File && artifact.size > 0;
-    const image = form.get('image');
-    const hasSelectedImage = image instanceof File && image.size > 0;
-    const adpManifest = form.get('adpManifest');
-    const hasSelectedADPManifest = adpManifest instanceof File && adpManifest.size > 0;
-    const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';
-    const skill = type === 'skill' ? {
-      kind: skillKind,
-      category: String(form.get('skillCategory') || 'other').trim(),
-      scenario: String(form.get('skillScenario') || 'productivity').trim(),
-      level: String(form.get('skillLevel') || 'beginner').trim(),
-      packageMode: skillKind === 'package' ? 'collection' : '',
-      featured: form.get('skillFeatured') === 'on',
-      includedSkills: parseIncludedSkills(form.getAll('includedSkills')),
-    } : null;
-    if (skill?.kind === 'package' && !skill.includedSkills.length) {
-      notify(t.includedSkillsRequired, 'error');
-      return;
-    }
-    if (!isAuthenticated) {
-      notify(t.loginRequired, 'error');
-      startLogin();
-      return;
-    }
-    if (artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill }) && !hasSelectedArtifact) {
-      notify(t.artifactRequired, 'error');
-      return;
-    }
-    if (adpRequiredFor(type, { skill }) && !hasSelectedADPManifest) {
-      notify(t.adpManifestRequired, 'error');
-      return;
-    }
-    let platformMetadata;
-    let platformDependencies;
-    try {
-      platformMetadata = parseJSONField(form.get('platformMetadata'), {}, t.platformMetadata, 'object', t.invalidJSON);
-      platformDependencies = parseJSONField(form.get('platformDependencies'), [], t.platformDependencies, 'array', t.invalidJSON);
-    } catch (reason) {
-      notify(errorMessage(reason), 'error');
-      return;
-    }
-
-    const platformKey = String(form.get('platformKey') || '').trim() || 'universal';
-    const platformMinDesktopVersion = String(form.get('platformMinDesktopVersion') || '').trim();
-    const install = scriptSpecFromCommand(form.get('installCommand'));
-    const uninstall = scriptSpecFromCommand(form.get('uninstallCommand'));
-    const detect = detectSpecFromForm(form);
-    const platform = {
-      key: platformKey,
-      os: String(form.get('platformOS') || '').trim(),
-      arch: String(form.get('platformArch') || '').trim(),
-      description: String(form.get('platformDescription') || '').trim(),
-      minDesktopVersion: platformMinDesktopVersion,
-      metadata: platformMetadata,
-      dependencies: platformDependencies,
-    };
-    if (install) platform.install = install;
-    if (uninstall) platform.uninstall = uninstall;
-    if (detect) platform.detect = detect;
-
-    const metadata = {
-      id,
-      type,
-      name: name || id,
-      version,
-      description,
-      readme: String(form.get('readme') || '').trim(),
-      tags: parseTags(form.get('tags')),
-      minDesktopVersion: platformMinDesktopVersion,
-      sandboxKind: type === 'sandbox-image' ? String(form.get('sandboxKind') || '').trim() || 'environment-template' : '',
-      websiteKind: type === 'website-app' ? String(form.get('websiteKind') || '').trim() || 'local-app' : '',
-      platformKey,
-      assetRole: 'primary',
-      archiveType: String(form.get('archiveType') || '').trim() || defaultArchiveTypeFor(type),
-      metadata: {},
-      dependencies: platformDependencies,
-      platform,
-      reviewStatus: authSession.user?.role === 'admin' ? String(form.get('reviewStatus') || 'approved').trim() : 'pending',
-    };
-    if (skill) metadata.skill = skill;
-    if (type === 'cli-tool') {
-      if (install) metadata.install = install;
-      if (uninstall) metadata.uninstall = uninstall;
-      if (detect) metadata.detect = detect;
-    }
-    const author = String(form.get('author') || '').trim();
-    const metadataUrl = String(form.get('metadataUrl') || '').trim();
-    if (author) metadata.metadata.author = author;
-    if (metadataUrl) metadata.metadata.url = metadataUrl;
-    if (hasSelectedADPManifest && !hasSelectedArtifact) {
-      metadata.adpYaml = await adpManifest.text();
-    }
-
     setPublishing(true);
     try {
+      const form = new FormData(formElement);
+      const type = normalizeType(form.get('type'));
+      const id = String(form.get('id') || '').trim().toLowerCase();
+      const name = String(form.get('name') || '').trim();
+      const version = canonicalVersion(form.get('version')) || '1.0.0';
+      const description = String(form.get('description') || '').trim();
+      const artifact = selectedFormFile(formElement, form, 'artifact');
+      const hasSelectedArtifact = Boolean(artifact);
+      const image = selectedFormFile(formElement, form, 'image');
+      const hasSelectedImage = Boolean(image);
+      const adpManifest = selectedFormFile(formElement, form, 'adpManifest');
+      const hasSelectedADPManifest = Boolean(adpManifest);
+      const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';
+      const skill = type === 'skill' ? {
+        kind: skillKind,
+        category: String(form.get('skillCategory') || 'other').trim(),
+        scenario: String(form.get('skillScenario') || 'productivity').trim(),
+        level: String(form.get('skillLevel') || 'beginner').trim(),
+        packageMode: skillKind === 'package' ? 'collection' : '',
+        featured: form.get('skillFeatured') === 'on',
+        includedSkills: parseIncludedSkills(form.getAll('includedSkills')),
+      } : null;
+      if (skill?.kind === 'package' && !skill.includedSkills.length) {
+        notify(t.includedSkillsRequired, 'error');
+        return;
+      }
+      if (!isAuthenticated) {
+        notify(t.loginRequired, 'error');
+        startLogin();
+        return;
+      }
+      if (artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill }) && !hasSelectedArtifact) {
+        notify(t.artifactRequired, 'error');
+        return;
+      }
+      let platformMetadata;
+      let platformDependencies;
+      try {
+        platformMetadata = parseJSONField(form.get('platformMetadata'), {}, t.platformMetadata, 'object', t.invalidJSON);
+        platformDependencies = parseJSONField(form.get('platformDependencies'), [], t.platformDependencies, 'array', t.invalidJSON);
+      } catch (reason) {
+        notify(errorMessage(reason), 'error');
+        return;
+      }
+
+      const platformKey = String(form.get('platformKey') || '').trim() || 'universal';
+      const platformMinDesktopVersion = String(form.get('platformMinDesktopVersion') || '').trim();
+      const install = scriptSpecFromCommand(form.get('installCommand'));
+      const uninstall = scriptSpecFromCommand(form.get('uninstallCommand'));
+      const detect = detectSpecFromForm(form);
+      const platform = {
+        key: platformKey,
+        os: String(form.get('platformOS') || '').trim(),
+        arch: String(form.get('platformArch') || '').trim(),
+        description: String(form.get('platformDescription') || '').trim(),
+        minDesktopVersion: platformMinDesktopVersion,
+        metadata: platformMetadata,
+        dependencies: platformDependencies,
+      };
+      if (install) platform.install = install;
+      if (uninstall) platform.uninstall = uninstall;
+      if (detect) platform.detect = detect;
+
+      const metadata = {
+        id,
+        type,
+        name: name || id,
+        version,
+        description,
+        readme: String(form.get('readme') || '').trim(),
+        tags: parseTags(form.get('tags')),
+        minDesktopVersion: platformMinDesktopVersion,
+        sandboxKind: type === 'sandbox-image' ? String(form.get('sandboxKind') || '').trim() || 'environment-template' : '',
+        websiteKind: type === 'website-app' ? String(form.get('websiteKind') || '').trim() || 'local-app' : '',
+        platformKey,
+        assetRole: 'primary',
+        archiveType: String(form.get('archiveType') || '').trim() || defaultArchiveTypeFor(type),
+        metadata: {},
+        dependencies: platformDependencies,
+        platform,
+        reviewStatus: authSession.user?.role === 'admin' ? String(form.get('reviewStatus') || 'approved').trim() : 'pending',
+      };
+      if (skill) metadata.skill = skill;
+      if (type === 'cli-tool') {
+        if (install) metadata.install = install;
+        if (uninstall) metadata.uninstall = uninstall;
+        if (detect) metadata.detect = detect;
+      }
+      const author = String(form.get('author') || '').trim();
+      const metadataUrl = String(form.get('metadataUrl') || '').trim();
+      if (author) metadata.metadata.author = author;
+      if (metadataUrl) metadata.metadata.url = metadataUrl;
+      if (hasSelectedADPManifest && !hasSelectedArtifact) {
+        metadata.adpYaml = await adpManifest.text();
+      }
+
       if (hasSelectedArtifact || hasSelectedImage) {
         const body = new FormData();
         body.append('metadata', JSON.stringify(metadata));
@@ -2373,8 +2366,8 @@ function PublishPage({ t, locale, authSession, availableSkills = [], onClose, on
   const selectedType = publishTypes.find((entry) => entry.id === selectedTypeID) || publishTypes[0];
   const SelectedIcon = selectedType?.icon || PackageOpen;
   const artifactRequired = artifactRequiredFor(type, { websiteKind, skill: { kind: skillKind } });
-  const adpRequired = adpRequiredFor(type, { skill: { kind: skillKind } });
-  const showAssetSection = !(type === 'skill' && skillKind === 'package') || adpRequired;
+  const supportsADP = supportsADPFor(type, { skill: { kind: skillKind } });
+  const showAssetSection = !(type === 'skill' && skillKind === 'package') || supportsADP;
   const filteredSkills = filterPublishSkills(availableSkills, skillSearch, locale);
 
   function applyPublishType(option) {
@@ -2623,10 +2616,10 @@ function PublishPage({ t, locale, authSession, availableSkills = [], onClose, on
               {!artifactRequired ? <small className="field-hint">{t.artifactOptional}</small> : null}
             </label>
           ) : null}
-          {adpRequired ? (
+          {supportsADP ? (
             <label className="full">
               <span>{t.adpManifest}</span>
-              <input name="adpManifest" type="file" accept=".yaml,.yml,text/yaml,application/x-yaml" required />
+              <input name="adpManifest" type="file" accept=".yaml,.yml,text/yaml,application/x-yaml" />
               <small className="field-hint">{t.adpManifestHint}</small>
             </label>
           ) : null}
@@ -3150,9 +3143,6 @@ function creatorQualityIssues(item, t) {
   if (!item?.icon) issues.push(t.creatorQualityImage);
   if (!String(item?.readme || '').trim()) issues.push(t.creatorQualityReadme);
   if (!isSkillPackage(item) && item?.websiteKind !== 'external' && !hasArtifact(item)) issues.push(t.creatorQualityArtifact);
-  if ((item?.type === 'cli-tool' || (item?.type === 'skill' && item?.skillKind !== 'package')) && !item?.adpInstallUrl) {
-    issues.push(t.creatorQualityADP);
-  }
   return issues;
 }
 
@@ -3275,7 +3265,7 @@ function artifactRequiredFor(type, options = {}) {
   return true;
 }
 
-function adpRequiredFor(type, options = {}) {
+function supportsADPFor(type, options = {}) {
   type = normalizeType(type);
   if (type === 'skill' && options.skill?.kind === 'package') return false;
   return type === 'cli-tool' || type === 'skill';
