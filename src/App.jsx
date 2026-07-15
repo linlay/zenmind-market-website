@@ -1294,39 +1294,33 @@ export function App() {
               <span>{isAdminOpen ? t.backToMarket : t.adminReviewEntry}</span>
             </button>
           ) : null}
-          <button
-            className="creator-button"
-            type="button"
-            onClick={() => {
-              if (!isAuthenticated) {
-                notify(t.loginRequired, 'error');
-                startLogin();
-                return;
-              }
-              setCreatorOpen((value) => !value);
-              setAdminOpen(false);
-            }}
-          >
-            {isCreatorOpen ? <Store size={15} /> : <User size={15} />}
-            <span>{isCreatorOpen ? t.backToMarket : t.creatorCenter}</span>
-          </button>
-          <button
-            className="publish-button"
-            type="button"
-            onClick={() => {
-              if (!isAuthenticated) {
-                notify(t.loginRequired, 'error');
-                startLogin();
-                return;
-              }
-              setCreatorOpen(false);
-              setAdminOpen(false);
-              setPublishOpen(true);
-            }}
-          >
-            <Plus size={15} />
-            <span>{t.publish}</span>
-          </button>
+          {isAuthenticated ? (
+            <>
+              <button
+                className="creator-button"
+                type="button"
+                onClick={() => {
+                  setCreatorOpen((value) => !value);
+                  setAdminOpen(false);
+                }}
+              >
+                {isCreatorOpen ? <Store size={15} /> : <User size={15} />}
+                <span>{isCreatorOpen ? t.backToMarket : t.creatorCenter}</span>
+              </button>
+              <button
+                className="publish-button"
+                type="button"
+                onClick={() => {
+                  setCreatorOpen(false);
+                  setAdminOpen(false);
+                  setPublishOpen(true);
+                }}
+              >
+                <Plus size={15} />
+                <span>{t.publish}</span>
+              </button>
+            </>
+          ) : null}
         </div>
       </header>
 
@@ -1439,6 +1433,7 @@ export function App() {
                 <SkillCatalogView
                   items={filtered}
                   activeSkillCategory={activeSkillCategory}
+                  isAuthenticated={isAuthenticated}
                   locale={locale}
                   t={t}
                   onDetails={openDetails}
@@ -1454,6 +1449,7 @@ export function App() {
                     <MarketCard
                       key={`${item.type}:${item.id}`}
                       item={item}
+                      isAuthenticated={isAuthenticated}
                       locale={locale}
                       t={t}
                       onDetails={() => openDetails(item)}
@@ -1481,6 +1477,7 @@ export function App() {
       {selected ? (
         <DetailModal
           item={selected}
+          isAuthenticated={isAuthenticated}
           locale={locale}
           t={t}
           videoPlaying={videoPlaying}
@@ -2029,7 +2026,7 @@ function EmptyInline({ title, body }) {
   );
 }
 
-function SkillCatalogView({ items, activeSkillCategory, locale, t, onDetails, onInstall, onDownload, onFavorite, downloadingKey, favoritingKey }) {
+function SkillCatalogView({ items, activeSkillCategory, isAuthenticated, locale, t, onDetails, onInstall, onDownload, onFavorite, downloadingKey, favoritingKey }) {
   const packages = items.filter((item) => item.skillKind === 'package');
   const regularSkills = items.filter((item) => item.skillKind !== 'package');
   const categories = (activeSkillCategory === 'all' ? skillCategoryFilters.filter((category) => category !== 'all') : [activeSkillCategory])
@@ -2044,6 +2041,7 @@ function SkillCatalogView({ items, activeSkillCategory, locale, t, onDetails, on
     <MarketCard
       key={`${item.type}:${item.id}`}
       item={item}
+      isAuthenticated={isAuthenticated}
       locale={locale}
       t={t}
       variant={variant}
@@ -2084,7 +2082,7 @@ function SkillCatalogView({ items, activeSkillCategory, locale, t, onDetails, on
   );
 }
 
-function MarketCard({ item, locale, t, onDetails, onInstall, onDownload, onFavorite, isDownloading, isFavoriting, variant = '' }) {
+function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInstall, onDownload, onFavorite, isDownloading, isFavoriting, variant = '' }) {
   const category = categoryMeta.find((entry) => entry.id === item.type);
   const Icon = category?.icon || PackageOpen;
   const platform = preferredPlatformKey(item);
@@ -2107,6 +2105,10 @@ function MarketCard({ item, locale, t, onDetails, onInstall, onDownload, onFavor
           <span className="card-version">{formatVersionLabel(item.version)}</span>
         </div>
         <p>{localized(item.description, locale) || t.noDescription}</p>
+        <div className="card-author" title={`${t.author}: ${item.author}`}>
+          <User size={13} />
+          <span>{item.author}</span>
+        </div>
         <div className="tag-row">
           {skillLabel ? <span className={item.skillKind === 'package' ? 'skill-kind-chip package' : 'skill-kind-chip'}>{skillLabel}</span> : null}
           {skillCategory ? <span>{skillCategory}</span> : null}
@@ -2118,17 +2120,24 @@ function MarketCard({ item, locale, t, onDetails, onInstall, onDownload, onFavor
             <Download size={13} />
             <span>{formatCount(item.downloads)}</span>
           </span>
-          <button
-            className={item.favorited ? 'stat-pill stat-button is-active' : 'stat-pill stat-button'}
-            type="button"
-            onClick={onFavorite}
-            disabled={isFavoriting}
-            title={favoriteLabel}
-            aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
-          >
-            <Heart size={13} fill={item.favorited ? 'currentColor' : 'none'} />
-            <span>{formatCount(item.favoriteCount)}</span>
-          </button>
+          {isAuthenticated ? (
+            <button
+              className={item.favorited ? 'stat-pill stat-button is-active' : 'stat-pill stat-button'}
+              type="button"
+              onClick={onFavorite}
+              disabled={isFavoriting}
+              title={favoriteLabel}
+              aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
+            >
+              <Heart size={13} fill={item.favorited ? 'currentColor' : 'none'} />
+              <span>{formatCount(item.favoriteCount)}</span>
+            </button>
+          ) : (
+            <span className="stat-pill" title={t.favorites} aria-label={`${t.favorites}: ${formatCount(item.favoriteCount)}`}>
+              <Heart size={13} />
+              <span>{formatCount(item.favoriteCount)}</span>
+            </span>
+          )}
         </div>
         {item.skillKind === 'package' && item.includedSkills.length ? (
           <div className="card-included">
@@ -2139,21 +2148,23 @@ function MarketCard({ item, locale, t, onDetails, onInstall, onDownload, onFavor
           </div>
         ) : null}
       </div>
-      <footer>
+      <footer className={isAuthenticated ? '' : 'is-browse-only'}>
         <button className="link-button" type="button" onClick={onDetails}>
           <span>{t.details}</span>
           <ArrowRight size={13} />
         </button>
-        <button className="primary-action" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
-          {canInstall ? <Copy size={13} /> : <Download size={13} />}
-          <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
-        </button>
+        {isAuthenticated ? (
+          <button className="primary-action" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
+            {canInstall ? <Copy size={13} /> : <Download size={13} />}
+            <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
+          </button>
+        ) : null}
       </footer>
     </article>
   );
 }
 
-function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onInstall, onDownload, onFavorite, isDownloading, isFavoriting }) {
+function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onInstall, onDownload, onFavorite, isDownloading, isFavoriting }) {
   const Icon = categoryMeta.find((category) => category.id === item.type)?.icon || PackageOpen;
   const platformKeys = availablePlatformKeys(item);
   const activePlatformKey = preferredPlatformKey(item, selectedPlatformKey);
@@ -2216,18 +2227,26 @@ function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPla
                 <span>{t.downloads}</span>
                 <strong>{formatCount(item.downloads)}</strong>
               </div>
-              <button
-                className={item.favorited ? 'meta-row meta-button is-active' : 'meta-row meta-button'}
-                type="button"
-                onClick={onFavorite}
-                disabled={isFavoriting}
-                title={favoriteLabel}
-                aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
-              >
-                <Heart size={14} fill={item.favorited ? 'currentColor' : 'none'} />
-                <span>{t.favorites}</span>
-                <strong>{formatCount(item.favoriteCount)}</strong>
-              </button>
+              {isAuthenticated ? (
+                <button
+                  className={item.favorited ? 'meta-row meta-button is-active' : 'meta-row meta-button'}
+                  type="button"
+                  onClick={onFavorite}
+                  disabled={isFavoriting}
+                  title={favoriteLabel}
+                  aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
+                >
+                  <Heart size={14} fill={item.favorited ? 'currentColor' : 'none'} />
+                  <span>{t.favorites}</span>
+                  <strong>{formatCount(item.favoriteCount)}</strong>
+                </button>
+              ) : (
+                <div className="meta-row">
+                  <Heart size={14} />
+                  <span>{t.favorites}</span>
+                  <strong>{formatCount(item.favoriteCount)}</strong>
+                </div>
+              )}
             </div>
 
             {item.type === 'skill' ? (
@@ -2331,18 +2350,20 @@ function DetailModal({ item, locale, t, videoPlaying, selectedPlatformKey, onPla
               </div>
             </section>
 
-            <div className="detail-action">
-              <button className="primary-action wide" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
-                {canInstall ? <Copy size={16} /> : <Download size={16} />}
-                <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
-              </button>
-              {canInstall && canDownload ? (
-                <button className="secondary-action wide" type="button" disabled={isDownloading} onClick={onDownload}>
-                  <Download size={16} />
-                  <span>{isDownloading ? t.downloading : t.downloadArtifact}</span>
+            {isAuthenticated ? (
+              <div className="detail-action">
+                <button className="primary-action wide" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
+                  {canInstall ? <Copy size={16} /> : <Download size={16} />}
+                  <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
                 </button>
-              ) : null}
-            </div>
+                {canInstall && canDownload ? (
+                  <button className="secondary-action wide" type="button" disabled={isDownloading} onClick={onDownload}>
+                    <Download size={16} />
+                    <span>{isDownloading ? t.downloading : t.downloadArtifact}</span>
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </section>
         </div>
       </aside>

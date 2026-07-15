@@ -1507,6 +1507,27 @@ img {
   overflow: hidden;
 }
 
+.card-author {
+  min-width: 0;
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.card-author svg {
+  flex: 0 0 auto;
+}
+
+.card-author span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .market-card.is-package {
   min-height: 236px;
   padding: 18px;
@@ -1658,6 +1679,10 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.market-card footer.is-browse-only {
+  grid-template-columns: minmax(76px, auto);
 }
 
 .market-card footer .link-button,
