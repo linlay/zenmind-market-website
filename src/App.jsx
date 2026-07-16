@@ -37,7 +37,11 @@ import {
   User,
   BarChart3,
   ListChecks,
+  MessageSquare,
+  Pencil,
   Store,
+  ThumbsDown,
+  ThumbsUp,
   X,
 } from 'lucide-react';
 import { selectedFormFile } from './fileInputs.js';
@@ -248,6 +252,31 @@ const translations = {
     size: '大小',
     downloads: '下载',
     favorites: '收藏',
+    comments: '评论',
+    commentPositiveRate: '好评率',
+    commentPositive: '好评',
+    commentNegative: '差评',
+    commentTitle: '用户评论',
+    commentPlaceholder: '写下你对这个组件的使用感受（5-1000 字）',
+    commentSubmit: '发表评论',
+    commentUpdate: '保存修改',
+    commentEdit: '编辑',
+    commentDelete: '删除',
+    commentCancelEdit: '取消编辑',
+    commentEmpty: '暂时还没有评论。',
+    commentLoginHint: '登录后可以发表评论。',
+    commentLoading: '正在加载评论...',
+    commentFailed: (reason) => `评论操作失败：${reason}`,
+    commentDeleteConfirm: '确认删除这条评论吗？',
+    adminComments: '评论管理',
+    adminCommentAuthor: '评论用户',
+    adminCommentContent: '评论内容',
+    adminCommentStatus: '状态',
+    adminCommentVisible: '可见',
+    adminCommentHidden: '已隐藏',
+    adminCommentHide: '隐藏',
+    adminCommentRestore: '恢复',
+    adminNoComments: '当前没有可管理的评论。',
     favoriteAction: '收藏',
     unfavoriteAction: '取消收藏',
     favoriteFailed: (reason) => `收藏失败：${reason}`,
@@ -533,6 +562,31 @@ const translations = {
     size: 'Size',
     downloads: 'Downloads',
     favorites: 'Favorites',
+    comments: 'Comments',
+    commentPositiveRate: 'Positive rate',
+    commentPositive: 'Positive',
+    commentNegative: 'Negative',
+    commentTitle: 'User comments',
+    commentPlaceholder: 'Share your experience with this component (5-1000 characters)',
+    commentSubmit: 'Post comment',
+    commentUpdate: 'Save changes',
+    commentEdit: 'Edit',
+    commentDelete: 'Delete',
+    commentCancelEdit: 'Cancel edit',
+    commentEmpty: 'No comments yet.',
+    commentLoginHint: 'Sign in to post a comment.',
+    commentLoading: 'Loading comments...',
+    commentFailed: (reason) => `Comment operation failed: ${reason}`,
+    commentDeleteConfirm: 'Delete this comment?',
+    adminComments: 'Comment moderation',
+    adminCommentAuthor: 'Author',
+    adminCommentContent: 'Comment',
+    adminCommentStatus: 'Status',
+    adminCommentVisible: 'Visible',
+    adminCommentHidden: 'Hidden',
+    adminCommentHide: 'Hide',
+    adminCommentRestore: 'Restore',
+    adminNoComments: 'There are no comments to moderate.',
     favoriteAction: 'Favorite',
     unfavoriteAction: 'Unfavorite',
     favoriteFailed: (reason) => `Favorite failed: ${reason}`,
@@ -710,7 +764,9 @@ export function App() {
   const [creatorItems, setCreatorItems] = useState([]);
   const [favoriteItems, setFavoriteItems] = useState([]);
   const [adminItems, setAdminItems] = useState([]);
+  const [adminComments, setAdminComments] = useState([]);
   const [isLoadingAdminReviews, setLoadingAdminReviews] = useState(false);
+  const [moderatingCommentID, setModeratingCommentID] = useState(0);
   const [reviewingKey, setReviewingKey] = useState('');
   const [unpublishingKey, setUnpublishingKey] = useState('');
   const [downloadingKey, setDownloadingKey] = useState('');
@@ -789,6 +845,20 @@ export function App() {
     }
   }, [authSession]);
 
+  const loadAdminComments = useCallback(async (signal, sessionOverride = null) => {
+    const session = sessionOverride || authSession;
+    if (!session?.user?.id || session.user?.role !== 'admin') {
+      setAdminComments([]);
+      return;
+    }
+    try {
+      const data = await requestJSON(`${apiBase}/admin/comments?limit=500`, { signal });
+      setAdminComments(Array.isArray(data.comments) ? data.comments : []);
+    } catch (reason) {
+      if (reason?.name !== 'AbortError') setAdminComments([]);
+    }
+  }, [authSession]);
+
   const handleLoadAdminReviews = useCallback(async () => {
     if (!authSession?.user?.id || authSession.user?.role !== 'admin') {
       notify(t.adminOnly, 'error');
@@ -796,7 +866,10 @@ export function App() {
     }
     setLoadingAdminReviews(true);
     try {
-      const result = await loadAdminReviews(undefined, authSession);
+      const [result] = await Promise.all([
+        loadAdminReviews(undefined, authSession),
+        loadAdminComments(undefined, authSession),
+      ]);
       if (result.ok) {
         await loadCatalog();
         notify(t.reviewLoadSuccess, 'success');
@@ -808,7 +881,7 @@ export function App() {
     } finally {
       setLoadingAdminReviews(false);
     }
-  }, [authSession, loadAdminReviews, loadCatalog, t]);
+  }, [authSession, loadAdminComments, loadAdminReviews, loadCatalog, t]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -856,8 +929,9 @@ export function App() {
     if (!isAdminOpen || authSession?.user?.role !== 'admin') return undefined;
     const controller = new AbortController();
     loadAdminReviews(controller.signal);
+    loadAdminComments(controller.signal);
     return () => controller.abort();
-  }, [isAdminOpen, authSession, loadAdminReviews]);
+  }, [isAdminOpen, authSession, loadAdminComments, loadAdminReviews]);
 
   const catalog = useMemo(() => {
     return apiItems.map((item) => mergeCatalogItem(item));
@@ -938,19 +1012,8 @@ export function App() {
     window.location.assign(`${apiBase}/auth/oidc/login`);
   }
 
-  async function handleLogout() {
-    try {
-      await requestJSON(`${apiBase}/auth/oidc/logout`, { method: 'POST' });
-    } catch {
-      // Clear the local view even if the session has already expired server-side.
-    }
-    setAuthSession(null);
-    setCreatorItems([]);
-    setFavoriteItems([]);
-    setAdminItems([]);
-    setAdminOpen(false);
-    setCreatorOpen(false);
-    await loadCatalog();
+  function handleLogout() {
+    window.location.assign(`${apiBase}/auth/oidc/logout`);
   }
 
   function chooseCategory(category) {
@@ -1118,6 +1181,27 @@ export function App() {
       notify(t.adminUnpublishFailed(errorMessage(reason)), 'error');
     } finally {
       setUnpublishingKey('');
+    }
+  }
+
+  async function handleModerateComment(comment) {
+    if (!comment || moderatingCommentID) return;
+    setModeratingCommentID(comment.id);
+    try {
+      await requestJSON(`${apiBase}/admin/comments/${comment.id}/moderate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: comment.status === 'hidden' ? 'visible' : 'hidden' }),
+      });
+      await Promise.all([
+        loadAdminComments(undefined, authSession),
+        loadCatalog(),
+        loadCreatorItems(undefined, authSession),
+      ]);
+    } catch (reason) {
+      notify(t.commentFailed(errorMessage(reason)), 'error');
+    } finally {
+      setModeratingCommentID(0);
     }
   }
 
@@ -1338,6 +1422,7 @@ export function App() {
         <AdminCenter
           pendingItems={adminReviewCatalog}
           publishedItems={catalog}
+          comments={adminComments}
           locale={locale}
           t={t}
           onBack={() => setAdminOpen(false)}
@@ -1349,6 +1434,8 @@ export function App() {
           unpublishingKey={unpublishingKey}
           onLoadAdminReviews={handleLoadAdminReviews}
           isLoadingAdminReviews={isLoadingAdminReviews}
+          onModerateComment={handleModerateComment}
+          moderatingCommentID={moderatingCommentID}
         />
       ) : isCreatorOpen ? (
         <CreatorCenter
@@ -1490,6 +1577,7 @@ export function App() {
           onFavorite={() => handleFavorite(selected)}
           isDownloading={downloadingKey === downloadKeyForItem(selected, selectedPlatformKey)}
           isFavoriting={favoritingKey === `${selected.type}:${selected.id}`}
+          onCommentsChanged={() => Promise.all([loadCatalog(), loadCreatorItems(undefined, authSession)])}
         />
       ) : null}
 
@@ -1501,6 +1589,7 @@ export function App() {
 function AdminCenter({
   pendingItems,
   publishedItems,
+  comments,
   locale,
   t,
   onBack,
@@ -1512,6 +1601,8 @@ function AdminCenter({
   unpublishingKey,
   onLoadAdminReviews,
   isLoadingAdminReviews,
+  onModerateComment,
+  moderatingCommentID,
 }) {
   const [typeFilter, setTypeFilter] = useState('all');
   const [itemQuery, setItemQuery] = useState('');
@@ -1614,6 +1705,26 @@ function AdminCenter({
             </div>
           ) : <EmptyInline title={t.adminNoPublishedComponents} body={t.emptyBody} />}
         </section>
+
+        <section className="creator-table-section">
+          <div className="table-head">
+            <div><span className="section-kicker"><MessageSquare size={14} />{t.adminComments}</span><h2>{t.adminComments}</h2></div>
+          </div>
+          {comments.length ? (
+            <div className="admin-comment-table" role="table" aria-label={t.adminComments}>
+              <div className="admin-comment-row is-head" role="row"><span>{t.name}</span><span>{t.adminCommentAuthor}</span><span>{t.adminCommentContent}</span><span>{t.adminCommentStatus}</span><span>{t.manage}</span></div>
+              {comments.map((comment) => (
+                <div className="admin-comment-row" role="row" key={comment.id}>
+                  <span><strong>{comment.itemId}</strong><small>{displayType(comment.itemType, t)}</small></span>
+                  <span><strong>{comment.author}</strong><small>{comment.userId}</small></span>
+                  <span className="admin-comment-content"><small>{comment.sentiment === 'positive' ? t.commentPositive : t.commentNegative}</small>{comment.content}</span>
+                  <span>{comment.status === 'hidden' ? t.adminCommentHidden : t.adminCommentVisible}</span>
+                  <span className="table-actions"><button className={comment.status === 'hidden' ? 'table-action' : 'table-action is-danger'} type="button" disabled={moderatingCommentID === comment.id} onClick={() => onModerateComment(comment)}>{comment.status === 'hidden' ? <RefreshCw size={13} /> : <X size={13} />}<span>{comment.status === 'hidden' ? t.adminCommentRestore : t.adminCommentHide}</span></button></span>
+                </div>
+              ))}
+            </div>
+          ) : <EmptyInline title={t.adminNoComments} body={t.commentEmpty} />}
+        </section>
       </div>
       {versionState.item ? <VersionHistoryModal state={versionState} locale={locale} t={t} onClose={() => setVersionState({ item: null, status: 'idle', versions: [], error: '' })} /> : null}
     </section>
@@ -1657,6 +1768,7 @@ function CreatorCenter({
   });
   const totalDownloads = creatorItems.reduce((sum, item) => sum + parseCount(item.downloads), 0);
   const totalFavorites = creatorItems.reduce((sum, item) => sum + parseCount(item.favoriteCount), 0);
+  const totalComments = creatorItems.reduce((sum, item) => sum + parseCount(item.commentCount), 0);
   const skillPackages = creatorItems.filter(isSkillPackage).length;
   const pendingReviews = creatorItems.filter((item) => item.reviewStatus === 'pending').length;
   const rejectedReviews = creatorItems.filter((item) => item.reviewStatus === 'rejected').length;
@@ -1676,6 +1788,7 @@ function CreatorCenter({
     { label: t.creatorTotalItems, value: formatCount(creatorItems.length), icon: Folder },
     { label: t.creatorTotalDownloads, value: formatCount(totalDownloads), icon: Download },
     { label: t.creatorTotalFavorites, value: formatCount(totalFavorites), icon: Heart },
+    { label: t.comments, value: formatCount(totalComments), icon: MessageSquare },
     { label: t.creatorSkillPackages, value: formatCount(skillPackages), icon: PackageOpen },
     { label: t.reviewPending, value: formatCount(pendingReviews), icon: ListChecks },
     { label: t.reviewRejected, value: formatCount(rejectedReviews), icon: AlertCircle },
@@ -1892,6 +2005,8 @@ function CreatorCenter({
                   <span>{t.creatorVersion}</span>
                   <span>{t.downloads}</span>
                   <span>{t.favorites}</span>
+                  <span>{t.comments}</span>
+                  <span>{t.commentPositiveRate}</span>
                   <span>{t.creatorUpdatedAt}</span>
                   <span>{t.manage}</span>
                 </div>
@@ -1914,6 +2029,8 @@ function CreatorCenter({
                   <span>{formatVersionLabel(item.version || item.latestVersion) || '-'}</span>
                   <span>{formatCount(item.downloads)}</span>
                     <span>{formatCount(item.favoriteCount)}</span>
+                    <span>{formatCount(item.commentCount)}</span>
+                    <span>{item.commentCount ? `${Math.round(item.positiveRate)}%` : '-'}</span>
                     <span>{formatDate(item.updatedAt || item.publishedAt, locale)}</span>
                     <span>
                       <span className="table-actions">
@@ -2164,7 +2281,7 @@ function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInstall, on
   );
 }
 
-function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onInstall, onDownload, onFavorite, isDownloading, isFavoriting }) {
+function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onInstall, onDownload, onFavorite, isDownloading, isFavoriting, onCommentsChanged }) {
   const Icon = categoryMeta.find((category) => category.id === item.type)?.icon || PackageOpen;
   const platformKeys = availablePlatformKeys(item);
   const activePlatformKey = preferredPlatformKey(item, selectedPlatformKey);
@@ -2196,6 +2313,7 @@ function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, selectedP
                 {(localized(item.features, locale) || []).map((feature) => <li key={feature}>{feature}</li>)}
               </ul>
             </section>
+            <CommentSection item={item} isAuthenticated={isAuthenticated} locale={locale} t={t} onChanged={onCommentsChanged} />
           </section>
 
           <section className="detail-side">
@@ -2368,6 +2486,117 @@ function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, selectedP
         </div>
       </aside>
     </div>
+  );
+}
+
+function CommentSection({ item, isAuthenticated, locale, t, onChanged }) {
+  const [state, setState] = useState({ status: 'loading', comments: [], summary: { total: 0, positive: 0, negative: 0, positiveRate: 0 }, error: '' });
+  const [sentiment, setSentiment] = useState('positive');
+  const [content, setContent] = useState('');
+  const [editingID, setEditingID] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const route = marketRoute(item.type);
+
+  const loadComments = useCallback(async (signal) => {
+    try {
+      const data = await requestJSON(`${apiBase}/${route}/${encodeURIComponent(item.id)}/comments?limit=100`, { signal });
+      setState({ status: 'ready', comments: Array.isArray(data.comments) ? data.comments : [], summary: data.summary || {}, error: '' });
+    } catch (reason) {
+      if (reason?.name !== 'AbortError') setState((current) => ({ ...current, status: 'error', error: errorMessage(reason) }));
+    }
+  }, [item.id, route]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState((current) => ({ ...current, status: 'loading', error: '' }));
+    loadComments(controller.signal);
+    return () => controller.abort();
+  }, [loadComments]);
+
+  function beginEdit(comment) {
+    setEditingID(comment.id);
+    setSentiment(comment.sentiment);
+    setContent(comment.content);
+  }
+
+  function cancelEdit() {
+    setEditingID(0);
+    setSentiment('positive');
+    setContent('');
+  }
+
+  async function submitComment(event) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    try {
+      const suffix = editingID ? `/${editingID}` : '';
+      await requestJSON(`${apiBase}/${route}/${encodeURIComponent(item.id)}/comments${suffix}`, {
+        method: editingID ? 'PATCH' : 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sentiment, content }),
+      });
+      cancelEdit();
+      await loadComments();
+      await onChanged?.();
+    } catch (reason) {
+      setState((current) => ({ ...current, error: t.commentFailed(errorMessage(reason)) }));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteComment(comment) {
+    if (!window.confirm(t.commentDeleteConfirm)) return;
+    try {
+      await requestJSON(`${apiBase}/${route}/${encodeURIComponent(item.id)}/comments/${comment.id}`, { method: 'DELETE' });
+      await loadComments();
+      await onChanged?.();
+    } catch (reason) {
+      setState((current) => ({ ...current, error: t.commentFailed(errorMessage(reason)) }));
+    }
+  }
+
+  const summary = state.summary || {};
+  return (
+    <section className="comment-section">
+      <div className="comment-heading">
+        <h3><MessageSquare size={16} />{t.commentTitle}</h3>
+        <div className="comment-summary">
+          <span>{t.comments} <strong>{formatCount(summary.total)}</strong></span>
+          <span>{t.commentPositiveRate} <strong>{summary.total ? `${Math.round(summary.positiveRate || 0)}%` : '-'}</strong></span>
+        </div>
+      </div>
+      {isAuthenticated ? (
+        <form className="comment-form" onSubmit={submitComment}>
+          <div className="sentiment-control">
+            <button className={sentiment === 'positive' ? 'is-active positive' : ''} type="button" onClick={() => setSentiment('positive')}><ThumbsUp size={14} />{t.commentPositive}</button>
+            <button className={sentiment === 'negative' ? 'is-active negative' : ''} type="button" onClick={() => setSentiment('negative')}><ThumbsDown size={14} />{t.commentNegative}</button>
+          </div>
+          <textarea value={content} onChange={(event) => setContent(event.target.value)} minLength={5} maxLength={1000} required placeholder={t.commentPlaceholder} />
+          <div className="comment-form-actions">
+            {editingID ? <button className="secondary-action" type="button" onClick={cancelEdit}>{t.commentCancelEdit}</button> : null}
+            <button className="primary-action" type="submit" disabled={saving || content.trim().length < 5}>{editingID ? t.commentUpdate : t.commentSubmit}</button>
+          </div>
+        </form>
+      ) : <p className="comment-login-hint">{t.commentLoginHint}</p>}
+      {state.error ? <p className="comment-error">{state.error}</p> : null}
+      {state.status === 'loading' ? <p className="comment-empty">{t.commentLoading}</p> : null}
+      {state.status === 'ready' && !state.comments.length ? <p className="comment-empty">{t.commentEmpty}</p> : null}
+      <div className="comment-list">
+        {state.comments.map((comment) => (
+          <article className="comment-row" key={comment.id}>
+            <div className="comment-row-head">
+              <strong>{comment.author}</strong>
+              <span className={`comment-sentiment is-${comment.sentiment}`}>{comment.sentiment === 'positive' ? <ThumbsUp size={12} /> : <ThumbsDown size={12} />}{comment.sentiment === 'positive' ? t.commentPositive : t.commentNegative}</span>
+              <time>{formatDate(comment.createdAt, locale)}</time>
+            </div>
+            <p>{comment.content}</p>
+            {comment.mine ? <div className="comment-actions"><button type="button" onClick={() => beginEdit(comment)}><Pencil size={13} />{t.commentEdit}</button><button type="button" onClick={() => deleteComment(comment)}><Trash2 size={13} />{t.commentDelete}</button></div> : null}
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -2771,6 +3000,7 @@ function mergeCatalogItem(apiItem) {
   const assets = Object.entries(assetMap).map(([platform, asset]) => `${platform}/${asset.archiveType || 'artifact'} ${formatBytes(asset.sizeBytes)}`);
   const downloadCount = parseCount(apiItem.downloadCount ?? apiItem.metadata?.downloads ?? 0);
   const favoriteCount = parseCount(apiItem.favoriteCount ?? apiItem.metadata?.favorites ?? 0);
+  const commentCount = parseCount(apiItem.commentCount ?? 0);
   const dependencies = apiItem.dependencies?.length ? apiItem.dependencies.map((dep) => ({
     ...dep,
     id: dep.id || dep.serviceId || dep.command || dep.runtime || dep.capability || dep.kind,
@@ -2806,6 +3036,10 @@ function mergeCatalogItem(apiItem) {
     downloadCount,
     downloads: downloadCount,
     favoriteCount,
+    commentCount,
+    positiveCount: parseCount(apiItem.positiveCount ?? 0),
+    negativeCount: parseCount(apiItem.negativeCount ?? 0),
+    positiveRate: Number(apiItem.positiveRate || 0),
     favorited: Boolean(apiItem.favorited),
     reviewStatus: normalizeReviewStatusForUI(apiItem.reviewStatus),
     reviewNote: apiItem.reviewNote || '',
