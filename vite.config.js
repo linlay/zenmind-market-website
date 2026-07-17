@@ -2,9 +2,10 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 const marketBrand = process.env.BRAND?.trim() || 'zenmind';
+const basePath = process.env.VITE_BASE_PATH || '/';
 
 export default defineConfig({
-  base: '/',
+  base: basePath,
   define: {
     'import.meta.env.VITE_MARKET_BRAND': JSON.stringify(marketBrand),
   },
