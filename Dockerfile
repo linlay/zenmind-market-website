@@ -1,4 +1,4 @@
-FROM node:25-alpine AS build
+FROM harbor.gtjaqh.io/library/node:22 AS build
 
 WORKDIR /src
 
@@ -14,7 +14,7 @@ COPY index.html vite.config.js ./
 COPY src ./src
 RUN npm run build
 
-FROM nginx:1.29-alpine
+FROM harbor.gtjaqh.io/library/nginx:1.25-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/dist /usr/share/nginx/html
