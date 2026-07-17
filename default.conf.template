@@ -6,7 +6,13 @@ server {
   root /usr/share/nginx/html;
   index index.html;
 
-  # NGINX_BASE_PATH is empty for root deployment, or /<sub> for sub-path.
+  # Redirect /market → /market/ so relative asset URLs (./assets/...) resolve
+  # correctly in the browser. When NGINX_BASE_PATH is empty this never matches
+  # ($uri is always at least "/").
+  if ($uri = "${NGINX_BASE_PATH}") {
+    return 301 ${NGINX_BASE_PATH}/;
+  }
+
   # proxy_pass never includes the prefix — the backend serves at /api/, /npm/,
   # /artifacts/ regardless of where the frontend is mounted.
   location ${NGINX_BASE_PATH}/api/ {
@@ -36,6 +42,9 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
   }
 
+  # Catch-all: static files are at /usr/share/nginx/html/ (no sub-directory).
+  # The symlink created by 40-create-base-path.sh maps e.g. html/market/ → html/
+  # so root-based file lookup works for any sub-path.
   location ${NGINX_BASE_PATH}/ {
     try_files $uri $uri/ ${NGINX_BASE_PATH}/index.html;
   }

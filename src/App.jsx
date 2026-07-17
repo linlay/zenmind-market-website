@@ -46,7 +46,13 @@ import {
 } from 'lucide-react';
 import { selectedFormFile } from './fileInputs.js';
 
-const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/api/v1';
+// Derive API base from the current page URL so the same build works
+// at any sub-path (e.g. /market/ → /market/api/v1, / → /api/v1).
+function computeApiBase() {
+  const path = window.location.pathname.replace(/\/+$/, '');
+  return path + '/api/v1';
+}
+const apiBase = import.meta.env.VITE_MARKET_API_BASE || computeApiBase();
 const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
 const locales = ['zh-CN', 'en-US'];
 const canonicalTypes = ['skill', 'plugin', 'agent', 'sandbox-image', 'pet', 'cli-tool', 'website-app', 'software-package'];

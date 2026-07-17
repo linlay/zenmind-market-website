@@ -2,10 +2,11 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 const marketBrand = process.env.BRAND?.trim() || 'zenmind';
-const basePath = process.env.VITE_BASE_PATH || '/';
 
 export default defineConfig({
-  base: basePath,
+  // Relative base so the same build works at any sub-path.
+  // e.g. deployed at /market/ → assets resolve to /market/assets/...
+  base: './',
   define: {
     'import.meta.env.VITE_MARKET_BRAND': JSON.stringify(marketBrand),
   },

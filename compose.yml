@@ -3,10 +3,13 @@ services:
     build:
       context: .
       args:
-        BASE_PATH: ${BASE_PATH:-}
         BRAND: ${BRAND:-zenmind}
     image: zenmind-market-website
     container_name: zenmind-market-website
+    environment:
+      NGINX_BASE_PATH: ${NGINX_BASE_PATH:-}
+      NGINX_BACKEND_HOST: ${NGINX_BACKEND_HOST:-zenmind-market-server}
+      NGINX_BACKEND_PORT: ${NGINX_BACKEND_PORT:-8088}
     ports:
       - "${WEBSITE_PORT:-127.0.0.1:11964}:80"
     networks:
