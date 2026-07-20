@@ -1205,9 +1205,9 @@ img {
 }
 
 .creator-table-row {
-  min-width: 1280px;
+  min-width: 1362px;
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) minmax(100px, 0.7fr) minmax(150px, 0.9fr) 84px 82px 82px 72px 82px 126px 250px;
+  grid-template-columns: minmax(220px, 1.5fr) minmax(100px, 0.7fr) minmax(150px, 0.9fr) 84px 82px 82px 82px 72px 82px 126px 250px;
   gap: 12px;
   align-items: center;
   min-height: 62px;
