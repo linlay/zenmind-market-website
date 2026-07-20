@@ -45,6 +45,7 @@ import {
   X,
 } from 'lucide-react';
 import { selectedFormFile } from './fileInputs.js';
+import { normalizeDetailViewCount, openMarketDetails, selectDetailOpener, summarizeDetailViews } from './detailViews.js';
 
 const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/api/v1';
 const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
@@ -96,6 +97,7 @@ const translations = {
     creatorQuality: '发布检查',
     creatorTotalItems: '已发布组件',
     creatorTotalDownloads: '总下载量',
+    creatorTotalDetailViews: '总详情点击量',
     creatorTotalFavorites: '总收藏量',
     creatorSkillPackages: '技能包',
     creatorRecent: '最近更新',
@@ -251,6 +253,7 @@ const translations = {
     createdAt: '创建日期',
     size: '大小',
     downloads: '下载',
+    detailViews: '详情点击量',
     favorites: '收藏',
     comments: '评论',
     commentPositiveRate: '好评率',
@@ -406,6 +409,7 @@ const translations = {
     creatorQuality: 'Publish checks',
     creatorTotalItems: 'Published items',
     creatorTotalDownloads: 'Total downloads',
+    creatorTotalDetailViews: 'Total detail views',
     creatorTotalFavorites: 'Total favorites',
     creatorSkillPackages: 'Skill packages',
     creatorRecent: 'Recently updated',
@@ -561,6 +565,7 @@ const translations = {
     createdAt: 'Created',
     size: 'Size',
     downloads: 'Downloads',
+    detailViews: 'Detail views',
     favorites: 'Favorites',
     comments: 'Comments',
     commentPositiveRate: 'Positive rate',
@@ -1029,6 +1034,22 @@ export function App() {
     setVideoPlaying(false);
   }
 
+  function handleOpenMarketDetails(item) {
+    void openMarketDetails({
+      item,
+      openDetails,
+      apiBase,
+      route: marketRoute(item.type),
+      requestJSON,
+    });
+  }
+
+  const detailSurface = isAdminOpen ? 'admin' : isCreatorOpen ? 'creator' : 'market';
+  const openDetailsForSurface = selectDetailOpener(detailSurface, {
+    market: handleOpenMarketDetails,
+    plain: openDetails,
+  });
+
   function closeDetails() {
     setSelected(null);
     setSelectedPlatformKey('');
@@ -1341,7 +1362,7 @@ export function App() {
   return (
     <main className="market-shell">
       <header className="topbar">
-        <a className="brand" href="/" aria-label={brandTitle}>
+        <a className="brand" href={import.meta.env.BASE_URL} aria-label={brandTitle}>
           <span className="brand-mark"><Shapes size={20} /></span>
           <span className="brand-copy">
             <strong>{brandTitle}</strong>
@@ -1427,7 +1448,7 @@ export function App() {
           t={t}
           onBack={() => setAdminOpen(false)}
           onPublish={() => { setPublishOpen(true); setAdminOpen(false); }}
-          onDetails={openDetails}
+          onDetails={openDetailsForSurface}
           onReview={handleReviewUpdate}
           reviewingKey={reviewingKey}
           onUnpublishLatest={handleUnpublishLatest}
@@ -1447,7 +1468,7 @@ export function App() {
           t={t}
           onBack={() => setCreatorOpen(false)}
           onPublish={() => { setPublishOpen(true); setCreatorOpen(false); }}
-          onDetails={openDetails}
+          onDetails={openDetailsForSurface}
           onReview={null}
           reviewingKey={reviewingKey}
         />
@@ -1523,7 +1544,7 @@ export function App() {
                   isAuthenticated={isAuthenticated}
                   locale={locale}
                   t={t}
-                  onDetails={openDetails}
+                  onDetails={openDetailsForSurface}
                   onInstall={handleInstall}
                   onDownload={handleDownload}
                   onFavorite={handleFavorite}
@@ -1539,7 +1560,7 @@ export function App() {
                       isAuthenticated={isAuthenticated}
                       locale={locale}
                       t={t}
-                      onDetails={() => openDetails(item)}
+                      onDetails={() => openDetailsForSurface(item)}
                       onInstall={() => handleInstall(item)}
                       onDownload={() => handleDownload(item)}
                       onFavorite={() => handleFavorite(item)}
@@ -1767,6 +1788,7 @@ function CreatorCenter({
     ].join(' ').toLowerCase().includes(needle);
   });
   const totalDownloads = creatorItems.reduce((sum, item) => sum + parseCount(item.downloads), 0);
+  const totalDetailViews = summarizeDetailViews(creatorItems);
   const totalFavorites = creatorItems.reduce((sum, item) => sum + parseCount(item.favoriteCount), 0);
   const totalComments = creatorItems.reduce((sum, item) => sum + parseCount(item.commentCount), 0);
   const skillPackages = creatorItems.filter(isSkillPackage).length;
@@ -1787,6 +1809,7 @@ function CreatorCenter({
   const metricCards = [
     { label: t.creatorTotalItems, value: formatCount(creatorItems.length), icon: Folder },
     { label: t.creatorTotalDownloads, value: formatCount(totalDownloads), icon: Download },
+    { label: t.creatorTotalDetailViews, value: formatCount(totalDetailViews), icon: BarChart3 },
     { label: t.creatorTotalFavorites, value: formatCount(totalFavorites), icon: Heart },
     { label: t.comments, value: formatCount(totalComments), icon: MessageSquare },
     { label: t.creatorSkillPackages, value: formatCount(skillPackages), icon: PackageOpen },
@@ -1873,7 +1896,7 @@ function CreatorCenter({
                     <span>{displayType(entry.type, t)}</span>
                     <strong>{formatCount(entry.count)}</strong>
                     <i style={{ width: `${Math.max(8, (entry.count / Math.max(creatorItems.length, 1)) * 100)}%` }} />
-                  </div>
+                </div>
                 ))}
               </div>
             ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
@@ -2004,6 +2027,7 @@ function CreatorCenter({
                   <span>{t.reviewStatus}</span>
                   <span>{t.creatorVersion}</span>
                   <span>{t.downloads}</span>
+                  <span>{t.detailViews}</span>
                   <span>{t.favorites}</span>
                   <span>{t.comments}</span>
                   <span>{t.commentPositiveRate}</span>
@@ -2028,34 +2052,35 @@ function CreatorCenter({
                   </span>
                   <span>{formatVersionLabel(item.version || item.latestVersion) || '-'}</span>
                   <span>{formatCount(item.downloads)}</span>
-                    <span>{formatCount(item.favoriteCount)}</span>
-                    <span>{formatCount(item.commentCount)}</span>
-                    <span>{item.commentCount ? `${Math.round(item.positiveRate)}%` : '-'}</span>
-                    <span>{formatDate(item.updatedAt || item.publishedAt, locale)}</span>
-                    <span>
-                      <span className="table-actions">
-                        {isAdminMode && onReview && item.reviewStatus !== 'approved' ? (
-                          <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'approved')}>
-                            <CheckCircle2 size={14} />
-                            <span>{t.reviewApprove}</span>
-                          </button>
-                        ) : null}
-                        {isAdminMode && onReview && item.reviewStatus !== 'rejected' ? (
-                          <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'rejected')}>
-                            <AlertCircle size={14} />
-                            <span>{t.reviewReject}</span>
-                          </button>
-                        ) : null}
-                        <button className="table-action" type="button" onClick={() => openVersions(item)}>
-                          <Calendar size={14} />
-                          <span>{t.creatorVersions}</span>
+                  <span>{formatCount(item.detailViewCount)}</span>
+                  <span>{formatCount(item.favoriteCount)}</span>
+                  <span>{formatCount(item.commentCount)}</span>
+                  <span>{item.commentCount ? `${Math.round(item.positiveRate)}%` : '-'}</span>
+                  <span>{formatDate(item.updatedAt || item.publishedAt, locale)}</span>
+                  <span>
+                    <span className="table-actions">
+                      {isAdminMode && onReview && item.reviewStatus !== 'approved' ? (
+                        <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'approved')}>
+                          <CheckCircle2 size={14} />
+                          <span>{t.reviewApprove}</span>
                         </button>
-                        <button className="table-action" type="button" onClick={() => onDetails(item)}>
-                          <ArrowRight size={14} />
-                          <span>{t.creatorOpenMarket}</span>
+                      ) : null}
+                      {isAdminMode && onReview && item.reviewStatus !== 'rejected' ? (
+                        <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'rejected')}>
+                          <AlertCircle size={14} />
+                          <span>{t.reviewReject}</span>
                         </button>
-                      </span>
+                      ) : null}
+                      <button className="table-action" type="button" onClick={() => openVersions(item)}>
+                        <Calendar size={14} />
+                        <span>{t.creatorVersions}</span>
+                      </button>
+                      <button className="table-action" type="button" onClick={() => onDetails(item)}>
+                        <ArrowRight size={14} />
+                        <span>{t.creatorOpenMarket}</span>
+                      </button>
                     </span>
+                  </span>
                   </div>
                 ))}
               </div>
@@ -3035,6 +3060,7 @@ function mergeCatalogItem(apiItem) {
     size: formatAssetSize(apiItem),
     downloadCount,
     downloads: downloadCount,
+    detailViewCount: normalizeDetailViewCount(apiItem.detailViewCount),
     favoriteCount,
     commentCount,
     positiveCount: parseCount(apiItem.positiveCount ?? 0),
