@@ -32,6 +32,303 @@
   font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+.review-modal-backdrop {
+  z-index: 80;
+}
+
+.review-detail-modal {
+  width: min(1180px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgb(15 23 42 / 28%);
+}
+
+.review-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.review-detail-header > div {
+  flex: 1;
+}
+
+.review-detail-header h2 {
+  margin: 2px 0 5px;
+}
+
+.review-detail-header code,
+.review-hashes code {
+  overflow-wrap: anywhere;
+}
+
+.review-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.review-tabs button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.review-tabs button.is-active {
+  color: var(--text);
+  background: var(--surface-muted);
+  font-weight: 700;
+}
+
+.review-detail-scroll {
+  min-height: 0;
+  overflow: auto;
+  padding: 22px 28px 32px;
+}
+
+.review-workbench {
+  display: grid;
+  gap: 18px;
+}
+
+.review-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.review-summary-grid > div,
+.review-section {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-raised, var(--surface));
+}
+
+.review-summary-grid > div {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+}
+
+.review-summary-grid span,
+.review-summary-grid small,
+.review-artifact-head span,
+.review-change-list span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.review-section {
+  padding: 18px;
+}
+
+.review-section > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.review-check-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.review-check {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.review-check > div {
+  display: grid;
+  gap: 3px;
+}
+
+.review-check span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.review-check.is-passed svg { color: #16a34a; }
+.review-check.is-warning svg { color: #d97706; }
+.review-check.is-info svg { color: #2563eb; }
+
+.review-artifact {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.review-artifact + .review-artifact { margin-top: 12px; }
+
+.review-artifact-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.review-artifact-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.review-hashes {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 6px 10px;
+  margin: 14px 0;
+  font-size: 12px;
+}
+
+.review-hashes dt { color: var(--muted); }
+.review-hashes dd { margin: 0; }
+
+.review-file-list {
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 10px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+}
+
+.review-file-list > div {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.review-file-list > div:last-child { border-bottom: 0; }
+
+.review-technical-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.review-code-block,
+.review-change-list article {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.review-code-block pre,
+.review-change-list pre,
+.review-adp {
+  max-height: 260px;
+  overflow: auto;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.review-change-list {
+  display: grid;
+  gap: 12px;
+}
+
+.review-change-list article {
+  display: grid;
+  grid-template-columns: 140px repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.review-change-list article > div { min-width: 0; }
+
+.review-history {
+  display: grid;
+  gap: 8px;
+}
+
+.review-history > div {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.review-history > div:last-child { border-bottom: 0; }
+.review-history p { grid-column: 2 / -1; margin: 0; color: var(--muted); }
+
+.review-market-preview {
+  display: grid;
+  grid-template-columns: minmax(280px, .8fr) minmax(320px, 1fr);
+  gap: 24px;
+}
+
+.review-market-preview .readme-section { grid-column: 1 / -1; }
+
+.review-decision-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 20px;
+  align-items: end;
+  padding: 16px 28px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.review-decision-bar label {
+  display: grid;
+  gap: 6px;
+}
+
+.review-decision-bar textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.review-decision-bar > div {
+  display: flex;
+  gap: 10px;
+}
+
+.review-decision-bar > small {
+  color: #dc2626;
+}
+
+@media (max-width: 820px) {
+  .review-summary-grid,
+  .review-check-list,
+  .review-technical-grid,
+  .review-market-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .review-change-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .review-market-preview .readme-section { grid-column: auto; }
+
+  .review-decision-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #09090b;
