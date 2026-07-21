@@ -144,9 +144,6 @@ const translations = {
     reviewApprove: '通过',
     reviewReject: '驳回',
     reviewRejectReason: '驳回原因',
-    reviewSubmitMode: '发布方式',
-    reviewSubmitPending: '提交审核',
-    reviewSubmitApproved: '直接发布',
     reviewUpdateSuccess: '审核状态已更新。',
     reviewUpdateFailed: (reason) => `审核更新失败：${reason}`,
     reviewNotePrompt: '请输入驳回原因',
@@ -342,9 +339,9 @@ const translations = {
     name: '名称',
     version: '版本',
     description: '描述',
-    publishSubmit: '发布并上架',
+    publishSubmit: '提交审核',
     duplicate: (id) => `发布失败：组件 ID [${id}] 已存在于市场中。`,
-    publishSuccess: (name) => `组件 [${name}] 发布成功并上架！`,
+    publishSuccess: (name) => `组件 [${name}] 已提交审核！`,
     publishFailed: (reason) => `发布失败：${reason}`,
     publishing: '正在发布...',
     artifact: '制品包',
@@ -456,9 +453,6 @@ const translations = {
     reviewApprove: 'Approve',
     reviewReject: 'Reject',
     reviewRejectReason: 'Rejection reason',
-    reviewSubmitMode: 'Publish mode',
-    reviewSubmitPending: 'Submit for review',
-    reviewSubmitApproved: 'Publish directly',
     reviewUpdateSuccess: 'Review status updated.',
     reviewUpdateFailed: (reason) => `Review update failed: ${reason}`,
     reviewNotePrompt: 'Enter rejection reason',
@@ -654,9 +648,9 @@ const translations = {
     name: 'Name',
     version: 'Version',
     description: 'Description',
-    publishSubmit: 'Publish',
+    publishSubmit: 'Submit for review',
     duplicate: (id) => `Publish failed: component ID [${id}] already exists.`,
-    publishSuccess: (name) => `Component [${name}] published!`,
+    publishSuccess: (name) => `Component [${name}] submitted for review!`,
     publishFailed: (reason) => `Publish failed: ${reason}`,
     publishing: 'Publishing...',
     artifact: 'Artifact package',
@@ -1312,7 +1306,7 @@ export function App() {
         metadata: {},
         dependencies: platformDependencies,
         platform,
-        reviewStatus: authSession.user?.role === 'admin' ? String(form.get('reviewStatus') || 'approved').trim() : 'pending',
+        reviewStatus: 'pending',
       };
       if (skill) metadata.skill = skill;
       if (type === 'cli-tool') {
@@ -1433,7 +1427,6 @@ export function App() {
         <PublishPage
           t={t}
           locale={locale}
-          authSession={authSession}
           availableSkills={publishableSkills}
           onClose={() => setPublishOpen(false)}
           onSubmit={handlePublish}
@@ -2625,7 +2618,7 @@ function CommentSection({ item, isAuthenticated, locale, t, onChanged }) {
   );
 }
 
-function PublishPage({ t, locale, authSession, availableSkills = [], onClose, onSubmit, isPublishing }) {
+function PublishPage({ t, locale, availableSkills = [], onClose, onSubmit, isPublishing }) {
   const [step, setStep] = useState('type');
   const [type, setType] = useState('agent');
   const [archiveType, setArchiveType] = useState(defaultArchiveTypeFor('agent'));
@@ -2743,15 +2736,6 @@ function PublishPage({ t, locale, authSession, availableSkills = [], onClose, on
           <input name="type" type="hidden" value={type} />
           <input name="archiveType" type="hidden" value={archiveType} />
           {type === 'skill' ? <input name="skillKind" type="hidden" value={skillKind} /> : null}
-          {authSession?.user?.role === 'admin' ? (
-            <label className="publish-field-card full">
-              <span>{t.reviewSubmitMode}</span>
-              <select name="reviewStatus" defaultValue="approved">
-                <option value="approved">{t.reviewSubmitApproved}</option>
-                <option value="pending">{t.reviewSubmitPending}</option>
-              </select>
-            </label>
-          ) : null}
           <section className="publish-section full">
             <h3>{t.publishBasicInfo}</h3>
             <div className="publish-section-grid">
