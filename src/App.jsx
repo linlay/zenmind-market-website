@@ -156,6 +156,30 @@ const translations = {
     adminPendingPublications: '待审核发布',
     adminPublishedComponents: '已上架组件',
     adminNoPendingPublications: '当前没有待审核发布。',
+    reviewOpen: '审核详情',
+    reviewDetailTitle: '组件审核',
+    reviewOverview: '审核信息',
+    reviewMarketPreview: '市场预览',
+    reviewSubmittedBy: '提交人',
+    reviewSubmittedAt: '提交时间',
+    reviewSubmissionType: '提交类型',
+    reviewFirstPublish: '首次发布',
+    reviewVersionUpdate: '版本更新',
+    reviewChecks: '自动检查',
+    reviewArtifacts: '制品与文件',
+    reviewChanges: '版本差异',
+    reviewHistory: '审核历史',
+    reviewNoChanges: '首次发布，没有历史版本差异。',
+    reviewNoArtifacts: '该组件没有上传制品。',
+    reviewNoHistory: '暂无审核历史。',
+    reviewADP: 'ADP Manifest',
+    reviewDecisionNote: '审核意见',
+    reviewDecisionPlaceholder: '通过意见可选；驳回时必须填写原因。',
+    reviewRejectReasonRequired: '驳回时必须填写原因。',
+    reviewFiles: '文件清单',
+    reviewPrevious: '上一版本',
+    reviewCurrent: '待审核版本',
+    reviewLoading: '正在加载审核详情...',
     adminNoPublishedComponents: '当前没有已上架组件。',
     adminSearchPublished: '搜索已上架组件',
     adminUnpublishLatest: '下架最新版本',
@@ -465,6 +489,30 @@ const translations = {
     adminPendingPublications: 'Pending publications',
     adminPublishedComponents: 'Published components',
     adminNoPendingPublications: 'There are no pending publications.',
+    reviewOpen: 'Review details',
+    reviewDetailTitle: 'Component review',
+    reviewOverview: 'Review information',
+    reviewMarketPreview: 'Market preview',
+    reviewSubmittedBy: 'Submitted by',
+    reviewSubmittedAt: 'Submitted at',
+    reviewSubmissionType: 'Submission type',
+    reviewFirstPublish: 'First publication',
+    reviewVersionUpdate: 'Version update',
+    reviewChecks: 'Automated checks',
+    reviewArtifacts: 'Artifacts and files',
+    reviewChanges: 'Version changes',
+    reviewHistory: 'Review history',
+    reviewNoChanges: 'This is the first publication; there is no previous version to compare.',
+    reviewNoArtifacts: 'This component has no uploaded artifact.',
+    reviewNoHistory: 'No review history yet.',
+    reviewADP: 'ADP Manifest',
+    reviewDecisionNote: 'Review note',
+    reviewDecisionPlaceholder: 'Approval note is optional; rejection requires a reason.',
+    reviewRejectReasonRequired: 'A rejection reason is required.',
+    reviewFiles: 'File inventory',
+    reviewPrevious: 'Previous version',
+    reviewCurrent: 'Pending version',
+    reviewLoading: 'Loading review details...',
     adminNoPublishedComponents: 'There are no published components.',
     adminSearchPublished: 'Search published components',
     adminUnpublishLatest: 'Unpublish latest version',
@@ -1136,15 +1184,19 @@ export function App() {
     }
   }
 
-  async function handleReviewUpdate(item, status) {
-    if (!item || reviewingKey) return;
+  async function handleReviewUpdate(item, status, suppliedNote) {
+    if (!item || reviewingKey) return false;
     if (!authSession?.user?.id || authSession.user?.role !== 'admin') {
       notify(t.adminOnly, 'error');
-      return;
+      return false;
     }
-    let note = '';
-    if (status === 'rejected') {
+    let note = typeof suppliedNote === 'string' ? suppliedNote.trim() : '';
+    if (status === 'rejected' && suppliedNote === undefined) {
       note = window.prompt(t.reviewNotePrompt, item.reviewNote || '') || '';
+    }
+    if (status === 'rejected' && !note) {
+      notify(t.reviewRejectReasonRequired, 'error');
+      return false;
     }
     const key = `${item.type}:${item.id}`;
     setReviewingKey(key);
@@ -1158,8 +1210,10 @@ export function App() {
       await loadCreatorItems(undefined, authSession);
       await loadAdminReviews(undefined, authSession);
       notify(t.reviewUpdateSuccess, 'success');
+      return true;
     } catch (reason) {
       notify(t.reviewUpdateFailed(errorMessage(reason)), 'error');
+      return false;
     } finally {
       setReviewingKey('');
     }
@@ -1621,6 +1675,7 @@ function AdminCenter({
   const [typeFilter, setTypeFilter] = useState('all');
   const [itemQuery, setItemQuery] = useState('');
   const [versionState, setVersionState] = useState({ item: null, status: 'idle', versions: [], error: '' });
+  const [reviewDetailState, setReviewDetailState] = useState({ item: null, status: 'idle', detail: null, error: '' });
   const published = useMemo(
     () => [...publishedItems].sort((a, b) => dateValue(b.updatedAt || b.publishedAt) - dateValue(a.updatedAt || a.publishedAt)),
     [publishedItems],
@@ -1640,6 +1695,16 @@ function AdminCenter({
       setVersionState({ item, status: 'ready', versions: Array.isArray(data.versions) ? data.versions : [], error: '' });
     } catch (reason) {
       setVersionState({ item, status: 'error', versions: [], error: errorMessage(reason) });
+    }
+  }
+
+  async function openReviewDetail(item) {
+    setReviewDetailState({ item, status: 'loading', detail: null, error: '' });
+    try {
+      const detail = await requestJSON(`${apiBase}/admin/reviews/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`);
+      setReviewDetailState({ item, status: 'ready', detail, error: '' });
+    } catch (reason) {
+      setReviewDetailState({ item, status: 'error', detail: null, error: errorMessage(reason) });
     }
   }
 
@@ -1678,9 +1743,7 @@ function AdminCenter({
                   <span>{formatVersionLabel(item.version || item.latestVersion) || '-'}</span>
                   <span>{formatDate(item.updatedAt || item.publishedAt, locale)}</span>
                   <span className="table-actions">
-                    <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'approved')}><CheckCircle2 size={14} /><span>{t.reviewApprove}</span></button>
-                    <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => onReview(item, 'rejected')}><AlertCircle size={14} /><span>{t.reviewReject}</span></button>
-                    <button className="table-action" type="button" onClick={() => onDetails(item)}><ArrowRight size={14} /><span>{t.creatorOpenMarket}</span></button>
+                    <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => openReviewDetail(item)}><ListChecks size={14} /><span>{t.reviewOpen}</span></button>
                   </span>
                 </div>
               ))}
@@ -1741,6 +1804,16 @@ function AdminCenter({
         </section>
       </div>
       {versionState.item ? <VersionHistoryModal state={versionState} locale={locale} t={t} onClose={() => setVersionState({ item: null, status: 'idle', versions: [], error: '' })} /> : null}
+      {reviewDetailState.item ? (
+        <ReviewDetailModal
+          state={reviewDetailState}
+          locale={locale}
+          t={t}
+          reviewingKey={reviewingKey}
+          onReview={onReview}
+          onClose={() => setReviewDetailState({ item: null, status: 'idle', detail: null, error: '' })}
+        />
+      ) : null}
     </section>
   );
 }
@@ -2159,6 +2232,148 @@ function EmptyInline({ title, body }) {
       <span>{body}</span>
     </div>
   );
+}
+
+function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, onClose }) {
+  const [tab, setTab] = useState('review');
+  const [note, setNote] = useState('');
+  const [noteError, setNoteError] = useState('');
+  const rawItem = state.detail?.item || state.item;
+  const item = rawItem ? mergeCatalogItem(rawItem) : null;
+  const busy = item ? reviewingKey === `${item.type}:${item.id}` : false;
+
+  async function decide(status) {
+    const normalizedNote = note.trim();
+    if (status === 'rejected' && !normalizedNote) {
+      setNoteError(t.reviewRejectReasonRequired);
+      return;
+    }
+    setNoteError('');
+    if (await onReview(item, status, normalizedNote)) onClose();
+  }
+
+  return (
+    <div className="modal-backdrop review-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="review-detail-modal" role="dialog" aria-modal="true" aria-label={t.reviewDetailTitle} onMouseDown={(event) => event.stopPropagation()}>
+        <button className="modal-close" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
+        <header className="review-detail-header">
+          <span className="section-kicker"><ShieldCheck size={14} />{t.reviewDetailTitle}</span>
+          <div>
+            <h2>{item ? localized(item.name, locale) || item.id : t.reviewDetailTitle}</h2>
+            {item ? <code>{item.type}:{item.id}@{formatVersionLabel(item.version)}</code> : null}
+          </div>
+          {item ? <ReviewBadge status={item.reviewStatus} t={t} /> : null}
+        </header>
+
+        <nav className="review-tabs" aria-label={t.reviewDetailTitle}>
+          <button className={tab === 'review' ? 'is-active' : ''} type="button" onClick={() => setTab('review')}>{t.reviewOverview}</button>
+          <button className={tab === 'preview' ? 'is-active' : ''} type="button" onClick={() => setTab('preview')}>{t.reviewMarketPreview}</button>
+        </nav>
+
+        <div className="review-detail-scroll">
+          {state.status === 'loading' ? <StateNotice title={t.reviewLoading} body="" /> : null}
+          {state.status === 'error' ? <StateNotice title={t.reviewLoadFailed(state.error)} body={state.error} tone="error" /> : null}
+          {state.status === 'ready' && item && tab === 'review' ? (
+            <div className="review-workbench">
+              <section className="review-summary-grid">
+                <div><span>{t.reviewSubmittedBy}</span><strong>{state.detail.creator?.name || state.detail.creator?.username || state.detail.creator?.id || '-'}</strong><small>{state.detail.creator?.id || '-'}</small></div>
+                <div><span>{t.reviewSubmittedAt}</span><strong>{formatDate(state.detail.submittedAt, locale)}</strong></div>
+                <div><span>{t.reviewSubmissionType}</span><strong>{state.detail.isUpdate ? t.reviewVersionUpdate : t.reviewFirstPublish}</strong></div>
+                <div><span>{t.type}</span><strong>{displayType(item.type, t)}</strong></div>
+              </section>
+
+              <ReviewSection title={t.reviewChecks} icon={ShieldCheck}>
+                <div className="review-check-list">
+                  {(state.detail.validationChecks || []).map((check) => (
+                    <div className={`review-check is-${check.status}`} key={check.key}>
+                      {check.status === 'passed' ? <CheckCircle2 size={16} /> : check.status === 'warning' ? <AlertCircle size={16} /> : <Info size={16} />}
+                      <div><strong>{check.key}</strong><span>{check.message}</span></div>
+                    </div>
+                  ))}
+                </div>
+              </ReviewSection>
+
+              <ReviewSection title={t.reviewArtifacts} icon={PackageOpen}>
+                {(state.detail.artifacts || []).length ? state.detail.artifacts.map((artifact) => (
+                  <article className="review-artifact" key={`${artifact.assetRole}:${artifact.platformKey}`}>
+                    <div className="review-artifact-head">
+                      <div><strong>{artifact.fileName || artifact.platformKey}</strong><span>{artifact.archiveType} · {formatBytes(artifact.sizeBytes)}</span></div>
+                      <span>{artifact.platformKey}</span>
+                    </div>
+                    <dl className="review-hashes"><dt>SHA-256</dt><dd><code>{artifact.sha256}</code></dd><dt>Integrity</dt><dd><code>{artifact.integrity}</code></dd></dl>
+                    <details>
+                      <summary>{t.reviewFiles} ({(artifact.files || []).length})</summary>
+                      <div className="review-file-list">
+                        {(artifact.files || []).map((file) => <div key={file.path}><File size={13} /><code>{file.path}</code><span>{file.directory ? '-' : formatBytes(file.sizeBytes)}</span></div>)}
+                      </div>
+                    </details>
+                  </article>
+                )) : <p className="empty-detail">{t.reviewNoArtifacts}</p>}
+              </ReviewSection>
+
+              <ReviewSection title={t.dependencies} icon={Shapes}>
+                <div className="review-technical-grid">
+                  <ReviewCodeBlock label={t.dependencies} value={item.dependencies} />
+                  <ReviewCodeBlock label={t.platforms} value={item.platforms} />
+                  {item.install ? <ReviewCodeBlock label={t.installProtocol} value={item.install} /> : null}
+                  {item.uninstall ? <ReviewCodeBlock label="Uninstall" value={item.uninstall} /> : null}
+                  {item.detect ? <ReviewCodeBlock label="Detect" value={item.detect} /> : null}
+                </div>
+              </ReviewSection>
+
+              <ReviewSection title={t.reviewChanges} icon={RefreshCw}>
+                {(state.detail.changes || []).length ? (
+                  <div className="review-change-list">
+                    {(state.detail.changes || []).map((change) => (
+                      <article key={change.field}>
+                        <strong>{change.field}</strong>
+                        <div><span>{t.reviewPrevious}</span><pre>{change.previous || '-'}</pre></div>
+                        <div><span>{t.reviewCurrent}</span><pre>{change.current || '-'}</pre></div>
+                      </article>
+                    ))}
+                  </div>
+                ) : <p className="empty-detail">{t.reviewNoChanges}</p>}
+              </ReviewSection>
+
+              {state.detail.adpYaml ? <ReviewSection title={t.reviewADP} icon={Terminal}><pre className="review-adp">{state.detail.adpYaml}</pre></ReviewSection> : null}
+
+              <ReviewSection title={t.reviewHistory} icon={Calendar}>
+                {(state.detail.history || []).length ? (
+                  <div className="review-history">
+                    {(state.detail.history || []).map((event) => <div key={event.id}><ReviewBadge status={event.toStatus} t={t} /><strong>{event.actorId || '-'}</strong><span>{formatDate(event.createdAt, locale)}</span>{event.note ? <p>{event.note}</p> : null}</div>)}
+                  </div>
+                ) : <p className="empty-detail">{t.reviewNoHistory}</p>}
+              </ReviewSection>
+            </div>
+          ) : null}
+
+          {state.status === 'ready' && item && tab === 'preview' ? (
+            <div className="review-market-preview">
+              <div className="media-panel"><img src={item.screenshot} alt="" /></div>
+              <div><span className="section-kicker">{displayType(item.type, t)}</span><h2>{localized(item.name, locale)}</h2><p>{localized(item.description, locale)}</p><div className="tag-row">{(item.tags || []).map((tag) => <span key={tag}>#{tag}</span>)}</div></div>
+              <section className="readme-section"><h3>{t.readmeFallback}</h3><p>{localized(item.readme, locale)}</p></section>
+            </div>
+          ) : null}
+        </div>
+
+        {state.status === 'ready' && item?.reviewStatus === 'pending' ? (
+          <footer className="review-decision-bar">
+            <label><span>{t.reviewDecisionNote}</span><textarea value={note} onChange={(event) => { setNote(event.target.value); setNoteError(''); }} placeholder={t.reviewDecisionPlaceholder} /></label>
+            {noteError ? <small>{noteError}</small> : null}
+            <div><button className="secondary-action is-danger" type="button" disabled={busy} onClick={() => decide('rejected')}><AlertCircle size={15} />{t.reviewReject}</button><button className="primary-action" type="button" disabled={busy} onClick={() => decide('approved')}><CheckCircle2 size={15} />{t.reviewApprove}</button></div>
+          </footer>
+        ) : null}
+      </aside>
+    </div>
+  );
+}
+
+function ReviewSection({ title, icon: Icon, children }) {
+  return <section className="review-section"><h3><Icon size={16} />{title}</h3>{children}</section>;
+}
+
+function ReviewCodeBlock({ label, value }) {
+  return <div className="review-code-block"><strong>{label}</strong><pre>{JSON.stringify(value ?? null, null, 2)}</pre></div>;
 }
 
 function SkillCatalogView({ items, activeSkillCategory, isAuthenticated, locale, t, onDetails, onInstall, onDownload, onFavorite, downloadingKey, favoritingKey }) {
