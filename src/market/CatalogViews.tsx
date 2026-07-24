@@ -153,42 +153,43 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
           <h2>
             {localized(item.name, locale)}
           </h2>
-          <span className="card-version">{formatVersionLabel(item.version)}</span>
+          <div className="card-head-meta">
+            <span className="card-version">{formatVersionLabel(item.version)}</span>
+            {isAuthenticated ? (
+              <button
+                className={item.favorited ? 'card-favorite-action is-active' : 'card-favorite-action'}
+                type="button"
+                onClick={onFavorite}
+                disabled={isFavoriting}
+                title={favoriteLabel}
+                aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
+              >
+                <Heart size={13} fill={item.favorited ? 'currentColor' : 'none'} />
+                <span>{formatCount(item.favoriteCount)}</span>
+              </button>
+            ) : (
+              <span className="card-favorite-stat" title={t.favorites} aria-label={`${t.favorites}: ${formatCount(item.favoriteCount)}`}>
+                <Heart size={13} />
+                <span>{formatCount(item.favoriteCount)}</span>
+              </span>
+            )}
+          </div>
         </div>
         <p>{localized(item.description, locale) || t.noDescription}</p>
-        <div className="card-author" title={`${t.author}: ${item.author}`}>
+        <div className="card-author">
           <User size={13} />
-          <span>{item.author}</span>
+          <span className="card-author-name" title={`${t.author}: ${item.author}`}>{item.author}</span>
+          <span className="card-author-separator" aria-hidden="true">·</span>
+          <span className="card-download-stat" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
+            <Download size={13} />
+            <span>{formatCount(item.downloads)}</span>
+          </span>
         </div>
         <div className="tag-row">
           {skillLabel ? <span className={item.skillKind === 'package' ? 'skill-kind-chip package' : 'skill-kind-chip'}>{skillLabel}</span> : null}
           {skillCategory ? <span>{skillCategory}</span> : null}
           {(item.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
           {platform ? <span className="platform-chip">{platform}</span> : null}
-        </div>
-        <div className="card-stats">
-          <span className="stat-pill" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
-            <Download size={13} />
-            <span>{formatCount(item.downloads)}</span>
-          </span>
-          {isAuthenticated ? (
-            <button
-              className={item.favorited ? 'stat-pill stat-button is-active' : 'stat-pill stat-button'}
-              type="button"
-              onClick={onFavorite}
-              disabled={isFavoriting}
-              title={favoriteLabel}
-              aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
-            >
-              <Heart size={13} fill={item.favorited ? 'currentColor' : 'none'} />
-              <span>{formatCount(item.favoriteCount)}</span>
-            </button>
-          ) : (
-            <span className="stat-pill" title={t.favorites} aria-label={`${t.favorites}: ${formatCount(item.favoriteCount)}`}>
-              <Heart size={13} />
-              <span>{formatCount(item.favoriteCount)}</span>
-            </span>
-          )}
         </div>
         {item.skillKind === 'package' && item.includedSkills.length ? (
           <div className="card-included">

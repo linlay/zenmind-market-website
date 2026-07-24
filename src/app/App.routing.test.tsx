@@ -220,4 +220,24 @@ describe('market routing', () => {
     });
     expect(screen.getByRole('heading', { name: 'Management Center' })).toBeInTheDocument();
   });
+
+  it('places sign out inside the rightmost user avatar menu', async () => {
+    stubMarketAPI({ id: 'admin-1', role: 'admin' });
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const avatar = await screen.findByRole('button', { name: 'admin-1, Admin' });
+    expect(screen.queryByRole('menuitem', { name: 'Sign out' })).not.toBeInTheDocument();
+
+    fireEvent.click(avatar);
+
+    expect(screen.getByRole('menu', { name: 'admin-1' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('menuitem', { name: 'Sign out' })).not.toBeInTheDocument();
+  });
 });

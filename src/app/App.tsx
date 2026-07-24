@@ -1,5 +1,5 @@
 // @ts-nocheck -- legacy controller types are being tightened feature-by-feature.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, matchPath, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppSurface } from './AppSurface';
@@ -136,6 +136,8 @@ export function App() {
   const [unpublishingKey, setUnpublishingKey] = useState('');
   const [downloadingKey, setDownloadingKey] = useState('');
   const [favoritingKey, setFavoritingKey] = useState('');
+  const [isUserMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
   const t = getMarketCopy(
     locale,
     (key, fallback, values) => i18n.t(`market.${key}`, {
@@ -145,6 +147,28 @@ export function App() {
     }),
   );
   const isAuthenticated = Boolean(authSession?.user?.id);
+  const userRoleLabel = authSession?.user?.role === 'admin' ? t.loginAsAdmin : t.loginAsCreator;
+  const userDisplayName = authSession?.user?.name
+    || authSession?.user?.username
+    || authSession?.user?.id
+    || userRoleLabel;
+  const userInitial = Array.from(String(userDisplayName).trim())[0]?.toUpperCase() || 'U';
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return undefined;
+    const closeOnOutsidePress = (event) => {
+      if (!userMenuRef.current?.contains(event.target)) setUserMenuOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setUserMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePress);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isUserMenuOpen]);
 
   const loadCatalog = useCallback(async (signal) => {
     setStatus('loading');
@@ -407,6 +431,7 @@ export function App() {
   }
 
   function handleLogout() {
+    setUserMenuOpen(false);
     window.location.assign(`${apiBase}/auth/oidc/logout`);
   }
 
@@ -787,17 +812,12 @@ export function App() {
             <Languages size={15} />
             <span>{locale === 'zh-CN' ? '中' : 'EN'}</span>
           </button>
-          {authSession ? (
-            <button className="language-button" type="button" onClick={handleLogout} title={t.logout}>
-              <LogOut size={15} />
-              <span>{authSession.user?.role === 'admin' ? t.loginAsAdmin : t.loginAsCreator}</span>
-            </button>
-          ) : (
+          {!authSession ? (
             <button className="language-button" type="button" onClick={startLogin}>
               <LogIn size={15} />
               <span>{t.login}</span>
             </button>
-          )}
+          ) : null}
           {authSession?.user?.role === 'admin' ? (
             <button className="creator-button" type="button" onClick={() => navigate(isAdminOpen ? '/' : '/admin')}>
               <ShieldCheck size={15} />
@@ -826,6 +846,36 @@ export function App() {
                 <span>{t.publish}</span>
               </button>
             </>
+          ) : null}
+          {authSession ? (
+            <div className="user-menu" ref={userMenuRef}>
+              <button
+                className="user-avatar-button"
+                type="button"
+                onClick={() => setUserMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={isUserMenuOpen}
+                aria-label={`${userDisplayName}, ${userRoleLabel}`}
+                title={userDisplayName}
+              >
+                <span>{userInitial}</span>
+              </button>
+              {isUserMenuOpen ? (
+                <div className="user-menu-popover" role="menu" aria-label={userDisplayName}>
+                  <div className="user-menu-profile">
+                    <span className="user-menu-avatar" aria-hidden="true">{userInitial}</span>
+                    <div>
+                      <strong title={userDisplayName}>{userDisplayName}</strong>
+                      <span>{userRoleLabel}</span>
+                    </div>
+                  </div>
+                  <button className="user-menu-logout" type="button" role="menuitem" onClick={handleLogout}>
+                    <LogOut size={15} />
+                    <span>{t.logout}</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </header>
