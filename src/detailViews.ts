@@ -1,4 +1,4 @@
-export function normalizeDetailViewCount(value) {
+export function normalizeDetailViewCount(value: unknown) {
   if (typeof value !== 'number' && typeof value !== 'string') return 0;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;

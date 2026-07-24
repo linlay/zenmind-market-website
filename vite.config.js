@@ -1,31 +1,54 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
-const marketBrand = process.env.BRAND?.trim() || 'zenmind';
+function envPort(value, fallback) {
+  const port = Number.parseInt(value, 10);
+  return Number.isInteger(port) && port > 0 && port <= 65535 ? port : fallback;
+}
 
-export default defineConfig({
-  base: '/',
-  define: {
-    'import.meta.env.VITE_MARKET_BRAND': JSON.stringify(marketBrand),
-  },
-  plugins: [react()],
-  server: {
-    host: '127.0.0.1',
-    port: 5173,
-    strictPort: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8088',
-        changeOrigin: true,
-      },
-      '/npm': {
-        target: 'http://localhost:8088',
-        changeOrigin: true,
-      },
-      '/artifacts': {
-        target: 'http://localhost:8088',
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const marketBrand = env.VITE_MARKET_BRAND?.trim() || env.BRAND?.trim() || 'zenmind';
+  const apiProxyTarget = env.MARKET_API_PROXY_TARGET?.trim() || 'http://127.0.0.1:8088';
+  const proxyToken = env.MARKET_DEV_PROXY_TOKEN?.trim();
+  const proxyUserID = env.MARKET_DEV_USER_ID?.trim();
+  const proxyHeaders = proxyToken && proxyUserID
+    ? {
+        'X-ZenMind-Market-Proxy-Token': proxyToken,
+        'X-ZenMind-User-ID': proxyUserID,
+        'X-ZenMind-User-Role': env.MARKET_DEV_USER_ROLE?.trim() || 'creator',
+      }
+    : undefined;
+
+  return {
+    base: env.VITE_BASE_PATH?.trim() || '/',
+    define: {
+      'import.meta.env.VITE_MARKET_BRAND': JSON.stringify(marketBrand),
+    },
+    plugins: [react()],
+    test: {
+      environment: 'jsdom',
+      setupFiles: './src/test/setup.ts',
+    },
+    server: {
+      host: env.VITE_DEV_HOST?.trim() || '127.0.0.1',
+      port: envPort(env.VITE_DEV_PORT, 5173),
+      strictPort: env.VITE_DEV_STRICT_PORT?.trim().toLowerCase() !== 'false',
+      proxy: {
+        '/api': {
+          target: apiProxyTarget,
+          changeOrigin: true,
+          headers: proxyHeaders,
+        },
+        '/npm': {
+          target: env.MARKET_NPM_PROXY_TARGET?.trim() || apiProxyTarget,
+          changeOrigin: true,
+        },
+        '/artifacts': {
+          target: env.MARKET_ARTIFACT_PROXY_TARGET?.trim() || apiProxyTarget,
+          changeOrigin: true,
+        },
       },
     },
-  },
+  };
 });
