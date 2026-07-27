@@ -148,8 +148,6 @@ const translations = {
     profileEmail: '邮箱',
     profileRole: '角色',
     profileUnavailable: '认证中心未提供',
-    creatorLocalMode: '已通过 OIDC 登录',
-    creatorLocalModeBody: '身份由配置的第三方认证服务验证，市场仅使用服务端会话 Cookie。',
     reviewCenter: '审核中心',
     reviewStatus: '审核状态',
     reviewPending: '待审核',
@@ -489,8 +487,6 @@ const translations = {
     profileEmail: 'Email',
     profileRole: 'Role',
     profileUnavailable: 'Not provided by the identity provider',
-    creatorLocalMode: 'Signed in with OIDC',
-    creatorLocalModeBody: 'Identity is verified by the configured third-party provider; Market uses only a server-side session cookie.',
     reviewCenter: 'Review Center',
     reviewStatus: 'Review status',
     reviewPending: 'Pending',
@@ -825,11 +821,9 @@ export function App() {
   const [selectedPlatformKey, setSelectedPlatformKey] = useState('');
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [toast, setToast] = useState(null);
-  const [isPublishOpen, setPublishOpen] = useState(false);
+  const [activePage, setActivePage] = useState('market');
   const [publishSource, setPublishSource] = useState(null);
   const [isPublishing, setPublishing] = useState(false);
-  const [isCreatorOpen, setCreatorOpen] = useState(false);
-  const [isAdminOpen, setAdminOpen] = useState(false);
   const [authSession, setAuthSession] = useState(null);
   const [creatorItems, setCreatorItems] = useState([]);
   const [favoriteItems, setFavoriteItems] = useState([]);
@@ -844,6 +838,19 @@ export function App() {
 
   const t = translations[locale];
   const isAuthenticated = Boolean(authSession?.user?.id);
+  const isPublishOpen = activePage === 'publish';
+  const isCreatorOpen = activePage === 'creator';
+  const isAdminOpen = activePage === 'admin';
+
+  function navigateTo(page) {
+    setActivePage(page);
+    if (page !== 'publish') setPublishSource(null);
+  }
+
+  function openPublish(source = null) {
+    setPublishSource(source);
+    setActivePage('publish');
+  }
 
   const loadCatalog = useCallback(async (signal) => {
     setStatus('loading');
@@ -1426,8 +1433,7 @@ export function App() {
       await loadCreatorItems(undefined, authSession);
       if (authSession.user?.role === 'admin') await loadAdminReviews(undefined, authSession);
       setActiveCategory(type);
-      setPublishOpen(false);
-      setPublishSource(null);
+      navigateTo('market');
       formElement.reset();
       notify(t.publishSuccess(name || id), 'success');
     } catch (reason) {
@@ -1472,7 +1478,7 @@ export function App() {
             </button>
           )}
           {authSession?.user?.role === 'admin' ? (
-            <button className="creator-button" type="button" onClick={() => { setAdminOpen((value) => !value); setCreatorOpen(false); }}>
+            <button className="creator-button" type="button" onClick={() => navigateTo(isAdminOpen ? 'market' : 'admin')}>
               <ShieldCheck size={15} />
               <span>{isAdminOpen ? t.backToMarket : t.adminReviewEntry}</span>
             </button>
@@ -1482,10 +1488,7 @@ export function App() {
               <button
                 className="creator-button"
                 type="button"
-                onClick={() => {
-                  setCreatorOpen((value) => !value);
-                  setAdminOpen(false);
-                }}
+                onClick={() => navigateTo(isCreatorOpen ? 'market' : 'creator')}
               >
                 {isCreatorOpen ? <Store size={15} /> : <User size={15} />}
                 <span>{isCreatorOpen ? t.backToMarket : t.creatorCenter}</span>
@@ -1493,15 +1496,10 @@ export function App() {
               <button
                 className="publish-button"
                 type="button"
-                onClick={() => {
-                  setCreatorOpen(false);
-                  setAdminOpen(false);
-                  setPublishSource(null);
-                  setPublishOpen(true);
-                }}
+                onClick={() => (isPublishOpen ? navigateTo('market') : openPublish())}
               >
-                <Plus size={15} />
-                <span>{t.publish}</span>
+                {isPublishOpen ? <Store size={15} /> : <Plus size={15} />}
+                <span>{isPublishOpen ? t.backToMarket : t.publish}</span>
               </button>
             </>
           ) : null}
@@ -1514,7 +1512,7 @@ export function App() {
           locale={locale}
           availableSkills={publishableSkills}
           initialItem={publishSource}
-          onClose={() => { setPublishOpen(false); setPublishSource(null); }}
+          onClose={() => navigateTo('market')}
           onSubmit={handlePublish}
           isPublishing={isPublishing}
         />
@@ -1525,8 +1523,6 @@ export function App() {
           comments={adminComments}
           locale={locale}
           t={t}
-          onBack={() => setAdminOpen(false)}
-          onPublish={() => { setPublishSource(null); setPublishOpen(true); setAdminOpen(false); }}
           onDetails={openDetailsForSurface}
           onReview={handleReviewUpdate}
           reviewingKey={reviewingKey}
@@ -1545,9 +1541,7 @@ export function App() {
           authSession={authSession}
           locale={locale}
           t={t}
-          onBack={() => setCreatorOpen(false)}
-          onPublish={() => { setPublishSource(null); setPublishOpen(true); setCreatorOpen(false); }}
-          onPublishVersion={(item) => { setPublishSource(item); setPublishOpen(true); setCreatorOpen(false); }}
+          onPublishVersion={(item) => openPublish(item)}
           onDetails={openDetailsForSurface}
           onReview={null}
           reviewingKey={reviewingKey}
@@ -1693,8 +1687,6 @@ function AdminCenter({
   comments,
   locale,
   t,
-  onBack,
-  onPublish,
   onDetails,
   onReview,
   reviewingKey,
@@ -1748,10 +1740,6 @@ function AdminCenter({
           <span className="section-kicker"><ShieldCheck size={14} />{t.adminManagement}</span>
           <h1>{t.adminManagement}</h1>
           <p>{t.adminManagementSubtitle}</p>
-        </div>
-        <div className="creator-actions">
-          <button className="secondary-action" type="button" onClick={onBack}><Store size={15} /><span>{t.backToMarket}</span></button>
-          <button className="primary-action" type="button" onClick={onPublish}><Upload size={15} /><span>{t.publish}</span></button>
         </div>
       </div>
 
@@ -1862,8 +1850,6 @@ function CreatorCenter({
   authSession,
   locale,
   t,
-  onBack,
-  onPublish,
   onPublishVersion,
   onDetails,
   onReview,
@@ -1941,16 +1927,6 @@ function CreatorCenter({
           <h1>{isAdminMode ? t.reviewCenter : t.creatorTitle}</h1>
           <p>{isAdminMode ? t.reviewAdminTokenHint : t.creatorSubtitle}</p>
         </div>
-        <div className="creator-actions">
-          <button className="secondary-action" type="button" onClick={onBack}>
-            <Store size={15} />
-            <span>{t.backToMarket}</span>
-          </button>
-          <button className="primary-action" type="button" onClick={onPublish}>
-            <Upload size={15} />
-            <span>{t.publish}</span>
-          </button>
-        </div>
       </div>
 
       <div className="creator-scroll">
@@ -1969,21 +1945,14 @@ function CreatorCenter({
             <div><span>{t.profileRole}</span><strong>{profileRole}</strong></div>
           </section>
 
-          <section className="creator-local-banner">
-            <AlertCircle size={17} />
-            <div className="creator-local-copy">
-              <strong>{t.creatorLocalMode}</strong>
-              <small>{t.creatorLocalModeBody}</small>
+          {isAdminMode ? (
+            <div className="creator-review-loader">
+              <button className="table-action" type="button" onClick={onLoadAdminReviews} disabled={isLoadingAdminReviews}>
+                <RefreshCw size={13} />
+                <span>{t.reviewLoadAdminData}</span>
+              </button>
             </div>
-            {isAdminMode ? (
-              <div className="creator-review-loader">
-                <button className="table-action" type="button" onClick={onLoadAdminReviews} disabled={isLoadingAdminReviews}>
-                  <RefreshCw size={13} />
-                  <span>{t.reviewLoadAdminData}</span>
-                </button>
-              </div>
-            ) : null}
-          </section>
+          ) : null}
 
           <section className="creator-panel compact">
             <div className="panel-head">
@@ -2978,10 +2947,6 @@ function PublishPage({ t, locale, availableSkills = [], initialItem = null, onCl
             <h2>{updateMode ? t.publishVersionTitle : t.publishTitle}</h2>
             <p>{updateMode ? t.publishVersionBody : t.publishBody}</p>
           </div>
-          <button className="secondary-action" type="button" onClick={onClose} disabled={isPublishing}>
-            <ArrowRight size={14} />
-            <span>{t.backToMarket}</span>
-          </button>
         </div>
         {!updateMode ? renderStepIndicator() : null}
         {step === 'type' ? renderTypePicker() : null}
