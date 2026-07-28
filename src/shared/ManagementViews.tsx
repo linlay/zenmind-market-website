@@ -47,6 +47,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { errorMessage, requestJSON } from '../api/client';
 import {
+  apiBase,
   mergeCatalogItem,
   normalizeReviewStatusForUI,
   localized,
@@ -178,7 +179,12 @@ export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, on
                       <div><strong>{artifact.fileName || artifact.platformKey}</strong><span>{artifact.archiveType} · {formatBytes(artifact.sizeBytes)}</span></div>
                       <div className="review-artifact-actions">
                         <span>{artifact.platformKey}</span>
-                        <a className="review-artifact-download" href={artifact.url} download={artifact.fileName || undefined}>
+                        <a
+                          className="review-artifact-download"
+                          href={reviewArtifactDownloadURL(item, artifact)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           <Download size={14} />
                           {t.downloadArtifact}
                         </a>
@@ -264,4 +270,12 @@ export function ReviewSection({ title, icon: Icon, children }) {
 
 export function ReviewCodeBlock({ label, value }) {
   return <div className="review-code-block"><strong>{label}</strong><pre>{JSON.stringify(value ?? null, null, 2)}</pre></div>;
+}
+
+export function reviewArtifactDownloadURL(item, artifact) {
+  const query = new URLSearchParams({
+    version: item?.version || item?.latestVersion || '',
+    platform: artifact?.platformKey || '',
+  });
+  return `${apiBase}/admin/reviews/${encodeURIComponent(item?.type || '')}/${encodeURIComponent(item?.id || '')}/artifact/download?${query}`;
 }
