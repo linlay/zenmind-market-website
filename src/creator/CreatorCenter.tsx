@@ -64,6 +64,11 @@ import {
 } from '../shared/formatters';
 
 import { EmptyInline, ReviewBadge, VersionHistoryModal } from '../shared/ManagementViews';
+
+export function hasPublishedRelease(item) {
+  return item?.reviewStatus === 'approved';
+}
+
 export function CreatorCenter({
   mode = 'creator',
   items,
@@ -354,20 +359,24 @@ export function CreatorCenter({
                           <span>{t.reviewReject}</span>
                         </button>
                       ) : null}
-                      <button className="table-action" type="button" onClick={() => openVersions(item)}>
-                        <Calendar size={14} />
-                        <span>{t.creatorVersions}</span>
-                      </button>
+                      {hasPublishedRelease(item) ? (
+                        <button className="table-action" type="button" onClick={() => openVersions(item)}>
+                          <Calendar size={14} />
+                          <span>{t.creatorVersions}</span>
+                        </button>
+                      ) : null}
                       {!isAdminMode && item.reviewStatus === 'approved' && onPublishVersion ? (
                         <button className="table-action" type="button" disabled={item.pendingReviewStatus === 'pending'} onClick={() => onPublishVersion(item)}>
                           <Upload size={14} />
                           <span>{t.creatorPublishVersion}</span>
                         </button>
                       ) : null}
-                      <button className="table-action" type="button" onClick={() => onDetails(item)}>
-                        <ArrowRight size={14} />
-                        <span>{t.creatorOpenMarket}</span>
-                      </button>
+                      {hasPublishedRelease(item) ? (
+                        <button className="table-action" type="button" onClick={() => onDetails(item)}>
+                          <ArrowRight size={14} />
+                          <span>{t.creatorOpenMarket}</span>
+                        </button>
+                      ) : null}
                     </span>
                   </span>
                   </div>
