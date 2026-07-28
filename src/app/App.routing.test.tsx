@@ -51,6 +51,9 @@ describe('market routing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Language' }));
 
     expect(await screen.findByPlaceholderText('搜索扩展、插件、沙箱、工具...')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '功能市场' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /全部功能/ })).toBeInTheDocument();
+    expect(document.title).toBe('功能市场');
     expect(window.localStorage.getItem('zenmind-market:locale')).toBe('zh-CN');
   });
 

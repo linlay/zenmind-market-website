@@ -422,6 +422,10 @@ export function App() {
     : { title: t.emptyTitle, body: t.emptyBody };
   const brandTitle = localized(marketBrand.name, locale);
 
+  useEffect(() => {
+    document.title = brandTitle;
+  }, [brandTitle]);
+
   function notify(message, tone = 'info') {
     const id = window.setTimeout(() => setToast(null), 3000);
     setToast({ message, tone, id });

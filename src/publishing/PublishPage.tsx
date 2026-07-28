@@ -383,7 +383,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                 </label>
                 <label>
                   <span>{t.author}</span>
-                  <input name="author" defaultValue={updateMode ? initialItem.author || '' : ''} placeholder="ZenMind" />
+                  <input name="author" defaultValue={updateMode ? initialItem.author || '' : ''} placeholder={t.defaultAuthor} />
                 </label>
                 <label className="full">
                   <span>{t.platformDescription}</span>

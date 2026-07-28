@@ -38,7 +38,7 @@ export const defaultMediaImage = svgDataUri(`
 `);
 
 export const brandNames = {
-  zenmind: { 'zh-CN': 'ZenMind 市场', 'en-US': 'ZenMind Market' },
+  zenmind: { 'zh-CN': '功能市场', 'en-US': 'Capability Market' },
   cutej: { 'zh-CN': '小君 AI 市场', 'en-US': 'CuteJ Market' },
 };
 
@@ -119,7 +119,7 @@ export function mergeCatalogItem(apiItem) {
     screenshot: apiItem.metadata?.screenshot || apiItem.metadata?.icon || defaultMediaImage,
     videoThumb: apiItem.metadata?.videoThumb || '',
     hasVideo: Boolean(apiItem.metadata?.videoThumb || apiItem.metadata?.videoUrl),
-    author: apiItem.author || apiItem.metadata?.author || 'ZenMind',
+    author: apiItem.author || apiItem.metadata?.author || '',
     createdAt: apiItem.createdAt || apiItem.publishedAt || '',
     size: formatAssetSize(apiItem),
     downloadCount,
@@ -196,7 +196,7 @@ export function formatBrandLabel(value) {
     .trim()
     .split(/\s+/)
     .filter(Boolean);
-  if (!words.length) return 'ZenMind';
+  if (!words.length) return 'Market';
   return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
 

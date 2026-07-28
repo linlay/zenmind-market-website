@@ -1,4 +1,4 @@
-# ZenMind Market Website
+# Capability Market Website
 
 React + Vite marketplace browser that can be mounted at `/` or a runtime
 sub-path such as `/market/`.
@@ -76,5 +76,3 @@ NGINX_BASE_PATH=/market
 This serves the website at `/market/`, configures React Router with `/market` as
 its basename, and proxies browser API requests from `/market/api/` to the Market
 server. Do not set `VITE_MARKET_API_BASE` for this deployment mode.
-
-# zenmind-market-website

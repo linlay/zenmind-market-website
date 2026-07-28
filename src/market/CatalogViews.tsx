@@ -263,7 +263,7 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
               <div className="meta-row">
                 <User size={14} />
                 <span>{t.developer}</span>
-                <strong>{item.author || 'ZenMind'}</strong>
+                <strong>{item.author || t.defaultAuthor}</strong>
               </div>
               <div className="meta-row">
                 <Calendar size={14} />

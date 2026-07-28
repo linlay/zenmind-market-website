@@ -387,7 +387,7 @@ export function CreatorCenter({
                     <img src={item.icon || item.screenshot} alt="" />
                     <span>
                       <strong>{localized(item.name, locale) || item.id}</strong>
-                      <small>{item.author || 'ZenMind'} · {displayType(item.type, t)}</small>
+                      <small>{item.author || t.defaultAuthor} · {displayType(item.type, t)}</small>
                     </span>
                   </button>
                 ))}
