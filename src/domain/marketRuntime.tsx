@@ -56,6 +56,12 @@ export const categoryMeta = [
   { id: 'software-package', icon: HardDrive, colorClass: 'is-emerald' },
 ];
 
+export const hiddenMarketTypeIDs = ['plugin', 'sandbox-image', 'pet', 'website-app'];
+
+export function isMarketTypeVisible(type) {
+  return !hiddenMarketTypeIDs.includes(type);
+}
+
 export function publishTypeOptions() {
   return [
     { id: 'skill', type: 'skill', skillKind: 'single', icon: Brain, label: (t) => t.skillSingle },
@@ -70,7 +76,9 @@ export function publishTypeOptions() {
   ];
 }
 
-export const sidebarCategoryMeta = categoryMeta.filter((category) => category.id !== 'pet');
+export const sidebarCategoryMeta = categoryMeta.filter(
+  (category) => category.id !== 'pet' && isMarketTypeVisible(category.id),
+);
 export const skillCategoryFilters = ['all', 'document', 'data', 'coding', 'browser', 'office', 'content', 'media', 'search', 'system', 'integration', 'automation', 'other'];
 export const skillScenarioOptions = ['productivity', 'developer', 'research', 'enterprise', 'education', 'creator'];
 export const skillLevelOptions = ['beginner', 'intermediate', 'advanced'];

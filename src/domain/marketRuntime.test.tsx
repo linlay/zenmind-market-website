@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isMarketTypeVisible,
   marketBrand,
   mergeCatalogItem,
+  sidebarCategoryMeta,
 } from './market';
 
 describe('market catalog normalization', () => {
@@ -18,5 +20,17 @@ describe('market catalog normalization', () => {
   it('uses localized capability-market branding without a ZenMind label', () => {
     expect(marketBrand.name['zh-CN']).toBe('功能市场');
     expect(marketBrand.name['en-US']).toBe('Capability Market');
+  });
+
+  it('hides disabled market categories while retaining their data-model types', () => {
+    const categoryIDs = sidebarCategoryMeta.map((category) => category.id);
+
+    expect(categoryIDs).not.toContain('plugin');
+    expect(categoryIDs).not.toContain('sandbox-image');
+    expect(categoryIDs).not.toContain('pet');
+    expect(categoryIDs).not.toContain('website-app');
+    expect(isMarketTypeVisible('agent')).toBe(true);
+    expect(isMarketTypeVisible('plugin')).toBe(false);
+    expect(isMarketTypeVisible('pet')).toBe(false);
   });
 });

@@ -57,22 +57,36 @@ describe('market routing', () => {
     expect(window.localStorage.getItem('zenmind-market:locale')).toBe('zh-CN');
   });
 
-  it('updates the URL when a visitor chooses a market category', async () => {
+  it('hides disabled categories from the market navigation', async () => {
     stubMarketAPI();
     render(
       <MemoryRouter initialEntries={['/']}>
-        <CurrentPath />
         <App />
       </MemoryRouter>,
     );
 
     await screen.findByText('Demo plugin');
-    fireEvent.click(screen.getByRole('button', { name: /Plugins/ }));
+    expect(screen.queryByRole('button', { name: /Plugins/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Sandboxes/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Desktop Pets/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /WebApps/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Agents/ })).toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(screen.getByLabelText('current path')).toHaveTextContent('/category/plugin');
-    });
-    expect(screen.getByRole('heading', { name: 'Plugins' })).toBeInTheDocument();
+  it('hides disabled component types from new publications', async () => {
+    stubMarketAPI({ id: 'creator-1', role: 'creator' });
+    render(
+      <MemoryRouter initialEntries={['/publish']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Choose what to publish' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Plugins/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Sandboxes/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Desktop Pets/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /WebApps/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Agents/ })).toBeInTheDocument();
   });
 
   it('stores a skill subcategory selection in the URL', async () => {

@@ -4,6 +4,8 @@ export {
   categoryMeta,
   creatorQualityIssues,
   displayType,
+  hiddenMarketTypeIDs,
+  isMarketTypeVisible,
   isSkillPackage,
   localized,
   marketBrand,

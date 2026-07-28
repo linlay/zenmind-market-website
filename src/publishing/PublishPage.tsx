@@ -55,6 +55,7 @@ import {
   defaultArchiveTypeFor,
 } from '../domain/publishing';
 import {
+  isMarketTypeVisible,
   localized,
   normalizeType,
   skillCategoryFilters,
@@ -88,6 +89,9 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [selectedSkillIDs, setSelectedSkillIDs] = useState(updateMode ? (initialItem.includedSkills || []).map((skill) => skill.id) : []);
 
   const publishTypes = publishTypeOptions();
+  const visiblePublishTypes = updateMode
+    ? publishTypes
+    : publishTypes.filter((option) => isMarketTypeVisible(option.type));
   const selectedTypeID = type === 'skill' && skillKind === 'package' ? 'skill-package' : type;
   const selectedType = publishTypes.find((entry) => entry.id === selectedTypeID) || publishTypes[0];
   const SelectedIcon = selectedType?.icon || PackageOpen;
@@ -148,7 +152,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           <p>{t.publishChooseTypeBody}</p>
         </div>
         <div className="publish-type-grid">
-          {publishTypes.map((option) => {
+          {visiblePublishTypes.map((option) => {
             const Icon = option.icon;
             return (
               <button className="publish-type-card" type="button" key={option.id} onClick={() => applyPublishType(option)}>
