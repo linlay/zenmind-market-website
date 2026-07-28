@@ -57,6 +57,7 @@ import {
   formatBytes,
   formatDate,
 } from './formatters';
+import { StateNotice } from './Feedback';
 
 export function VersionHistoryModal({ state, locale, t, onClose }) {
   const item = state.item;
@@ -175,7 +176,13 @@ export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, on
                   <article className="review-artifact" key={`${artifact.assetRole}:${artifact.platformKey}`}>
                     <div className="review-artifact-head">
                       <div><strong>{artifact.fileName || artifact.platformKey}</strong><span>{artifact.archiveType} · {formatBytes(artifact.sizeBytes)}</span></div>
-                      <span>{artifact.platformKey}</span>
+                      <div className="review-artifact-actions">
+                        <span>{artifact.platformKey}</span>
+                        <a className="review-artifact-download" href={artifact.url} download={artifact.fileName || undefined}>
+                          <Download size={14} />
+                          {t.downloadArtifact}
+                        </a>
+                      </div>
                     </div>
                     <dl className="review-hashes"><dt>SHA-256</dt><dd><code>{artifact.sha256}</code></dd><dt>Integrity</dt><dd><code>{artifact.integrity}</code></dd></dl>
                     <details>

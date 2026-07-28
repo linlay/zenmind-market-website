@@ -188,6 +188,33 @@
   gap: 3px;
 }
 
+.review-artifact-head .review-artifact-actions {
+  display: flex;
+  align-items: center;
+  align-self: start;
+  gap: 10px;
+}
+
+.review-artifact-download {
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--line));
+  border-radius: 8px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.review-artifact-download:hover,
+.review-artifact-download:focus-visible {
+  border-color: var(--brand);
+}
+
 .review-hashes {
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr);
