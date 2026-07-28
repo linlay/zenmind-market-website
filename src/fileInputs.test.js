@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { selectedFormFile } from './fileInputs.js';
+import { selectedFormFile } from './fileInputs.ts';
 
 function formWithFile(name, file) {
   return {

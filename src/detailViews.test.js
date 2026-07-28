@@ -6,7 +6,7 @@ import {
   reportDetailView,
   selectDetailOpener,
   summarizeDetailViews,
-} from './detailViews.js';
+} from './detailViews.ts';
 
 test('selects reporting only for market detail surfaces', () => {
   const calls = [];

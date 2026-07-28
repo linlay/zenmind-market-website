@@ -5,10 +5,10 @@ WORKDIR /src
 ARG BRAND=zenmind
 ENV BRAND=$BRAND
 
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
-COPY index.html vite.config.js ./
+COPY index.html vite.config.js tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
