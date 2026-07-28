@@ -226,28 +226,34 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
   const canDownload = hasArtifact(item, activePlatformKey) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
+  const readme = localized(item.readme, locale);
+  const localizedFeatures = localized(item.features, locale);
+  const features = Array.isArray(localizedFeatures) ? localizedFeatures.filter(Boolean) : [];
+  const hasCoreFeatures = Boolean(String(readme || '').trim() || features.length);
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="detail-modal" role="dialog" aria-modal="true" aria-label={localized(item.name, locale)} onMouseDown={(event) => event.stopPropagation()}>
         <button className="modal-close" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
         <div className="detail-grid">
           <section className="detail-main">
-            <div className="media-panel">
-              <img src={item.screenshot} alt="" />
-            </div>
+            {item.icon ? (
+              <div className="media-panel">
+                <img src={item.screenshot} alt="" />
+              </div>
+            ) : null}
             {item.hasVideo ? (
               <button className="video-panel" type="button" onClick={onToggleVideo}>
                 <img src={item.videoThumb} alt="" />
                 {videoPlaying ? <span className="video-running">{t.videoPlaying}</span> : <span className="play-overlay"><Play size={26} fill="currentColor" /></span>}
               </button>
             ) : null}
-            <section className="readme-section">
-              <h3>{localized(item.readmeTitle, locale) || t.readmeFallback}</h3>
-              <p>{localized(item.readme, locale)}</p>
-              <ul>
-                {(localized(item.features, locale) || []).map((feature) => <li key={feature}>{feature}</li>)}
-              </ul>
-            </section>
+            {hasCoreFeatures ? (
+              <section className="readme-section">
+                <h3>{localized(item.readmeTitle, locale) || t.readmeFallback}</h3>
+                {readme ? <p>{readme}</p> : null}
+                {features.length ? <ul>{features.map((feature) => <li key={feature}>{feature}</li>)}</ul> : null}
+              </section>
+            ) : null}
             <CommentSection item={item} isAuthenticated={isAuthenticated} locale={locale} t={t} onChanged={onCommentsChanged} />
           </section>
 

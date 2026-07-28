@@ -114,6 +114,10 @@ export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, on
   const rawItem = state.detail?.item || state.item;
   const item = rawItem ? mergeCatalogItem(rawItem) : null;
   const busy = item ? reviewingKey === `${item.type}:${item.id}` : false;
+  const readme = item ? localized(item.readme, locale) : '';
+  const localizedFeatures = item ? localized(item.features, locale) : [];
+  const features = Array.isArray(localizedFeatures) ? localizedFeatures.filter(Boolean) : [];
+  const hasCoreFeatures = Boolean(String(readme || '').trim() || features.length);
 
   async function decide(status) {
     const normalizedNote = note.trim();
@@ -222,9 +226,15 @@ export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, on
 
           {state.status === 'ready' && item && tab === 'preview' ? (
             <div className="review-market-preview">
-              <div className="media-panel"><img src={item.screenshot} alt="" /></div>
+              {item.icon ? <div className="media-panel"><img src={item.screenshot} alt="" /></div> : null}
               <div><span className="section-kicker">{displayType(item.type, t)}</span><h2>{localized(item.name, locale)}</h2><p>{localized(item.description, locale)}</p><div className="tag-row">{(item.tags || []).map((tag) => <span key={tag}>#{tag}</span>)}</div></div>
-              <section className="readme-section"><h3>{t.readmeFallback}</h3><p>{localized(item.readme, locale)}</p></section>
+              {hasCoreFeatures ? (
+                <section className="readme-section">
+                  <h3>{localized(item.readmeTitle, locale) || t.readmeFallback}</h3>
+                  {readme ? <p>{readme}</p> : null}
+                  {features.length ? <ul>{features.map((feature) => <li key={feature}>{feature}</li>)}</ul> : null}
+                </section>
+              ) : null}
             </div>
           ) : null}
         </div>

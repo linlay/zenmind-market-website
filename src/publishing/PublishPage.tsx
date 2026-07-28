@@ -199,24 +199,24 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             <h3>{t.publishBasicInfo}</h3>
             <div className="publish-section-grid">
               <label>
-                <span>{t.componentId}</span>
+                <span className="required-field-label">{t.componentId}</span>
                 <input name="id" required readOnly={updateMode} defaultValue={updateMode ? initialItem.id : ''} placeholder="my-agent" pattern="[a-z0-9._-]+" />
                 {updateMode ? <small className="field-hint">{t.publishVersionLocked}</small> : null}
               </label>
               <label>
-                <span>{t.name}</span>
+                <span className="required-field-label">{t.name}</span>
                 <input name="name" required defaultValue={updateMode ? localized(initialItem.name, locale) : ''} placeholder="My Agent" />
               </label>
               <label>
-                <span>{t.version}</span>
-                <input name="version" defaultValue={updateMode ? nextPatchVersion(initialItem.version) : '1.0.0'} />
+                <span className="required-field-label">{t.version}</span>
+                <input name="version" required defaultValue={updateMode ? nextPatchVersion(initialItem.version) : '1.0.0'} />
               </label>
               <label>
                 <span>{t.image}</span>
                 <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
               </label>
               <label className="full">
-                <span>{t.description}</span>
+                <span className="required-field-label">{t.description}</span>
                 <textarea name="description" rows="4" required defaultValue={updateMode ? localized(initialItem.description, locale) : ''} />
               </label>
             </div>
@@ -229,27 +229,27 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           {type === 'skill' ? (
             <>
               <label>
-                <span>{t.skillCategoryTitle}</span>
-                <select name="skillCategory" defaultValue={updateMode ? initialItem.skillCategory || 'other' : 'other'}>
+                <span className="required-field-label">{t.skillCategoryTitle}</span>
+                <select name="skillCategory" required defaultValue={updateMode ? initialItem.skillCategory || 'other' : 'other'}>
                   {skillCategoryFilters.filter((category) => category !== 'all').map((category) => <option value={category} key={category}>{t.skillCategories[category]}</option>)}
                 </select>
               </label>
               <label>
-                <span>{t.skillScenario}</span>
-                <select name="skillScenario" defaultValue={updateMode ? initialItem.skillScenario || 'productivity' : 'productivity'}>
+                <span className="required-field-label">{t.skillScenario}</span>
+                <select name="skillScenario" required defaultValue={updateMode ? initialItem.skillScenario || 'productivity' : 'productivity'}>
                   {skillScenarioOptions.map((scenario) => <option value={scenario} key={scenario}>{t.skillScenarios[scenario]}</option>)}
                 </select>
               </label>
               <label>
-                <span>{t.skillLevel}</span>
-                <select name="skillLevel" defaultValue={updateMode ? initialItem.skillLevel || 'beginner' : 'beginner'}>
+                <span className="required-field-label">{t.skillLevel}</span>
+                <select name="skillLevel" required defaultValue={updateMode ? initialItem.skillLevel || 'beginner' : 'beginner'}>
                   {skillLevelOptions.map((level) => <option value={level} key={level}>{t.skillLevels[level]}</option>)}
                 </select>
               </label>
               {skillKind === 'package' ? (
                 <div className="skill-picker full">
                   <div className="skill-picker-head">
-                    <span>{t.includedSkills}</span>
+                    <span className="required-field-label">{t.includedSkills}</span>
                     <small>{t.includedSkillsSelected(selectedSkillIDs.length)}</small>
                   </div>
                   <label className="skill-picker-search">
@@ -290,8 +290,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           ) : null}
           {type === 'sandbox-image' ? (
             <label>
-              <span>{t.sandboxKind}</span>
-              <select name="sandboxKind" value={sandboxKind} onChange={handleSandboxKindChange}>
+              <span className="required-field-label">{t.sandboxKind}</span>
+              <select name="sandboxKind" required value={sandboxKind} onChange={handleSandboxKindChange}>
                 <option value="environment-template">environment-template</option>
                 <option value="container-image">container-image</option>
               </select>
@@ -299,8 +299,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           ) : null}
           {type === 'website-app' ? (
             <label>
-              <span>{t.websiteKind}</span>
-              <select name="websiteKind" value={websiteKind} onChange={handleWebsiteKindChange}>
+              <span className="required-field-label">{t.websiteKind}</span>
+              <select name="websiteKind" required value={websiteKind} onChange={handleWebsiteKindChange}>
                 <option value="local-app">local-app</option>
                 <option value="external">external</option>
               </select>
@@ -308,14 +308,14 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           ) : null}
           {type === 'website-app' && websiteKind === 'external' ? (
             <label className="full">
-              <span>{t.metadataUrl}</span>
+              <span className="required-field-label">{t.metadataUrl}</span>
               <input name="metadataUrl" type="url" required defaultValue={updateMode ? initialItem.metadata?.url || '' : ''} placeholder="https://example.com/app" />
             </label>
           ) : null}
           {(type === 'software-package' || type === 'sandbox-image') ? (
             <label>
-              <span>{t.archiveType}</span>
-              <select name="archiveTypeVisible" value={archiveType} onChange={(event) => setArchiveType(event.target.value)}>
+              <span className="required-field-label">{t.archiveType}</span>
+              <select name="archiveTypeVisible" required value={archiveType} onChange={(event) => setArchiveType(event.target.value)}>
                 {archiveOptionsFor(type, { sandboxKind }).map((option) => <option value={option} key={option}>{option}</option>)}
               </select>
             </label>
@@ -330,7 +330,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             <div className="publish-section-grid">
           {!(type === 'skill' && skillKind === 'package') ? (
             <label className="full">
-              <span>{t.artifact}</span>
+              <span className={artifactRequired ? 'required-field-label' : ''}>{t.artifact}</span>
               <input name="artifact" type="file" required={artifactRequired} />
               {!artifactRequired ? <small className="field-hint">{t.artifactOptional}</small> : null}
             </label>

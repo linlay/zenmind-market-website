@@ -3616,6 +3616,12 @@ img {
   line-height: 1.4;
 }
 
+.required-field-label::after {
+  content: " *";
+  color: #dc2626;
+  font-weight: 800;
+}
+
 .publish-form .full {
   grid-column: 1 / -1;
 }
