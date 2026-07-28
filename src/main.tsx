@@ -4,10 +4,11 @@ import { App } from './app/App';
 import { BrowserRouter } from 'react-router-dom';
 import './i18n';
 import './styles.css';
+import { marketBasePath } from './domain/runtimeBase';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={marketBasePath || undefined}>
       <App />
     </BrowserRouter>
   </React.StrictMode>,

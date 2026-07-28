@@ -97,6 +97,7 @@ import {
   dateValue,
 } from '../shared/formatters';
 import { initialTheme } from '../shared/theme';
+import { marketHomePath } from '../domain/runtimeBase';
 
 export function App() {
   const navigate = useNavigate();
@@ -792,7 +793,7 @@ export function App() {
   return (
     <main className="market-shell">
       <header className="topbar">
-        <a className="brand" href={import.meta.env.BASE_URL} aria-label={brandTitle}>
+        <a className="brand" href={marketHomePath} aria-label={brandTitle}>
           <span className="brand-mark"><Shapes size={20} /></span>
           <span className="brand-copy">
             <strong>{brandTitle}</strong>

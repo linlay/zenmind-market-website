@@ -1,6 +1,7 @@
 # ZenMind Market Website
 
-React + Vite marketplace browser mounted at `/`.
+React + Vite marketplace browser that can be mounted at `/` or a runtime
+sub-path such as `/market/`.
 
 ```bash
 cp .env.example .env
@@ -19,8 +20,8 @@ Vite loads `.env` automatically during development and build.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `VITE_MARKET_BRAND` | `zenmind` | Market brand identifier. |
-| `VITE_MARKET_API_BASE` | `/api/v1` | API root used by the browser UI. |
-| `VITE_BASE_PATH` | `/` | Vite deployment base path. |
+| `VITE_MARKET_API_BASE` | runtime base + `/api/v1` | Optional build-time API root override. Leave unset for `NGINX_BASE_PATH` deployments. |
+| `VITE_BASE_PATH` | `./` | Vite asset base. Keep relative for runtime sub-path deployment. |
 | `VITE_DEV_HOST` | `127.0.0.1` | Vite development listen address. |
 | `VITE_DEV_PORT` | `5173` | Vite development port. |
 | `VITE_DEV_STRICT_PORT` | `true` | Fail instead of selecting another occupied port. |
@@ -35,7 +36,7 @@ Variables beginning with `MARKET_` above are read only by the Vite development s
 
 ## OIDC authentication
 
-The website delegates sign-in to the Market server. Selecting **Sign in** navigates the browser to `${VITE_MARKET_API_BASE}/auth/oidc/login`; after the third-party provider completes authorization, the server redirects back to the market and stores a signed HttpOnly session cookie. The browser restores the signed-in user from `/auth/me` and includes the cookie with catalog, favorite, creator, and admin requests.
+The website delegates sign-in to the Market server. Selecting **Sign in** navigates the browser to the resolved API base plus `/auth/oidc/login`; after the third-party provider completes authorization, the server redirects back to the market and stores a signed HttpOnly session cookie. The browser restores the signed-in user from `/auth/me` and includes the cookie with catalog, favorite, creator, and admin requests.
 
 Keep the website and API on the same public site origin (the bundled nginx configuration proxies `/api/` to the server). This is required for the session cookie and avoids exposing an OIDC client secret or access token to frontend code. Configure the provider and callback details through the server's `MARKET_OIDC_*` environment variables.
 
@@ -63,4 +64,17 @@ MARKET_OIDC_SUCCESS_REDIRECT=/
 ```
 
 Register the configured callback URL with the provider exactly. Keep `VITE_DEV_STRICT_PORT=true` so Vite fails rather than silently choosing another port and invalidating the registered callback.
+
+## Runtime sub-path deployment
+
+The container image supports a runtime path without rebuilding:
+
+```env
+NGINX_BASE_PATH=/market
+```
+
+This serves the website at `/market/`, configures React Router with `/market` as
+its basename, and proxies browser API requests from `/market/api/` to the Market
+server. Do not set `VITE_MARKET_API_BASE` for this deployment mode.
+
 # zenmind-market-website
