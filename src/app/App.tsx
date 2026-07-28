@@ -117,6 +117,7 @@ export function App() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [sortMode, setSortMode] = useState('popular');
+  const [catalogOrderOverride, setCatalogOrderOverride] = useState(null);
   const [theme, setTheme] = useState(initialTheme);
   const [selected, setSelected] = useState(null);
   const [selectedPlatformKey, setSelectedPlatformKey] = useState('');
@@ -177,10 +178,12 @@ export function App() {
     try {
       const data = await requestJSON(`${apiBase}/catalog`, { signal });
       setApiItems(Array.isArray(data.items) ? data.items : []);
+      setCatalogOrderOverride(null);
       setStatus('ready');
     } catch (reason) {
       if (reason?.name === 'AbortError') return;
       setApiItems([]);
+      setCatalogOrderOverride(null);
       setError(errorMessage(reason));
       setStatus('error');
     }
@@ -388,6 +391,7 @@ export function App() {
     return { categories };
   }, [catalog]);
 
+  const marketOrderSignature = [activeCategory, activeSkillCategory, locale, query.trim().toLowerCase(), sortMode].join('\u0000');
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const result = catalog.filter((item) => {
@@ -407,14 +411,27 @@ export function App() {
         ...(item.tags || []),
       ].join(' ').toLowerCase().includes(needle);
     });
-    return [...result].sort((a, b) => {
+    const compareItems = (a, b) => {
       if (sortMode === 'latest') return dateValue(b.updatedAt || b.publishedAt) - dateValue(a.updatedAt || a.publishedAt);
       if (sortMode === 'rating') return localized(a.name, locale).localeCompare(localized(b.name, locale));
       return (parseCount(b.downloads) - parseCount(a.downloads))
         || (parseCount(b.favoriteCount) - parseCount(a.favoriteCount))
         || localized(a.name, locale).localeCompare(localized(b.name, locale));
+    };
+    const positions = catalogOrderOverride?.signature === marketOrderSignature
+      ? new Map(catalogOrderOverride.keys.map((key, index) => [key, index]))
+      : null;
+    return [...result].sort((a, b) => {
+      if (positions) {
+        const aPosition = positions.get(`${a.type}:${a.id}`);
+        const bPosition = positions.get(`${b.type}:${b.id}`);
+        if (aPosition !== undefined && bPosition !== undefined) return aPosition - bPosition;
+        if (aPosition !== undefined) return -1;
+        if (bPosition !== undefined) return 1;
+      }
+      return compareItems(a, b);
     });
-  }, [activeCategory, activeSkillCategory, catalog, locale, query, sortMode]);
+  }, [activeCategory, activeSkillCategory, catalog, catalogOrderOverride, locale, marketOrderSignature, query, sortMode]);
 
   const currentCategoryName = activeCategory === 'all' ? t.all : t.categories[activeCategory];
   const emptyCopy = catalog.length === 0
@@ -542,6 +559,10 @@ export function App() {
       const id = encodeURIComponent(item.id);
       const updated = await requestJSON(`${apiBase}/${route}/${id}/favorite`, {
         method: item.favorited ? 'DELETE' : 'POST',
+      });
+      setCatalogOrderOverride({
+        signature: marketOrderSignature,
+        keys: filtered.map((entry) => `${entry.type}:${entry.id}`),
       });
       const updatedType = normalizeType(updated.type);
       setApiItems((items) => items.map((entry) => (

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import i18n from '../i18n';
@@ -257,5 +257,52 @@ describe('market routing', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('menuitem', { name: 'Sign out' })).not.toBeInTheDocument();
+  });
+
+  it('updates a favorite without reordering the current catalog view', async () => {
+    const alpha = {
+      id: 'alpha-agent',
+      type: 'agent',
+      name: 'Alpha Agent',
+      description: 'Alpha',
+      downloadCount: 0,
+      favoriteCount: 0,
+      favorited: false,
+    };
+    const beta = {
+      id: 'beta-agent',
+      type: 'agent',
+      name: 'Beta Agent',
+      description: 'Beta',
+      downloadCount: 0,
+      favoriteCount: 1,
+      favorited: false,
+    };
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/catalog')) return jsonResponse({ items: [alpha, beta] });
+      if (url.endsWith('/auth/me')) return jsonResponse({ user: { id: 'user-1', role: 'creator' } });
+      if (url.endsWith('/agents/alpha-agent/favorite')) {
+        return jsonResponse({ ...alpha, favoriteCount: 2, favorited: true });
+      }
+      return jsonResponse({});
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('heading', { name: 'Alpha Agent' });
+    const cardNames = () => screen.getAllByRole('article').map(
+      (article) => within(article).getByRole('heading', { level: 2 }).textContent,
+    );
+    expect(cardNames()).toEqual(['Beta Agent', 'Alpha Agent']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Favorite: 0' }));
+
+    await screen.findByRole('button', { name: 'Unfavorite: 2' });
+    expect(cardNames()).toEqual(['Beta Agent', 'Alpha Agent']);
   });
 });
