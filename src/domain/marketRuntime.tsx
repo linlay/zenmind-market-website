@@ -13,7 +13,7 @@ import {
   Terminal,
 } from 'lucide-react';
 
-export const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/api/v1';
+export const apiBase = import.meta.env.VITE_MARKET_API_BASE || '/market/api/v1';
 export const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
 export const locales = ['zh-CN', 'en-US'];
 export const canonicalTypes = ['skill', 'plugin', 'agent', 'sandbox-image', 'pet', 'cli-tool', 'website-app', 'software-package'];

@@ -427,12 +427,19 @@ export function App() {
   }
 
   function startLogin() {
-    window.location.assign(`${apiBase}/auth/oidc/login`);
+    const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const returnTo = currentPath.startsWith('/market') ? currentPath : '/market/';
+    window.location.assign(`/login?return_to=${encodeURIComponent(returnTo)}`);
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     setUserMenuOpen(false);
-    window.location.assign(`${apiBase}/auth/oidc/logout`);
+    try {
+      await requestJSON('/api/auth/logout', { method: 'POST' });
+    } finally {
+      setAuthSession(null);
+      window.location.assign('/login?return_to=%2Fmarket%2F');
+    }
   }
 
   function chooseCategory(category) {

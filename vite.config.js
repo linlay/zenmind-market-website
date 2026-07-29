@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
     : undefined;
 
   return {
-    base: env.VITE_BASE_PATH?.trim() || '/',
+    base: env.VITE_BASE_PATH?.trim() || '/market/',
     define: {
       'import.meta.env.VITE_MARKET_BRAND': JSON.stringify(marketBrand),
     },
@@ -35,18 +35,21 @@ export default defineConfig(({ mode }) => {
       port: envPort(env.VITE_DEV_PORT, 5173),
       strictPort: env.VITE_DEV_STRICT_PORT?.trim().toLowerCase() !== 'false',
       proxy: {
-        '/api': {
+        '/market/api': {
           target: apiProxyTarget,
           changeOrigin: true,
           headers: proxyHeaders,
+          rewrite: (path) => path.replace(/^\/market\/api/, '/api'),
         },
-        '/npm': {
+        '/market/npm': {
           target: env.MARKET_NPM_PROXY_TARGET?.trim() || apiProxyTarget,
           changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/market\/npm/, '/npm'),
         },
-        '/artifacts': {
+        '/market/artifacts': {
           target: env.MARKET_ARTIFACT_PROXY_TARGET?.trim() || apiProxyTarget,
           changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/market\/artifacts/, '/artifacts'),
         },
       },
     },
