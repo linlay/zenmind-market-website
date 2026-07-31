@@ -74,14 +74,16 @@ export function publicationState(item) {
   return item?.reviewStatus === 'approved' ? 'unpublished' : 'not-published';
 }
 
+function publicationLabel(item, t) {
+  const state = publicationState(item);
+  if (state === 'published') return t.publicationPublished;
+  if (state === 'unpublished') return t.publicationUnpublished;
+  return t.publicationNotPublished;
+}
+
 function PublicationBadge({ item, t }) {
   const state = publicationState(item);
-  const label = state === 'published'
-    ? t.publicationPublished
-    : state === 'unpublished'
-      ? t.publicationUnpublished
-      : t.publicationNotPublished;
-  return <span className={`publication-badge is-${state}`}>{label}</span>;
+  return <span className={`publication-badge is-${state}`}>{publicationLabel(item, t)}</span>;
 }
 
 export function CreatorCenter({
@@ -222,15 +224,18 @@ export function CreatorCenter({
               </div>
               {recentItems.length ? (
                 <div className="recent-list">
-                  {recentItems.map((item) => (
-                    <button className="recent-row" type="button" key={`${item.type}:${item.id}`} onClick={() => onDetails(item)}>
-                      <img src={item.icon || item.screenshot} alt="" />
-                      <span>
-                        <strong>{localized(item.name, locale) || item.id}</strong>
-                        <small>{displayType(item.type, t)} · {formatDate(item.updatedAt || item.publishedAt, locale)}</small>
-                      </span>
-                    </button>
-                  ))}
+                  {recentItems.map((item) => {
+                    const canOpenMarket = hasPublishedRelease(item);
+                    return (
+                      <button className="recent-row" type="button" key={`${item.type}:${item.id}`} disabled={!canOpenMarket} onClick={canOpenMarket ? () => onDetails(item) : undefined}>
+                        <img src={item.icon || item.screenshot} alt="" />
+                        <span>
+                          <strong>{localized(item.name, locale) || item.id}</strong>
+                          <small>{displayType(item.type, t)} · {formatDate(item.updatedAt || item.publishedAt, locale)}{canOpenMarket ? '' : ` · ${publicationLabel(item, t)}`}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
             </section>
@@ -261,17 +266,20 @@ export function CreatorCenter({
               </div>
               {topDownloads.length ? (
                 <div className="chart-list">
-                  {topDownloads.map((item, index) => (
-                    <button className="chart-row" type="button" key={`${item.type}:${item.id}`} onClick={() => onDetails(item)}>
-                      <strong>{index + 1}</strong>
-                      <span>
-                        <b>{localized(item.name, locale) || item.id}</b>
-                        <small>{displayType(item.type, t)}</small>
-                      </span>
-                      <em>{formatCount(item.downloads)}</em>
-                      <i style={{ width: `${Math.max(4, (parseCount(item.downloads) / maxDownloads) * 100)}%` }} />
-                    </button>
-                  ))}
+                  {topDownloads.map((item, index) => {
+                    const canOpenMarket = hasPublishedRelease(item);
+                    return (
+                      <button className="chart-row" type="button" key={`${item.type}:${item.id}`} disabled={!canOpenMarket} onClick={canOpenMarket ? () => onDetails(item) : undefined}>
+                        <strong>{index + 1}</strong>
+                        <span>
+                          <b>{localized(item.name, locale) || item.id}</b>
+                          <small>{displayType(item.type, t)}{canOpenMarket ? '' : ` · ${publicationLabel(item, t)}`}</small>
+                        </span>
+                        <em>{formatCount(item.downloads)}</em>
+                        <i style={{ width: `${Math.max(4, (parseCount(item.downloads) / maxDownloads) * 100)}%` }} />
+                      </button>
+                    );
+                  })}
                 </div>
               ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
             </section>
@@ -282,17 +290,20 @@ export function CreatorCenter({
               </div>
               {topFavorites.length ? (
                 <div className="chart-list">
-                  {topFavorites.map((item, index) => (
-                    <button className="chart-row is-favorite" type="button" key={`${item.type}:${item.id}`} onClick={() => onDetails(item)}>
-                      <strong>{index + 1}</strong>
-                      <span>
-                        <b>{localized(item.name, locale) || item.id}</b>
-                        <small>{displayType(item.type, t)}</small>
-                      </span>
-                      <em>{formatCount(item.favoriteCount)}</em>
-                      <i style={{ width: `${Math.max(4, (parseCount(item.favoriteCount) / maxFavorites) * 100)}%` }} />
-                    </button>
-                  ))}
+                  {topFavorites.map((item, index) => {
+                    const canOpenMarket = hasPublishedRelease(item);
+                    return (
+                      <button className="chart-row is-favorite" type="button" key={`${item.type}:${item.id}`} disabled={!canOpenMarket} onClick={canOpenMarket ? () => onDetails(item) : undefined}>
+                        <strong>{index + 1}</strong>
+                        <span>
+                          <b>{localized(item.name, locale) || item.id}</b>
+                          <small>{displayType(item.type, t)}{canOpenMarket ? '' : ` · ${publicationLabel(item, t)}`}</small>
+                        </span>
+                        <em>{formatCount(item.favoriteCount)}</em>
+                        <i style={{ width: `${Math.max(4, (parseCount(item.favoriteCount) / maxFavorites) * 100)}%` }} />
+                      </button>
+                    );
+                  })}
                 </div>
               ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
             </section>

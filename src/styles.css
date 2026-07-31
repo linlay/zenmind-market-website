@@ -1363,12 +1363,18 @@ img {
   transition: border-color 120ms ease, background 120ms ease;
 }
 
-.recent-row:hover,
-.chart-row:hover,
+.recent-row:not(:disabled):hover,
+.chart-row:not(:disabled):hover,
 .recent-row:focus-visible,
 .chart-row:focus-visible {
   border-color: color-mix(in srgb, var(--brand) 26%, var(--line));
   background: color-mix(in srgb, var(--brand-soft) 34%, var(--surface-muted));
+}
+
+.recent-row:disabled,
+.chart-row:disabled {
+  cursor: default;
+  opacity: 0.68;
 }
 
 .chart-row {

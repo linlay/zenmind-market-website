@@ -21,6 +21,11 @@ describe('creator inventory actions', () => {
     expect(publicationState(item)).toBe('unpublished');
   });
 
+  it('prevents creator dashboard cards from opening an unpublished market item', () => {
+    expect(hasPublishedRelease({ reviewStatus: 'approved', published: false })).toBe(false);
+    expect(hasPublishedRelease({ reviewStatus: 'approved', published: true })).toBe(true);
+  });
+
   it('distinguishes releases that have never been published', () => {
     expect(publicationState({ reviewStatus: 'pending', published: false })).toBe('not-published');
     expect(publicationState({ reviewStatus: 'rejected', published: false })).toBe('not-published');
