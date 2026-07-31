@@ -389,6 +389,13 @@ export function sanitizePlatformKey(value) {
     .replace(/^-+|-+$/g, '');
 }
 
+export function platformKeyFromSelection(os = '', arch = '') {
+  const normalizedOS = sanitizePlatformKey(os);
+  if (!normalizedOS || normalizedOS === 'universal') return 'universal';
+  const normalizedArch = sanitizePlatformKey(arch);
+  return normalizedArch ? `${normalizedOS}-${normalizedArch}` : normalizedOS;
+}
+
 export function inferOSFromPlatform(platform) {
   const key = sanitizePlatformKey(platform);
   if (key.startsWith('darwin')) return 'darwin';

@@ -78,6 +78,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const initialPlatformKey = updateMode ? preferredPlatformKey(initialItem) || 'universal' : 'universal';
   const initialPlatform = updateMode ? platformForKey(initialItem, initialPlatformKey) : null;
   const initialAsset = updateMode ? initialItem.assetMap?.[initialPlatformKey] : null;
+  const initialPlatformOS = initialPlatform?.os && initialPlatform.os !== 'universal' ? initialPlatform.os : 'universal';
+  const initialPlatformArch = initialPlatformOS === 'universal' ? '' : initialPlatform?.arch || '';
   const [step, setStep] = useState(updateMode ? 'details' : 'type');
   const [type, setType] = useState(initialType);
   const [archiveType, setArchiveType] = useState(initialAsset?.archiveType || defaultArchiveTypeFor(initialType, { sandboxKind: initialSandboxKind, websiteKind: initialWebsiteKind }));
@@ -85,6 +87,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [websiteKind, setWebsiteKind] = useState(initialWebsiteKind);
   const [skillKind, setSkillKind] = useState(initialSkillKind);
   const [showAdvanced, setShowAdvanced] = useState(updateMode);
+  const [platformOS, setPlatformOS] = useState(initialPlatformOS);
+  const [platformArch, setPlatformArch] = useState(initialPlatformArch);
   const [skillSearch, setSkillSearch] = useState('');
   const [selectedSkillIDs, setSelectedSkillIDs] = useState(updateMode ? (initialItem.includedSkills || []).map((skill) => skill.id) : []);
 
@@ -111,6 +115,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     if (nextType === 'website-app') setWebsiteKind(nextWebsiteKind);
     setArchiveType(defaultArchiveTypeFor(nextType, { sandboxKind: nextSandboxKind, websiteKind: nextWebsiteKind }));
     setShowAdvanced(false);
+    setPlatformOS('universal');
+    setPlatformArch('');
     setSkillSearch('');
     setSelectedSkillIDs([]);
     setStep('details');
@@ -132,6 +138,12 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     const nextKind = event.target.value;
     setWebsiteKind(nextKind);
     setArchiveType(defaultArchiveTypeFor('website-app'));
+  }
+
+  function handlePlatformOSChange(event) {
+    const nextOS = event.target.value;
+    setPlatformOS(nextOS);
+    if (nextOS === 'universal') setPlatformArch('');
   }
 
   function renderStepIndicator() {
@@ -354,23 +366,24 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             {showAdvanced ? (
               <div className="publish-section-grid">
                 <label>
-                  <span>{t.platformKey}</span>
-                  <input name="platformKey" defaultValue={initialPlatformKey} placeholder="universal" />
-                </label>
-                <label>
                   <span>{t.os}</span>
-                  <select name="platformOS" defaultValue={initialPlatform?.os || ''}>
-                    <option value="">auto</option>
+                  <select name="platformOS" value={platformOS} onChange={handlePlatformOSChange}>
+                    <option value="universal">universal</option>
                     <option value="darwin">darwin</option>
                     <option value="linux">linux</option>
                     <option value="windows">windows</option>
-                    <option value="universal">universal</option>
                   </select>
                 </label>
                 <label>
                   <span>{t.arch}</span>
-                  <select name="platformArch" defaultValue={initialPlatform?.arch || ''}>
-                    <option value="">auto</option>
+                  <select
+                    name="platformArch"
+                    required={platformOS !== 'universal'}
+                    disabled={platformOS === 'universal'}
+                    value={platformArch}
+                    onChange={(event) => setPlatformArch(event.target.value)}
+                  >
+                    <option value="">{platformOS === 'universal' ? '—' : t.selectArchitecture}</option>
                     <option value="arm64">arm64</option>
                     <option value="amd64">amd64</option>
                     <option value="arm">arm</option>

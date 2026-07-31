@@ -11,6 +11,7 @@ export {
   hasArtifact,
   platformDependencies,
   platformForKey,
+  platformKeyFromSelection,
   preferredPlatformKey,
   triggerBrowserDownload,
 } from './marketRuntime';

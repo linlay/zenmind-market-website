@@ -79,6 +79,7 @@ import {
   preferredPlatformKey,
   downloadKeyForItem,
   platformDependencies,
+  platformKeyFromSelection,
   hasArtifact,
   triggerBrowserDownload,
   adpInstallCommand,
@@ -732,15 +733,17 @@ export function App() {
         return;
       }
 
-      const platformKey = String(form.get('platformKey') || '').trim() || 'universal';
+      const platformOS = String(form.get('platformOS') || '').trim();
+      const platformArch = String(form.get('platformArch') || '').trim();
+      const platformKey = platformKeyFromSelection(platformOS, platformArch);
       const platformMinDesktopVersion = String(form.get('platformMinDesktopVersion') || '').trim();
       const install = scriptSpecFromCommand(form.get('installCommand'));
       const uninstall = scriptSpecFromCommand(form.get('uninstallCommand'));
       const detect = detectSpecFromForm(form);
       const platform = {
         key: platformKey,
-        os: String(form.get('platformOS') || '').trim(),
-        arch: String(form.get('platformArch') || '').trim(),
+        os: platformOS,
+        arch: platformArch,
         description: String(form.get('platformDescription') || '').trim(),
         minDesktopVersion: platformMinDesktopVersion,
         metadata: platformMetadata,
