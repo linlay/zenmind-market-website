@@ -66,7 +66,22 @@ import {
 import { EmptyInline, ReviewBadge, VersionHistoryModal } from '../shared/ManagementViews';
 
 export function hasPublishedRelease(item) {
-  return item?.reviewStatus === 'approved';
+  return item?.published === true;
+}
+
+export function publicationState(item) {
+  if (hasPublishedRelease(item)) return 'published';
+  return item?.reviewStatus === 'approved' ? 'unpublished' : 'not-published';
+}
+
+function PublicationBadge({ item, t }) {
+  const state = publicationState(item);
+  const label = state === 'published'
+    ? t.publicationPublished
+    : state === 'unpublished'
+      ? t.publicationUnpublished
+      : t.publicationNotPublished;
+  return <span className={`publication-badge is-${state}`}>{label}</span>;
 }
 
 export function CreatorCenter({
@@ -310,7 +325,7 @@ export function CreatorCenter({
                 <div className="creator-table-row is-head" role="row">
                   <span>{t.name}</span>
                   <span>{t.type}</span>
-                  <span>{t.reviewStatus}</span>
+                  <span>{t.creatorComponentStatus}</span>
                   <span>{t.creatorVersion}</span>
                   <span>{t.downloads}</span>
                   <span>{t.detailViews}</span>
@@ -332,6 +347,7 @@ export function CreatorCenter({
                   <span>{isSkillPackage(item) ? t.skillPackage : displayType(item.type, t)}</span>
                   <span className="review-status-cell">
                     <ReviewBadge status={item.pendingReviewStatus || item.reviewStatus} t={t} />
+                    <PublicationBadge item={item} t={t} />
                     {item.pendingReviewStatus === 'pending' ? <small>{t.creatorPendingVersion(formatVersionLabel(item.pendingVersion))}</small> : null}
                     {item.pendingReviewStatus === 'rejected' ? <small title={item.pendingReviewNote || ''}>{t.creatorRejectedVersion(formatVersionLabel(item.pendingVersion))}{item.pendingReviewNote ? `：${item.pendingReviewNote}` : ''}</small> : null}
                     {!item.pendingReviewStatus && item.reviewStatus === 'rejected' && item.reviewNote ? (

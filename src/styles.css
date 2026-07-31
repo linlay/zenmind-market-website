@@ -1711,6 +1711,36 @@ img {
   background: var(--rose-soft);
 }
 
+.publication-badge {
+  min-height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.publication-badge.is-published {
+  color: var(--brand);
+  border-color: color-mix(in srgb, var(--brand) 28%, var(--line));
+  background: color-mix(in srgb, var(--brand) 9%, var(--surface));
+}
+
+.publication-badge.is-unpublished {
+  color: var(--rose);
+  border-color: color-mix(in srgb, var(--rose) 24%, var(--line));
+  background: var(--rose-soft);
+}
+
+.publication-badge.is-not-published {
+  color: var(--muted);
+  background: var(--soft);
+}
+
 .review-status-cell {
   min-width: 0;
   display: grid;
