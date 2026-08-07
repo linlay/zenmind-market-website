@@ -53,6 +53,7 @@ import { selectedFormFile } from '../fileInputs';
 import { reportDetailView, selectDetailOpener } from '../detailViews';
 
 import { AdminCenter } from '../admin/AdminCenter';
+import { SecurityReviewCenter } from '../security/SecurityReviewCenter';
 import { CreatorCenter } from '../creator/CreatorCenter';
 import { DetailModal, MarketCard, SkillCatalogView } from '../market/CatalogViews';
 import { MarketPage } from '../market/MarketPage';
@@ -113,6 +114,7 @@ export function App() {
   const isPublishOpen = location.pathname === '/publish' || Boolean(publishMatch);
   const isCreatorOpen = location.pathname === '/creator';
   const isAdminOpen = location.pathname === '/admin';
+  const isSecurityReviewOpen = location.pathname === '/security-review';
   const [apiItems, setApiItems] = useState([]);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
@@ -132,8 +134,10 @@ export function App() {
   const [creatorItemsStatus, setCreatorItemsStatus] = useState('idle');
   const [favoriteItems, setFavoriteItems] = useState([]);
   const [adminItems, setAdminItems] = useState([]);
+  const [securityReviewItems, setSecurityReviewItems] = useState([]);
   const [adminComments, setAdminComments] = useState([]);
   const [isLoadingAdminReviews, setLoadingAdminReviews] = useState(false);
+  const [isLoadingSecurityReviews, setLoadingSecurityReviews] = useState(false);
   const [moderatingCommentID, setModeratingCommentID] = useState(0);
   const [reviewingKey, setReviewingKey] = useState('');
   const [unpublishingKey, setUnpublishingKey] = useState('');
@@ -150,7 +154,9 @@ export function App() {
     }),
   );
   const isAuthenticated = Boolean(authSession?.user?.id);
-  const userRoleLabel = authSession?.user?.role === 'admin' ? t.loginAsAdmin : t.loginAsCreator;
+  const isSecurityReviewer = authSession?.user?.role === 'security_reviewer' || authSession?.user?.roles?.includes('security_reviewer');
+  const isSecurityOnly = authSession?.user?.role === 'security_reviewer' && !authSession?.user?.roles?.includes('admin');
+  const userRoleLabel = authSession?.user?.role === 'admin' ? t.loginAsAdmin : isSecurityReviewer ? t.loginAsSecurityReviewer : t.loginAsCreator;
   const userDisplayName = authSession?.user?.name
     || authSession?.user?.username
     || authSession?.user?.id
@@ -228,6 +234,24 @@ export function App() {
     } catch (reason) {
       if (reason?.name === 'AbortError') return { ok: false, reason };
       setAdminItems([]);
+      return { ok: false, reason };
+    }
+  }, [authSession]);
+
+  const loadSecurityReviews = useCallback(async (signal, sessionOverride = null) => {
+    const session = sessionOverride || authSession;
+    const allowed = session?.user?.role === 'security_reviewer' || session?.user?.roles?.includes('security_reviewer');
+    if (!session?.user?.id || !allowed) {
+      setSecurityReviewItems([]);
+      return { ok: false, reason: 'missing-role' };
+    }
+    try {
+      const data = await requestJSON(`${apiBase}/security/reviews`, { signal });
+      setSecurityReviewItems(Array.isArray(data.items) ? data.items : []);
+      return { ok: true };
+    } catch (reason) {
+      if (reason?.name === 'AbortError') return { ok: false, reason };
+      setSecurityReviewItems([]);
       return { ok: false, reason };
     }
   }, [authSession]);
@@ -333,6 +357,13 @@ export function App() {
     return () => controller.abort();
   }, [isAdminOpen, authSession, loadAdminComments, loadAdminReviews]);
 
+  useEffect(() => {
+    if (!isSecurityReviewOpen || !isSecurityReviewer) return undefined;
+    const controller = new AbortController();
+    loadSecurityReviews(controller.signal);
+    return () => controller.abort();
+  }, [isSecurityReviewOpen, isSecurityReviewer, loadSecurityReviews]);
+
   const catalog = useMemo(() => {
     return apiItems.map((item) => mergeCatalogItem(item));
   }, [apiItems]);
@@ -375,6 +406,8 @@ export function App() {
   const adminReviewCatalog = useMemo(() => {
     return adminItems.map((item) => mergeCatalogItem(item));
   }, [adminItems]);
+
+  const securityReviewCatalog = useMemo(() => securityReviewItems.map((item) => mergeCatalogItem(item)), [securityReviewItems]);
 
   const categoryCounts = useMemo(() => {
     const counts = { all: catalog.length };
@@ -621,6 +654,40 @@ export function App() {
     }
   }
 
+  async function handleSecurityReviewUpdate(item, status, suppliedNote) {
+    if (!item || reviewingKey || !isSecurityReviewer) return false;
+    const note = typeof suppliedNote === 'string' ? suppliedNote.trim() : '';
+    if (status === 'rejected' && !note) {
+      notify(t.reviewRejectReasonRequired, 'error');
+      return false;
+    }
+    const key = `${item.type}:${item.id}`;
+    setReviewingKey(key);
+    try {
+      await requestJSON(`${apiBase}/security/reviews/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status, note }),
+      });
+      await loadSecurityReviews(undefined, authSession);
+      notify(t.reviewUpdateSuccess, 'success');
+      return true;
+    } catch (reason) {
+      notify(t.reviewUpdateFailed(errorMessage(reason)), 'error');
+      return false;
+    } finally {
+      setReviewingKey('');
+    }
+  }
+
+  async function handleLoadSecurityReviews() {
+    setLoadingSecurityReviews(true);
+    try {
+      const result = await loadSecurityReviews(undefined, authSession);
+      notify(result.ok ? t.reviewLoadSuccess : t.reviewLoadFailed(errorMessage(result.reason)), result.ok ? 'success' : 'error');
+    } finally {
+      setLoadingSecurityReviews(false);
+    }
+  }
+
   async function handleUnpublishLatest(item) {
     if (!item || unpublishingKey) return;
     if (!authSession?.user?.id || authSession.user?.role !== 'admin') {
@@ -853,7 +920,13 @@ export function App() {
               <span>{isAdminOpen ? t.backToMarket : t.adminReviewEntry}</span>
             </button>
           ) : null}
-          {isAuthenticated ? (
+          {isSecurityReviewer ? (
+            <button className="creator-button" type="button" onClick={() => navigate(isSecurityReviewOpen ? '/' : '/security-review')}>
+              <ShieldCheck size={15} />
+              <span>{isSecurityReviewOpen ? t.backToMarket : t.securityReviewEntry}</span>
+            </button>
+          ) : null}
+          {isAuthenticated && !isSecurityOnly ? (
             <>
               <button
                 className="creator-button"
@@ -914,7 +987,7 @@ export function App() {
       </header>
 
       <AppSurface
-        publishing={authStatus === 'loading' ? null : isAuthenticated ? (
+        publishing={authStatus === 'loading' ? null : isAuthenticated && !isSecurityOnly ? (
           <PublishPage
             key={publishSource ? `${publishSource.type}:${publishSource.id}` : 'new'}
             t={t}
@@ -944,7 +1017,10 @@ export function App() {
             moderatingCommentID={moderatingCommentID}
           />
         ) : <Navigate to="/" replace />}
-        creator={authStatus === 'loading' ? null : isAuthenticated ? (
+        security={authStatus === 'loading' ? null : isSecurityReviewer ? (
+          <SecurityReviewCenter pendingItems={securityReviewCatalog} locale={locale} t={t} onReview={handleSecurityReviewUpdate} reviewingKey={reviewingKey} onReload={handleLoadSecurityReviews} isLoading={isLoadingSecurityReviews} />
+        ) : <Navigate to="/" replace />}
+        creator={authStatus === 'loading' ? null : isAuthenticated && !isSecurityOnly ? (
           <CreatorCenter
             mode="creator"
             items={creatorCatalog}

@@ -17,6 +17,12 @@ describe('market catalog normalization', () => {
     expect(item.detailViewCount).toBe(12);
   });
 
+  it('maps internal review workflow states to the existing UI states', () => {
+    expect(mergeCatalogItem({ id: 'security', type: 'skill', reviewStatus: 'security_pending' }).reviewStatus).toBe('pending');
+    expect(mergeCatalogItem({ id: 'admin', type: 'skill', pendingReviewStatus: 'admin_pending' }).pendingReviewStatus).toBe('pending');
+    expect(mergeCatalogItem({ id: 'rejected', type: 'skill', reviewStatus: 'security_rejected' }).reviewStatus).toBe('rejected');
+  });
+
   it('uses localized capability-market branding without a ZenMind label', () => {
     expect(marketBrand.name['zh-CN']).toBe('功能市场');
     expect(marketBrand.name['en-US']).toBe('Capability Market');

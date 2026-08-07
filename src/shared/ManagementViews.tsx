@@ -109,7 +109,7 @@ export function EmptyInline({ title, body }) {
   );
 }
 
-export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, onClose }) {
+export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, onClose, reviewScope = 'admin' }) {
   const [tab, setTab] = useState('review');
   const [note, setNote] = useState('');
   const [noteError, setNoteError] = useState('');
@@ -181,7 +181,7 @@ export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, on
                         <span>{artifact.platformKey}</span>
                         <a
                           className="review-artifact-download"
-                          href={reviewArtifactDownloadURL(item, artifact)}
+                          href={reviewArtifactDownloadURL(item, artifact, reviewScope)}
                           target="_blank"
                           rel="noreferrer"
                         >
@@ -272,10 +272,10 @@ export function ReviewCodeBlock({ label, value }) {
   return <div className="review-code-block"><strong>{label}</strong><pre>{JSON.stringify(value ?? null, null, 2)}</pre></div>;
 }
 
-export function reviewArtifactDownloadURL(item, artifact) {
+export function reviewArtifactDownloadURL(item, artifact, reviewScope = 'admin') {
   const query = new URLSearchParams({
     version: item?.version || item?.latestVersion || '',
     platform: artifact?.platformKey || '',
   });
-  return `${apiBase}/admin/reviews/${encodeURIComponent(item?.type || '')}/${encodeURIComponent(item?.id || '')}/artifact/download?${query}`;
+  return `${apiBase}/${reviewScope}/reviews/${encodeURIComponent(item?.type || '')}/${encodeURIComponent(item?.id || '')}/artifact/download?${query}`;
 }

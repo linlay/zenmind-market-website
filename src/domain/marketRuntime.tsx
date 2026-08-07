@@ -140,6 +140,7 @@ export function mergeCatalogItem(apiItem) {
     positiveRate: Number(apiItem.positiveRate || 0),
     favorited: Boolean(apiItem.favorited),
     reviewStatus: normalizeReviewStatusForUI(apiItem.reviewStatus),
+    pendingReviewStatus: apiItem.pendingReviewStatus ? normalizeReviewStatusForUI(apiItem.pendingReviewStatus) : '',
     reviewNote: apiItem.reviewNote || '',
     reviewedAt: apiItem.reviewedAt || '',
     reviewedBy: apiItem.reviewedBy || '',
@@ -175,6 +176,8 @@ export function normalizeSkillProfile(skill, type) {
 
 export function normalizeReviewStatusForUI(status) {
   status = String(status || '').trim().toLowerCase();
+  if (['security_pending', 'admin_pending'].includes(status)) return 'pending';
+  if (['security_rejected', 'admin_rejected'].includes(status)) return 'rejected';
   return ['approved', 'rejected', 'pending'].includes(status) ? status : 'approved';
 }
 
