@@ -531,6 +531,19 @@ export function App() {
 
   async function handleDownload(item, platformOverride = '') {
     if (!item || downloadingKey) return;
+    if (item.type === 'mcp') {
+      const key = `${item.type}:${item.id}:config`;
+      setDownloadingKey(key);
+      try {
+        triggerBrowserDownload(`${apiBase}/mcps/${encodeURIComponent(item.id)}/download`);
+        notify(t.downloadStarted(localized(item.name, locale) || item.id), 'success');
+      } catch (reason) {
+        notify(t.downloadFailed(errorMessage(reason)), 'error');
+      } finally {
+        setDownloadingKey('');
+      }
+      return;
+    }
     if (item.type === 'skill' && item.skillKind === 'package') {
       const key = `${item.type}:${item.id}:package`;
       setDownloadingKey(key);
@@ -759,6 +772,10 @@ export function App() {
         return;
       }
       const description = String(form.get('description') || '').trim();
+      if (type === 'mcp' && !String(form.get('mcpServerCode') || '').trim()) {
+        notify(t.mcpGatewayRequired, 'error');
+        return;
+      }
       const artifact = selectedFormFile(formElement, form, 'artifact');
       const hasSelectedArtifact = Boolean(artifact);
       const image = selectedFormFile(formElement, form, 'image');
@@ -849,6 +866,13 @@ export function App() {
       const metadataUrl = String(form.get('metadataUrl') || '').trim();
       if (author) metadata.metadata.author = author;
       if (metadataUrl) metadata.metadata.url = metadataUrl;
+      if (type === 'mcp') {
+        metadata.metadata.gatewayServerCode = String(form.get('mcpServerCode') || '').trim();
+        metadata.metadata.endpointUrl = String(form.get('mcpEndpointUrl') || '').trim();
+        metadata.metadata.gatewayConfigVersion = String(form.get('mcpGatewayConfigVersion') || '').trim();
+        metadata.metadata.tools = String(form.get('mcpTools') || '[]');
+        metadata.tags = [...new Set([...metadata.tags, 'MCP', 'gateway'])];
+      }
       if (hasSelectedADPManifest && !hasSelectedArtifact) {
         metadata.adpYaml = await adpManifest.text();
       }

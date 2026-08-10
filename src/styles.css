@@ -3672,6 +3672,75 @@ img {
   font-size: 12px;
 }
 
+.mcp-picker {
+  display: grid;
+  gap: 12px;
+}
+
+.mcp-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mcp-picker-search input {
+  flex: 1;
+}
+
+.mcp-picker-list {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.mcp-picker-option {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.2fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mcp-picker-option:hover,
+.mcp-picker-option.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.mcp-picker-option span,
+.mcp-selected-source {
+  display: grid;
+  gap: 4px;
+}
+
+.mcp-picker-option small,
+.mcp-selected-source code {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.mcp-detail-facts {
+  display: grid;
+  gap: 8px;
+}
+
+.mcp-detail-facts span {
+  display: grid;
+  gap: 4px;
+}
+
+.mcp-detail-facts code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .publish-form .field-hint {
   color: var(--faint);
   font-size: 11px;

@@ -137,7 +137,7 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
   const category = categoryMeta.find((entry) => entry.id === item.type);
   const Icon = category?.icon || PackageOpen;
   const platform = preferredPlatformKey(item);
-  const canDownload = hasArtifact(item, platform) || isSkillPackage(item);
+  const canDownload = item.type === 'mcp' || hasArtifact(item, platform) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   const skillLabel = item.type === 'skill' ? skillKindLabel(item.skillKind, t) : '';
@@ -190,6 +190,7 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
           {skillCategory ? <span>{skillCategory}</span> : null}
           {(item.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
           {platform ? <span className="platform-chip">{platform}</span> : null}
+          {item.type === 'mcp' && item.mcpServerCode ? <span className="platform-chip">{item.mcpServerCode}</span> : null}
         </div>
         {item.skillKind === 'package' && item.includedSkills.length ? (
           <div className="card-included">
@@ -223,7 +224,7 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
   const activePlatform = platformForKey(item, activePlatformKey);
   const deps = platformDependencies(activePlatform, item);
   const commands = commandEntries(activePlatform, t);
-  const canDownload = hasArtifact(item, activePlatformKey) || isSkillPackage(item);
+  const canDownload = item.type === 'mcp' || hasArtifact(item, activePlatformKey) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   const readme = localized(item.readme, locale);
@@ -327,6 +328,21 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
                         <small>{skill.id}</small>
                       </div>
                     )) : <p className="empty-detail">{t.noDependencies}</p>}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            {item.type === 'mcp' ? (
+              <section className="side-section">
+                <h3>MCP</h3>
+                <div className="mcp-detail-facts">
+                  <span><strong>{t.componentId}</strong><code>{item.mcpServerCode}</code></span>
+                  <span><strong>{t.mcpEndpoint}</strong><code>{item.mcpEndpointUrl}</code></span>
+                </div>
+                {item.mcpTools?.length ? (
+                  <div className="skill-facts">
+                    {item.mcpTools.map((tool) => <span key={tool}>{tool}</span>)}
                   </div>
                 ) : null}
               </section>

@@ -11,13 +11,14 @@ import {
   LayoutGrid,
   PackageOpen,
   Puzzle,
+  Network,
   Terminal,
 } from 'lucide-react';
 
 export const apiBase = import.meta.env.VITE_MARKET_API_BASE || `${marketBasePath}/api/v1`;
 export const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
 export const locales = ['zh-CN', 'en-US'];
-export const canonicalTypes = ['skill', 'plugin', 'agent', 'sandbox-image', 'pet', 'cli-tool', 'website-app', 'software-package'];
+export const canonicalTypes = ['skill', 'plugin', 'agent', 'mcp', 'sandbox-image', 'pet', 'cli-tool', 'website-app', 'software-package'];
 export const defaultMediaImage = svgDataUri(`
   <svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
     <defs>
@@ -49,6 +50,7 @@ export const categoryMeta = [
   { id: 'skill', icon: Brain, colorClass: 'is-purple' },
   { id: 'plugin', icon: Puzzle, colorClass: 'is-blue' },
   { id: 'agent', icon: Bot, colorClass: 'is-indigo' },
+  { id: 'mcp', icon: Network, colorClass: 'is-blue' },
   { id: 'sandbox-image', icon: Box, colorClass: 'is-emerald' },
   { id: 'pet', icon: Cat, colorClass: 'is-amber' },
   { id: 'cli-tool', icon: Terminal, colorClass: 'is-rose' },
@@ -68,6 +70,7 @@ export function publishTypeOptions() {
     { id: 'skill-package', type: 'skill', skillKind: 'package', icon: PackageOpen, label: (t) => t.skillPackage },
     { id: 'plugin', type: 'plugin', icon: Puzzle, label: (t) => t.categories.plugin },
     { id: 'agent', type: 'agent', icon: Bot, label: (t) => t.categories.agent },
+    { id: 'mcp', type: 'mcp', icon: Network, label: (t) => t.categories.mcp },
     { id: 'sandbox-image', type: 'sandbox-image', icon: Box, label: (t) => t.categories['sandbox-image'] },
     { id: 'cli-tool', type: 'cli-tool', icon: Terminal, label: (t) => t.categories['cli-tool'] },
     { id: 'website-app', type: 'website-app', icon: Globe, label: (t) => t.categories['website-app'] },
@@ -123,6 +126,10 @@ export function mergeCatalogItem(apiItem) {
     skillPackageMode: skill.packageMode,
     skillFeatured: Boolean(skill.featured),
     includedSkills: skill.includedSkills,
+    mcpServerCode: apiItem.metadata?.gatewayServerCode || '',
+    mcpEndpointUrl: apiItem.metadata?.endpointUrl || '',
+    mcpGatewayConfigVersion: apiItem.metadata?.gatewayConfigVersion || '',
+    mcpTools: parseStringArray(apiItem.metadata?.tools),
     icon: apiItem.metadata?.icon || apiItem.metadata?.screenshot || '',
     screenshot: apiItem.metadata?.screenshot || apiItem.metadata?.icon || defaultMediaImage,
     videoThumb: apiItem.metadata?.videoThumb || '',
@@ -341,6 +348,7 @@ export function platformForKey(item, key) {
 
 export function downloadKeyForItem(item, platformKey = '') {
   if (!item) return '';
+  if (item.type === 'mcp') return `${item.type}:${item.id}:config`;
   if (item.type === 'skill' && item.skillKind === 'package') return `${item.type}:${item.id}:package`;
   return `${item.type}:${item.id}:${preferredPlatformKey(item, platformKey) || 'any'}`;
 }
@@ -420,6 +428,8 @@ export function marketRoute(type) {
       return 'plugins';
     case 'agent':
       return 'agents';
+    case 'mcp':
+      return 'mcps';
     case 'sandbox-image':
       return 'sandbox-images';
     case 'pet':
@@ -623,6 +633,7 @@ export function detectSpecFromForm(form) {
 
 export function artifactRequiredFor(type, options = {}) {
   type = normalizeType(type);
+  if (type === 'mcp') return false;
   if (type === 'cli-tool') return false;
   if (type === 'website-app' && options.websiteKind === 'external') return false;
   if (type === 'skill' && options.skill?.kind === 'package') return false;
@@ -637,6 +648,8 @@ export function supportsADPFor(type, options = {}) {
 
 export function archiveOptionsFor(type, options = {}) {
   switch (normalizeType(type)) {
+    case 'mcp':
+      return ['json'];
     case 'skill':
     case 'plugin':
     case 'agent':
@@ -650,6 +663,17 @@ export function archiveOptionsFor(type, options = {}) {
       return options.sandboxKind === 'container-image' ? ['tar.gz'] : ['zip'];
     default:
       return ['zip'];
+  }
+}
+
+function parseStringArray(value) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+  } catch {
+    return [];
   }
 }
 
