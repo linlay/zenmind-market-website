@@ -62,3 +62,31 @@ describe('publish platform selection', () => {
     expect(arch).toHaveValue('');
   });
 });
+
+describe('publish access policy', () => {
+  it('keeps existing versions public to signed-out visitors by default', () => {
+    render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" initialItem={initialItem} onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+
+    expect(screen.getByLabelText('全员可见')).toBeChecked();
+    expect(screen.getByText('所有人均可访问，包括未登录游客。')).toBeInTheDocument();
+  });
+
+  it('offers the logged-in users department as a publish target', () => {
+    render(
+      <PublishPage
+        t={getMarketCopy('zh-CN')}
+        locale="zh-CN"
+        initialItem={{ ...initialItem, accessPolicy: { mode: 'department', departmentIds: ['1001'] } }}
+        currentUser={{ organization: { departments: [{ id: '1001', name: '机构金融部', primary: true }] } }}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        isPublishing={false}
+      />,
+    );
+
+    expect(screen.getByLabelText('部门内可见')).toBeChecked();
+    expect(screen.getByLabelText(/机构金融部/)).toBeChecked();
+  });
+});

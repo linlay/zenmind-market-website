@@ -100,6 +100,7 @@ import {
 } from '../shared/formatters';
 import { initialTheme } from '../shared/theme';
 import { marketHomePath } from '../domain/runtimeBase';
+import { screenshotFixtures } from '../demo/screenshotFixtures';
 
 export function App() {
   const navigate = useNavigate();
@@ -115,6 +116,7 @@ export function App() {
   const isCreatorOpen = location.pathname === '/creator';
   const isAdminOpen = location.pathname === '/admin';
   const isSecurityReviewOpen = location.pathname === '/security-review';
+  const isScreenshotDemo = new URLSearchParams(location.search).get('demo') === '1';
   const [apiItems, setApiItems] = useState([]);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
@@ -365,8 +367,9 @@ export function App() {
   }, [isSecurityReviewOpen, isSecurityReviewer, loadSecurityReviews]);
 
   const catalog = useMemo(() => {
-    return apiItems.map((item) => mergeCatalogItem(item));
-  }, [apiItems]);
+    const items = isScreenshotDemo ? [...apiItems, ...screenshotFixtures] : apiItems;
+    return items.map((item) => mergeCatalogItem(item));
+  }, [apiItems, isScreenshotDemo]);
 
   useEffect(() => {
     if (categoryMatch && !canonicalTypes.includes(categoryMatch.params.type)) {
@@ -855,6 +858,11 @@ export function App() {
         dependencies: platformDependencies,
         platform,
         reviewStatus: 'pending',
+		accessPolicy: {
+		  mode: String(form.get('accessMode') || 'all'),
+		  departmentIds: form.getAll('accessDepartmentIds').map((value) => String(value).trim()).filter(Boolean),
+		  userIds: form.getAll('accessUserIds').map((value) => String(value).trim()).filter(Boolean),
+		},
       };
       if (skill) metadata.skill = skill;
       if (type === 'cli-tool') {
@@ -1018,6 +1026,7 @@ export function App() {
             locale={locale}
             availableSkills={publishableSkills}
             initialItem={publishSource}
+			currentUser={authSession.user}
             onClose={closePublish}
             onSubmit={handlePublish}
             isPublishing={isPublishing}

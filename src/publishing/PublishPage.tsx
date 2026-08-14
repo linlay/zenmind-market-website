@@ -70,7 +70,7 @@ import {
   preferredPlatformKey,
 } from '../domain/platform';
 
-export function PublishPage({ t, locale, availableSkills = [], initialItem = null, onClose, onSubmit, isPublishing }) {
+export function PublishPage({ t, locale, availableSkills = [], initialItem = null, currentUser = null, onClose, onSubmit, isPublishing }) {
   const updateMode = Boolean(initialItem);
   const initialType = updateMode ? normalizeType(initialItem.type) : 'agent';
   const initialSkillKind = updateMode && initialType === 'skill' ? initialItem.skillKind || 'single' : 'single';
@@ -103,6 +103,20 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     configVersion: initialItem.mcpGatewayConfigVersion,
     tools: initialItem.mcpTools || [],
   } : null);
+  const initialAccessPolicy = initialItem?.accessPolicy || { mode: 'all', departmentIds: [], userIds: [] };
+  const [accessMode, setAccessMode] = useState(initialAccessPolicy.mode || 'all');
+  const departments = currentUser?.organization?.departments || [];
+  const [selectedDepartmentIDs, setSelectedDepartmentIDs] = useState(
+    initialAccessPolicy.departmentIds?.length
+      ? initialAccessPolicy.departmentIds
+      : departments.filter((department) => department.primary).map((department) => department.id),
+  );
+  const [selectedUsers, setSelectedUsers] = useState(
+    (initialAccessPolicy.userIds || []).map((userId) => ({ userId, name: userId })),
+  );
+  const [directoryQuery, setDirectoryQuery] = useState('');
+  const [directoryResults, setDirectoryResults] = useState([]);
+  const [directoryStatus, setDirectoryStatus] = useState('idle');
 
   const publishTypes = publishTypeOptions();
   const visiblePublishTypes = updateMode
@@ -156,6 +170,30 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     setSelectedSkillIDs((current) => (
       current.includes(skillID) ? current.filter((id) => id !== skillID) : [...current, skillID]
     ));
+  }
+
+  function toggleDepartment(departmentID) {
+    setSelectedDepartmentIDs((current) => current.includes(departmentID)
+      ? current.filter((id) => id !== departmentID)
+      : [...current, departmentID]);
+  }
+
+  async function searchDirectory() {
+    const query = directoryQuery.trim();
+    if (query.length < 2) return;
+    setDirectoryStatus('loading');
+    try {
+      const result = await requestJSON(`${apiBase}/directory/users?q=${encodeURIComponent(query)}&limit=20`);
+      setDirectoryResults(result.items || []);
+      setDirectoryStatus('ready');
+    } catch {
+      setDirectoryResults([]);
+      setDirectoryStatus('error');
+    }
+  }
+
+  function addAccessUser(user) {
+    setSelectedUsers((current) => current.some((entry) => entry.userId === user.userId) ? current : [...current, user]);
   }
 
   function handleSandboxKindChange(event) {
@@ -426,6 +464,56 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             </div>
           </section>
           ) : null}
+
+          <section className="publish-section full">
+            <h3>{t.accessScope}</h3>
+            <div className="publish-section-grid">
+              <label className="checkbox-field">
+                <input name="accessMode" type="radio" value="all" checked={accessMode === 'all'} onChange={() => setAccessMode('all')} />
+                <span>{t.accessAll}</span>
+              </label>
+              <label className="checkbox-field">
+                <input name="accessMode" type="radio" value="department" checked={accessMode === 'department'} onChange={() => setAccessMode('department')} />
+                <span>{t.accessDepartment}</span>
+              </label>
+              <label className="checkbox-field">
+                <input name="accessMode" type="radio" value="users" checked={accessMode === 'users'} onChange={() => setAccessMode('users')} />
+                <span>{t.accessUsers}</span>
+              </label>
+              {accessMode === 'all' ? <small className="field-hint full">{t.accessAllHint}</small> : null}
+              {accessMode === 'department' ? (
+                <div className="skill-picker full">
+                  {departments.length ? departments.map((department) => (
+                    <label className={selectedDepartmentIDs.includes(department.id) ? 'skill-picker-option is-selected' : 'skill-picker-option'} key={department.id}>
+                      <input name="accessDepartmentIds" type="checkbox" value={department.id} checked={selectedDepartmentIDs.includes(department.id)} onChange={() => toggleDepartment(department.id)} />
+                      <span><strong>{department.name || department.id}</strong><small>{department.id}</small></span>
+                    </label>
+                  )) : <p className="skill-picker-empty">{t.accessNoDepartment}</p>}
+                </div>
+              ) : null}
+              {accessMode === 'users' ? (
+                <div className="skill-picker full">
+                  {selectedUsers.map((user) => <input name="accessUserIds" type="hidden" value={user.userId} key={user.userId} />)}
+                  <div className="skill-picker-search">
+                    <Search size={14} />
+                    <input value={directoryQuery} onChange={(event) => setDirectoryQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); searchDirectory(); } }} placeholder={t.accessUserSearch} />
+                    <button type="button" className="secondary-action" onClick={searchDirectory} disabled={directoryStatus === 'loading'}>{directoryStatus === 'loading' ? t.loading : t.accessSearch}</button>
+                  </div>
+                  {selectedUsers.map((user) => (
+                    <button type="button" className="skill-picker-option is-selected" onClick={() => setSelectedUsers((current) => current.filter((entry) => entry.userId !== user.userId))} key={`selected-${user.userId}`}>
+                      <span><strong>{user.name || user.userId}</strong><small>{user.userId}</small></span><X size={15} />
+                    </button>
+                  ))}
+                  {directoryResults.filter((user) => !selectedUsers.some((entry) => entry.userId === user.userId)).map((user) => (
+                    <button type="button" className="skill-picker-option" onClick={() => addAccessUser(user)} key={user.userId}>
+                      <span><strong>{user.name || user.userId}</strong><small>{user.userId} · {user.departmentName || '—'}</small></span><Plus size={15} />
+                    </button>
+                  ))}
+                  {directoryStatus === 'error' ? <small className="field-hint">{t.accessDirectoryError}</small> : null}
+                </div>
+              ) : null}
+            </div>
+          </section>
 
           <section className="publish-section full">
             <button className="advanced-toggle" type="button" onClick={() => setShowAdvanced((value) => !value)}>

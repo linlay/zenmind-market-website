@@ -172,6 +172,10 @@ export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, on
                 </div>
               </ReviewSection>
 
+			  <ReviewSection title={t.accessScope} icon={ShieldCheck}>
+				<ReviewCodeBlock label={t.accessScope} value={item.accessPolicy || { mode: 'all' }} />
+			  </ReviewSection>
+
               <ReviewSection title={t.reviewArtifacts} icon={PackageOpen}>
                 {(state.detail.artifacts || []).length ? state.detail.artifacts.map((artifact) => (
                   <article className="review-artifact" key={`${artifact.assetRole}:${artifact.platformKey}`}>
