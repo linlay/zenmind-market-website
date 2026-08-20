@@ -28,15 +28,16 @@ describe('market catalog normalization', () => {
     expect(marketBrand.name['en-US']).toBe('Capability Market');
   });
 
-  it('hides disabled market categories while retaining their data-model types', () => {
+  it('hides only disabled market categories while retaining all data-model types', () => {
     const categoryIDs = sidebarCategoryMeta.map((category) => category.id);
 
     expect(categoryIDs).not.toContain('plugin');
     expect(categoryIDs).not.toContain('sandbox-image');
-    expect(categoryIDs).not.toContain('pet');
-    expect(categoryIDs).not.toContain('website-app');
+    expect(categoryIDs).toContain('pet');
+    expect(categoryIDs).toContain('website-app');
     expect(isMarketTypeVisible('agent')).toBe(true);
     expect(isMarketTypeVisible('plugin')).toBe(false);
-    expect(isMarketTypeVisible('pet')).toBe(false);
+    expect(isMarketTypeVisible('pet')).toBe(true);
+    expect(isMarketTypeVisible('website-app')).toBe(true);
   });
 });

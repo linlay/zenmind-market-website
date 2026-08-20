@@ -68,8 +68,8 @@ describe('market routing', () => {
     await screen.findByText('Demo plugin');
     expect(screen.queryByRole('button', { name: /Plugins/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Sandboxes/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Desktop Pets/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /WebApps/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Desktop Pets/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /WebApps/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Agents/ })).toBeInTheDocument();
   });
 
@@ -84,8 +84,8 @@ describe('market routing', () => {
     expect(await screen.findByRole('heading', { name: 'Choose what to publish' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Plugins/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Sandboxes/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Desktop Pets/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /WebApps/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Desktop Pets/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /WebApps/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Agents/ })).toBeInTheDocument();
   });
 

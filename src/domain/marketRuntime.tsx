@@ -58,7 +58,7 @@ export const categoryMeta = [
   { id: 'software-package', icon: HardDrive, colorClass: 'is-emerald' },
 ];
 
-export const hiddenMarketTypeIDs = ['plugin', 'sandbox-image', 'pet', 'website-app'];
+export const hiddenMarketTypeIDs = ['plugin', 'sandbox-image'];
 
 export function isMarketTypeVisible(type) {
   return !hiddenMarketTypeIDs.includes(type);
@@ -79,9 +79,7 @@ export function publishTypeOptions() {
   ];
 }
 
-export const sidebarCategoryMeta = categoryMeta.filter(
-  (category) => category.id !== 'pet' && isMarketTypeVisible(category.id),
-);
+export const sidebarCategoryMeta = categoryMeta.filter((category) => isMarketTypeVisible(category.id));
 export const skillCategoryFilters = ['all', 'document', 'data', 'coding', 'browser', 'office', 'content', 'media', 'search', 'system', 'integration', 'automation', 'other'];
 export const skillScenarioOptions = ['productivity', 'developer', 'research', 'enterprise', 'education', 'creator'];
 export const skillLevelOptions = ['beginner', 'intermediate', 'advanced'];
