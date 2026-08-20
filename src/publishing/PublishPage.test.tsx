@@ -31,6 +31,21 @@ const initialItem = {
 };
 
 describe('publish platform selection', () => {
+  it('explains the required SKILL.md metadata version contract', () => {
+    render(
+      <PublishPage
+        t={getMarketCopy('zh-CN')}
+        locale="zh-CN"
+        initialItem={initialItem}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        isPublishing={false}
+      />,
+    );
+
+    expect(screen.getByText('SKILL.md 的 YAML metadata.version 必填，且必须与上方填写的版本一致。')).toBeInTheDocument();
+  });
+
   it('derives the platform from OS and architecture without exposing a platform field', () => {
     const { container } = render(
       <PublishPage

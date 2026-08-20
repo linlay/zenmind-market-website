@@ -298,7 +298,7 @@ export const marketCopy = {
       'software-package': '发布 Python、Node.js 等软件依赖包。',
     },
     publishTypeRequirementsMap: {
-      skill: 'zip 制品、SKILL.md；可选 adp.yaml',
+      skill: 'zip 制品、含 metadata.version 的 SKILL.md；可选 adp.yaml',
       'skill-package': '至少 1 个已存在技能 ID',
       plugin: 'zip 制品、manifest.json',
       agent: 'zip 制品、agent.yml / agent.yaml',
@@ -322,6 +322,7 @@ export const marketCopy = {
     artifact: '制品包',
     image: '展示图片',
     artifactRequired: '请选择要上传的制品包。',
+    skillArtifactVersionHint: 'SKILL.md 的 YAML metadata.version 必填，且必须与上方填写的版本一致。',
     adpManifest: 'ADP 0.1 最新协议',
     adpManifestHint: '仅在需要额外安装依赖时上传 ADP 0.1 协议 adp.yaml；服务器会校验 hooks 并绑定本次制品 URL 和 SHA-256。',
     archiveType: '制品类型',
@@ -670,7 +671,7 @@ export const marketCopy = {
       'software-package': 'Publish software dependencies such as Python or Node.js.',
     },
     publishTypeRequirementsMap: {
-      skill: 'zip artifact, SKILL.md; optional adp.yaml',
+      skill: 'zip artifact, SKILL.md with metadata.version; optional adp.yaml',
       'skill-package': 'At least one existing skill ID',
       plugin: 'zip artifact, manifest.json',
       agent: 'zip artifact, agent.yml / agent.yaml',
@@ -694,6 +695,7 @@ export const marketCopy = {
     artifact: 'Artifact package',
     image: 'Display image',
     artifactRequired: 'Choose an artifact package to upload.',
+    skillArtifactVersionHint: 'SKILL.md YAML metadata.version is required and must match the version entered above.',
     adpManifest: 'ADP 0.1 latest manifest',
     adpManifestHint: 'Upload an ADP 0.1 manifest only when extra dependencies need installation; the server validates hooks and binds this artifact URL and SHA-256.',
     archiveType: 'Archive type',

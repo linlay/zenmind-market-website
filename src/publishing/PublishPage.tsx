@@ -451,6 +451,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             <label className="full">
               <span className={artifactRequired ? 'required-field-label' : ''}>{t.artifact}</span>
               <input name="artifact" type="file" required={artifactRequired} />
+              {type === 'skill' ? <small className="field-hint">{t.skillArtifactVersionHint}</small> : null}
               {!artifactRequired ? <small className="field-hint">{t.artifactOptional}</small> : null}
             </label>
           ) : null}
