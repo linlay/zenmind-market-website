@@ -55,6 +55,7 @@ import { reportDetailView, selectDetailOpener } from '../detailViews';
 import { AdminCenter } from '../admin/AdminCenter';
 import { SecurityReviewCenter } from '../security/SecurityReviewCenter';
 import { CreatorCenter } from '../creator/CreatorCenter';
+import { MetadataEditPage } from '../creator/MetadataEditPage';
 import { DetailModal, MarketCard, SkillCatalogView } from '../market/CatalogViews';
 import { MarketPage } from '../market/MarketPage';
 import { PublishPage } from '../publishing/PublishPage';
@@ -110,6 +111,7 @@ export function App() {
   const categoryMatch = matchPath('/category/:type', location.pathname);
   const skillMatch = matchPath('/skills/:category', location.pathname);
   const publishMatch = matchPath('/publish/:type/:id', location.pathname);
+  const editMatch = matchPath('/edit/:type/:id', location.pathname);
   const activeCategory = skillMatch ? 'skill' : categoryMatch?.params.type || 'all';
   const activeSkillCategory = skillMatch?.params.category || 'all';
   const isPublishOpen = location.pathname === '/publish' || Boolean(publishMatch);
@@ -129,7 +131,9 @@ export function App() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [toast, setToast] = useState(null);
   const [publishSource, setPublishSource] = useState(null);
+  const [editSource, setEditSource] = useState(null);
   const [isPublishing, setPublishing] = useState(false);
+  const [isSavingMetadata, setSavingMetadata] = useState(false);
   const [authSession, setAuthSession] = useState(null);
   const [authStatus, setAuthStatus] = useState('loading');
   const [creatorItems, setCreatorItems] = useState([]);
@@ -345,12 +349,12 @@ export function App() {
   }, [isAuthenticated, loadCatalog]);
 
   useEffect(() => {
-    if (!isCreatorOpen && !publishMatch) return undefined;
+    if (!isCreatorOpen && !publishMatch && !editMatch) return undefined;
     const controller = new AbortController();
     loadCreatorItems(controller.signal);
     loadFavoriteItems(controller.signal);
     return () => controller.abort();
-  }, [isCreatorOpen, loadCreatorItems, loadFavoriteItems, publishMatch?.params.id, publishMatch?.params.type]);
+  }, [editMatch?.params.id, editMatch?.params.type, isCreatorOpen, loadCreatorItems, loadFavoriteItems, publishMatch?.params.id, publishMatch?.params.type]);
 
   useEffect(() => {
     if (!isAdminOpen || authSession?.user?.role !== 'admin') return undefined;
@@ -398,6 +402,17 @@ export function App() {
       navigate('/creator', { replace: true });
     }
   }, [catalog, creatorCatalog, creatorItemsStatus, navigate, publishMatch?.params.id, publishMatch?.params.type, status]);
+
+  useEffect(() => {
+    if (!editMatch) return;
+    const type = normalizeType(editMatch.params.type);
+    const source = creatorCatalog.find((entry) => entry.type === type && entry.id === editMatch.params.id && entry.published);
+    if (source) {
+      setEditSource(source);
+    } else if (creatorItemsStatus === 'ready') {
+      navigate('/creator', { replace: true });
+    }
+  }, [creatorCatalog, creatorItemsStatus, editMatch?.params.id, editMatch?.params.type, navigate]);
 
   const favoriteCatalog = useMemo(() => {
     return favoriteItems.map((item) => mergeCatalogItem(item));
@@ -531,6 +546,54 @@ export function App() {
     const background = location.state?.background;
     setPublishSource(null);
     navigate(typeof background === 'string' ? background : '/');
+  }
+
+  function closeMetadataEdit() {
+    const background = location.state?.background;
+    setEditSource(null);
+    navigate(typeof background === 'string' ? background : '/creator');
+  }
+
+  async function handleMetadataUpdate(event) {
+    event.preventDefault();
+    if (isSavingMetadata || !editSource) return;
+    setSavingMetadata(true);
+    try {
+      const form = new FormData(event.currentTarget);
+      let metadata;
+      try {
+        metadata = parseJSONField(form.get('metadata'), {}, t.editMetadataJSON, 'object', t.invalidJSON);
+      } catch (reason) {
+        notify(errorMessage(reason), 'error');
+        return;
+      }
+      const payload = {
+        name: String(form.get('name') || '').trim(),
+        description: String(form.get('description') || '').trim(),
+        readme: String(form.get('readme') || '').trim(),
+        tags: parseTags(form.get('tags')),
+        metadata,
+        accessPolicy: {
+          mode: String(form.get('accessMode') || 'all'),
+          departmentIds: form.getAll('accessDepartmentIds').map((value) => String(value).trim()).filter(Boolean),
+          userIds: form.getAll('accessUserIds').map((value) => String(value).trim()).filter(Boolean),
+        },
+      };
+      const version = canonicalVersion(editSource.version || editSource.latestVersion);
+      await requestJSON(`${apiBase}/creator/items/${encodeURIComponent(editSource.type)}/${encodeURIComponent(editSource.id)}/versions/${encodeURIComponent(version)}/metadata`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      await Promise.all([loadCatalog(), loadCreatorItems(undefined, authSession)]);
+      setEditSource(null);
+      navigate('/creator');
+      notify(t.editMetadataSuccess, 'success');
+    } catch (reason) {
+      notify(t.editMetadataFailed(errorMessage(reason)), 'error');
+    } finally {
+      setSavingMetadata(false);
+    }
   }
 
   async function handleDownload(item, platformOverride = '') {
@@ -1094,6 +1157,18 @@ export function App() {
             isPublishing={isPublishing}
           />
         ) : <Navigate to="/" replace />}
+        editing={authStatus === 'loading' ? null : isAuthenticated && !isSecurityOnly ? (
+          <MetadataEditPage
+            key={editSource ? `${editSource.type}:${editSource.id}:${editSource.version}` : 'metadata-loading'}
+            item={editSource}
+            currentUser={authSession.user}
+            locale={locale}
+            t={t}
+            onClose={closeMetadataEdit}
+            onSubmit={handleMetadataUpdate}
+            isSaving={isSavingMetadata}
+          />
+        ) : <Navigate to="/" replace />}
         admin={authStatus === 'loading' ? null : authSession?.user?.role === 'admin' ? (
           <AdminCenter
             pendingItems={adminReviewCatalog}
@@ -1128,6 +1203,12 @@ export function App() {
             onPublishVersion={(item) => {
               setPublishSource(item);
               navigate(`/publish/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`, {
+                state: { background: '/creator' },
+              });
+            }}
+            onEditMetadata={(item) => {
+              setEditSource(item);
+              navigate(`/edit/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`, {
                 state: { background: '/creator' },
               });
             }}

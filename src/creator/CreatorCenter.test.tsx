@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasPublishedRelease, publicationState } from './CreatorCenter';
+import { canEditPublishedMetadata, hasPublishedRelease, publicationState } from './CreatorCenter';
 
 describe('creator inventory actions', () => {
   it('hides published-data actions for a first release that has not passed review', () => {
@@ -30,5 +30,11 @@ describe('creator inventory actions', () => {
     expect(publicationState({ reviewStatus: 'pending', published: false })).toBe('not-published');
     expect(publicationState({ reviewStatus: 'rejected', published: false })).toBe('not-published');
     expect(publicationState({ reviewStatus: 'approved', published: true })).toBe('published');
+  });
+
+  it('offers in-place metadata editing only for a creator-owned published release', () => {
+    expect(canEditPublishedMetadata({ published: true })).toBe(true);
+    expect(canEditPublishedMetadata({ published: false })).toBe(false);
+    expect(canEditPublishedMetadata({ published: true }, true)).toBe(false);
   });
 });

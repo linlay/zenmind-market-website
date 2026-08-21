@@ -69,6 +69,10 @@ export function hasPublishedRelease(item) {
   return item?.published === true;
 }
 
+export function canEditPublishedMetadata(item, isAdminMode = false) {
+  return !isAdminMode && hasPublishedRelease(item);
+}
+
 export function publicationState(item) {
   if (hasPublishedRelease(item)) return 'published';
   return item?.reviewStatus === 'approved' ? 'unpublished' : 'not-published';
@@ -94,6 +98,7 @@ export function CreatorCenter({
   locale,
   t,
   onPublishVersion,
+  onEditMetadata,
   onDetails,
   onReview,
   reviewingKey,
@@ -398,6 +403,12 @@ export function CreatorCenter({
                         <button className="table-action" type="button" disabled={item.pendingReviewStatus === 'pending'} onClick={() => onPublishVersion(item)}>
                           <Upload size={14} />
                           <span>{t.creatorPublishVersion}</span>
+                        </button>
+                      ) : null}
+                      {canEditPublishedMetadata(item, isAdminMode) && onEditMetadata ? (
+                        <button className="table-action" type="button" onClick={() => onEditMetadata(item)}>
+                          <Pencil size={14} />
+                          <span>{t.creatorEditMetadata}</span>
                         </button>
                       ) : null}
                       {hasPublishedRelease(item) ? (
