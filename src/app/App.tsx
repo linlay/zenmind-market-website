@@ -579,6 +579,10 @@ export function App() {
           userIds: form.getAll('accessUserIds').map((value) => String(value).trim()).filter(Boolean),
         },
       };
+      if (payload.accessPolicy.mode === 'restricted' && !payload.accessPolicy.departmentIds.length && !payload.accessPolicy.userIds.length) {
+        notify(t.accessRestrictedRequired, 'error');
+        return;
+      }
       const version = canonicalVersion(editSource.version || editSource.latestVersion);
       await requestJSON(`${apiBase}/creator/items/${encodeURIComponent(editSource.type)}/${encodeURIComponent(editSource.id)}/versions/${encodeURIComponent(version)}/metadata`, {
         method: 'PATCH',
@@ -987,6 +991,10 @@ export function App() {
 		},
       };
       if (skill) metadata.skill = skill;
+      if (metadata.accessPolicy.mode === 'restricted' && !metadata.accessPolicy.departmentIds.length && !metadata.accessPolicy.userIds.length) {
+        notify(t.accessRestrictedRequired, 'error');
+        return;
+      }
       if (type === 'cli-tool') {
         if (install) metadata.install = install;
         if (uninstall) metadata.uninstall = uninstall;

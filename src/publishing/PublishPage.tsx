@@ -109,12 +109,14 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     tools: initialItem.mcpTools || [],
   } : null);
   const initialAccessPolicy = initialItem?.accessPolicy || { mode: 'all', departmentIds: [], userIds: [] };
-  const [accessMode, setAccessMode] = useState(initialAccessPolicy.mode || 'all');
+  const [accessMode, setAccessMode] = useState(initialAccessPolicy.mode === 'all' ? 'all' : 'restricted');
   const departments = currentUser?.organization?.departments || [];
   const [selectedDepartmentIDs, setSelectedDepartmentIDs] = useState(
-    initialAccessPolicy.departmentIds?.length
-      ? initialAccessPolicy.departmentIds
-      : departments.filter((department) => department.primary).map((department) => department.id),
+    updateMode
+      ? initialAccessPolicy.departmentIds || []
+      : (initialAccessPolicy.departmentIds?.length
+        ? initialAccessPolicy.departmentIds
+        : departments.filter((department) => department.primary).map((department) => department.id)),
   );
   const [selectedUsers, setSelectedUsers] = useState(
     (initialAccessPolicy.userIds || []).map((userId) => ({ userId, name: userId })),
@@ -511,16 +513,13 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                 <span>{t.accessAll}</span>
               </label>
               <label className="checkbox-field">
-                <input name="accessMode" type="radio" value="department" checked={accessMode === 'department'} onChange={() => setAccessMode('department')} />
-                <span>{t.accessDepartment}</span>
-              </label>
-              <label className="checkbox-field">
-                <input name="accessMode" type="radio" value="users" checked={accessMode === 'users'} onChange={() => setAccessMode('users')} />
-                <span>{t.accessUsers}</span>
+                <input name="accessMode" type="radio" value="restricted" checked={accessMode === 'restricted'} onChange={() => setAccessMode('restricted')} />
+                <span>{t.accessRestricted}</span>
               </label>
               {accessMode === 'all' ? <small className="field-hint full">{t.accessAllHint}</small> : null}
-              {accessMode === 'department' ? (
+              {accessMode === 'restricted' ? (
                 <div className="skill-picker full">
+                  <strong className="access-picker-title">{t.accessDepartment}</strong>
                   {departments.length ? departments.map((department) => (
                     <label className={selectedDepartmentIDs.includes(department.id) ? 'skill-picker-option is-selected' : 'skill-picker-option'} key={department.id}>
                       <input name="accessDepartmentIds" type="checkbox" value={department.id} checked={selectedDepartmentIDs.includes(department.id)} onChange={() => toggleDepartment(department.id)} />
@@ -529,8 +528,9 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   )) : <p className="skill-picker-empty">{t.accessNoDepartment}</p>}
                 </div>
               ) : null}
-              {accessMode === 'users' ? (
+              {accessMode === 'restricted' ? (
                 <div className="skill-picker full">
+                  <strong className="access-picker-title">{t.accessExtraUsers}</strong>
                   {selectedUsers.map((user) => <input name="accessUserIds" type="hidden" value={user.userId} key={user.userId} />)}
                   <div className="skill-picker-search">
                     <Search size={14} />

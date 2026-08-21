@@ -120,7 +120,8 @@ describe('publish access policy', () => {
       />,
     );
 
-    expect(screen.getByLabelText('部门内可见')).toBeChecked();
+    expect(screen.getByLabelText('限定人群可见')).toBeChecked();
+    expect(screen.getByText('额外指定用户')).toBeInTheDocument();
     expect(screen.getByLabelText(/机构金融部/)).toBeChecked();
   });
 });

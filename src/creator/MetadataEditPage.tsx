@@ -7,7 +7,7 @@ import { formatVersionLabel } from '../domain/version';
 
 export function MetadataEditPage({ item, currentUser, locale, t, onClose, onSubmit, isSaving }) {
   const initialPolicy = item?.accessPolicy || { mode: 'all', departmentIds: [], userIds: [] };
-  const [accessMode, setAccessMode] = useState(initialPolicy.mode || 'all');
+  const [accessMode, setAccessMode] = useState(initialPolicy.mode === 'all' ? 'all' : 'restricted');
   const departments = currentUser?.organization?.departments || [];
   const [selectedDepartmentIDs, setSelectedDepartmentIDs] = useState(initialPolicy.departmentIds || []);
   const [selectedUsers, setSelectedUsers] = useState((initialPolicy.userIds || []).map((userId) => ({ userId, name: userId })));
@@ -88,15 +88,16 @@ export function MetadataEditPage({ item, currentUser, locale, t, onClose, onSubm
         <section className="publish-section full">
           <h3>{t.accessScope}</h3>
           <div className="publish-section-grid">
-            {['all', 'department', 'users'].map((mode) => (
+            {['all', 'restricted'].map((mode) => (
               <label className="checkbox-field" key={mode}>
                 <input name="accessMode" type="radio" value={mode} checked={accessMode === mode} onChange={() => setAccessMode(mode)} />
-                <span>{mode === 'all' ? t.accessAll : mode === 'department' ? t.accessDepartment : t.accessUsers}</span>
+                <span>{mode === 'all' ? t.accessAll : t.accessRestricted}</span>
               </label>
             ))}
             {accessMode === 'all' ? <small className="field-hint full">{t.accessAllHint}</small> : null}
-            {accessMode === 'department' ? (
+            {accessMode === 'restricted' ? (
               <div className="skill-picker full">
+                <strong className="access-picker-title">{t.accessDepartment}</strong>
                 {departments.length ? departments.map((department) => (
                   <label className={selectedDepartmentIDs.includes(department.id) ? 'skill-picker-option is-selected' : 'skill-picker-option'} key={department.id}>
                     <input name="accessDepartmentIds" type="checkbox" value={department.id} checked={selectedDepartmentIDs.includes(department.id)} onChange={() => toggleDepartment(department.id)} />
@@ -106,8 +107,9 @@ export function MetadataEditPage({ item, currentUser, locale, t, onClose, onSubm
                 )) : <p className="skill-picker-empty">{t.accessNoDepartment}</p>}
               </div>
             ) : null}
-            {accessMode === 'users' ? (
+            {accessMode === 'restricted' ? (
               <div className="skill-picker full">
+                <strong className="access-picker-title">{t.accessExtraUsers}</strong>
                 {selectedUsers.map((user) => <input name="accessUserIds" type="hidden" value={user.userId} key={user.userId} />)}
                 <div className="skill-picker-search">
                   <Search size={14} />
