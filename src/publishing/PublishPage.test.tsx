@@ -76,6 +76,25 @@ describe('publish platform selection', () => {
     expect(arch).toBeDisabled();
     expect(arch).toHaveValue('');
   });
+
+	it('allows one release to contain multiple platform artifacts', () => {
+	  const { container } = render(
+		<PublishPage
+		  t={getMarketCopy('zh-CN')}
+		  locale="zh-CN"
+		  initialItem={initialItem}
+		  onClose={vi.fn()}
+		  onSubmit={vi.fn()}
+		  isPublishing={false}
+		/>,
+	  );
+
+	  expect(container.querySelectorAll('[name="variantIndex"]')).toHaveLength(1);
+	  fireEvent.click(screen.getByText('添加平台制品'));
+	  expect(container.querySelectorAll('[name="variantIndex"]')).toHaveLength(2);
+	  expect(container.querySelector('[name="variantArtifact.0"]')).toBeRequired();
+	  expect(container.querySelector('[name="variantArtifact.1"]')).toBeRequired();
+	});
 });
 
 describe('publish access policy', () => {

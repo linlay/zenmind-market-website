@@ -812,8 +812,11 @@ export function App() {
         notify(t.mcpGatewayRequired, 'error');
         return;
       }
+      const variantIndexes = form.getAll('variantIndex').map((value) => String(value));
+      const variantFiles = variantIndexes.map((index) => selectedFormFile(formElement, form, `variantArtifact.${index}`));
       const artifact = selectedFormFile(formElement, form, 'artifact');
-      const hasSelectedArtifact = Boolean(artifact);
+      const hasSelectedArtifact = variantIndexes.length ? variantFiles.some(Boolean) : Boolean(artifact);
+      const hasAllVariantArtifacts = variantIndexes.every((_, index) => Boolean(variantFiles[index]));
       const image = selectedFormFile(formElement, form, 'image');
       const hasSelectedImage = Boolean(image);
       const adpManifest = selectedFormFile(formElement, form, 'adpManifest');
@@ -837,7 +840,8 @@ export function App() {
         startLogin();
         return;
       }
-      if (artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill }) && !hasSelectedArtifact) {
+      const artifactRequired = artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill });
+      if (artifactRequired && (!hasSelectedArtifact || (variantIndexes.length > 0 && !hasAllVariantArtifacts))) {
         notify(t.artifactRequired, 'error');
         return;
       }
@@ -872,6 +876,27 @@ export function App() {
       if (install) platform.install = install;
       if (uninstall) platform.uninstall = uninstall;
       if (detect) platform.detect = detect;
+      const variants = variantIndexes.map((index) => {
+        const os = String(form.get(`variantOS.${index}`) || '').trim();
+        const arch = String(form.get(`variantArch.${index}`) || '').trim();
+        const key = platformKeyFromSelection(os, arch);
+        const variantPlatform = { ...platform, key, os, arch };
+        return {
+          platform: variantPlatform,
+          archiveType: String(form.get(`variantArchiveType.${index}`) || '').trim() || defaultArchiveTypeFor(type),
+          assetRole: 'primary',
+          fileField: `artifact.${key}`,
+        };
+      });
+      if (new Set(variants.map((variant) => variant.platform.key)).size !== variants.length) {
+        notify(t.publishFailed(t.duplicatePlatformVariant), 'error');
+        return;
+      }
+      if (variants.length) {
+        Object.assign(platform, variants[0].platform);
+      }
+      const primaryPlatformKey = variants[0]?.platform.key || platformKey;
+      const primaryArchiveType = variants[0]?.archiveType || String(form.get('archiveType') || '').trim() || defaultArchiveTypeFor(type);
 
       const metadata = {
         id,
@@ -884,12 +909,13 @@ export function App() {
         minDesktopVersion: platformMinDesktopVersion,
         sandboxKind: type === 'sandbox-image' ? String(form.get('sandboxKind') || '').trim() || 'environment-template' : '',
         websiteKind: type === 'website-app' ? String(form.get('websiteKind') || '').trim() || 'local-app' : '',
-        platformKey,
+        platformKey: primaryPlatformKey,
         assetRole: 'primary',
-        archiveType: String(form.get('archiveType') || '').trim() || defaultArchiveTypeFor(type),
+        archiveType: primaryArchiveType,
         metadata: existingMetadata,
         dependencies: platformDependencies,
         platform,
+        variants,
         reviewStatus: 'pending',
 		accessPolicy: {
 		  mode: String(form.get('accessMode') || 'all'),
@@ -921,7 +947,10 @@ export function App() {
       if (hasSelectedArtifact || hasSelectedImage) {
         const body = new FormData();
         body.append('metadata', JSON.stringify(metadata));
-        if (hasSelectedArtifact) body.append('artifact', artifact);
+        if (artifact) body.append('artifact', artifact);
+        variants.forEach((variant, index) => {
+          if (variantFiles[index]) body.append(variant.fileField, variantFiles[index]);
+        });
         if (hasSelectedImage) body.append('image', image);
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
         await requestJSON(authSession.user?.role === 'admin' ? `${apiBase}/admin/${marketRoute(type)}/publish` : `${apiBase}/creator/publish`, {

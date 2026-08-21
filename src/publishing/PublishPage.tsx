@@ -81,6 +81,12 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const initialAsset = updateMode ? initialItem.assetMap?.[initialPlatformKey] : null;
   const initialPlatformOS = initialPlatform?.os && initialPlatform.os !== 'universal' ? initialPlatform.os : 'universal';
   const initialPlatformArch = initialPlatformOS === 'universal' ? '' : initialPlatform?.arch || '';
+	const initialVariants = updateMode && initialItem.platformOptions?.length
+	  ? initialItem.platformOptions.map((key, index) => {
+	    const spec = platformForKey(initialItem, key) || {};
+	    return { id: index + 1, os: spec.os || (key === 'universal' ? 'universal' : key.split('-')[0]), arch: spec.arch || key.split('-')[1] || '', archiveType: initialItem.assetMap?.[key]?.archiveType || defaultArchiveTypeFor(initialType, { sandboxKind: initialSandboxKind, websiteKind: initialWebsiteKind }) };
+	  })
+	  : [{ id: 1, os: initialPlatformOS, arch: initialPlatformArch, archiveType: initialAsset?.archiveType || defaultArchiveTypeFor(initialType, { sandboxKind: initialSandboxKind, websiteKind: initialWebsiteKind }) }];
   const [step, setStep] = useState(updateMode ? 'details' : 'type');
   const [type, setType] = useState(initialType);
   const [archiveType, setArchiveType] = useState(initialAsset?.archiveType || defaultArchiveTypeFor(initialType, { sandboxKind: initialSandboxKind, websiteKind: initialWebsiteKind }));
@@ -88,8 +94,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [websiteKind, setWebsiteKind] = useState(initialWebsiteKind);
   const [skillKind, setSkillKind] = useState(initialSkillKind);
   const [showAdvanced, setShowAdvanced] = useState(updateMode);
-  const [platformOS, setPlatformOS] = useState(initialPlatformOS);
-  const [platformArch, setPlatformArch] = useState(initialPlatformArch);
+	const [platformVariants, setPlatformVariants] = useState(initialVariants);
   const [skillSearch, setSkillSearch] = useState('');
   const [selectedSkillIDs, setSelectedSkillIDs] = useState(updateMode ? (initialItem.includedSkills || []).map((skill) => skill.id) : []);
   const [mcpSearch, setMCPSearch] = useState('');
@@ -158,13 +163,24 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     if (nextType === 'website-app') setWebsiteKind(nextWebsiteKind);
     setArchiveType(defaultArchiveTypeFor(nextType, { sandboxKind: nextSandboxKind, websiteKind: nextWebsiteKind }));
     setShowAdvanced(false);
-    setPlatformOS('universal');
-    setPlatformArch('');
+	setPlatformVariants([{ id: Date.now(), os: 'universal', arch: '', archiveType: defaultArchiveTypeFor(nextType, { sandboxKind: nextSandboxKind, websiteKind: nextWebsiteKind }) }]);
     setSkillSearch('');
     setSelectedSkillIDs([]);
     setSelectedMCP(null);
     setStep('details');
   }
+
+	function updatePlatformVariant(id, patch) {
+	  setPlatformVariants((current) => current.map((variant) => variant.id === id ? { ...variant, ...patch } : variant));
+	}
+
+	function addPlatformVariant() {
+	  setPlatformVariants((current) => [...current, { id: Date.now(), os: 'windows', arch: 'amd64', archiveType: defaultArchiveTypeFor(type, { sandboxKind, websiteKind }) }]);
+	}
+
+	function removePlatformVariant(id) {
+	  setPlatformVariants((current) => current.length > 1 ? current.filter((variant) => variant.id !== id) : current);
+	}
 
   function toggleIncludedSkill(skillID) {
     setSelectedSkillIDs((current) => (
@@ -206,12 +222,6 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     const nextKind = event.target.value;
     setWebsiteKind(nextKind);
     setArchiveType(defaultArchiveTypeFor('website-app'));
-  }
-
-  function handlePlatformOSChange(event) {
-    const nextOS = event.target.value;
-    setPlatformOS(nextOS);
-    if (nextOS === 'universal') setPlatformArch('');
   }
 
   function renderStepIndicator() {
@@ -444,26 +454,53 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           ) : null}
 
           {showAssetSection ? (
-          <section className="publish-section full">
-            <h3>{t.publishRequiredAssets}</h3>
-            <div className="publish-section-grid">
-          {!(type === 'skill' && skillKind === 'package') ? (
-            <label className="full">
-              <span className={artifactRequired ? 'required-field-label' : ''}>{t.artifact}</span>
-              <input name="artifact" type="file" required={artifactRequired} />
-              {type === 'skill' ? <small className="field-hint">{t.skillArtifactVersionHint}</small> : null}
-              {!artifactRequired ? <small className="field-hint">{t.artifactOptional}</small> : null}
-            </label>
-          ) : null}
-          {supportsADP ? (
-            <label className="full">
-              <span>{t.adpManifest}</span>
-              <input name="adpManifest" type="file" accept=".yaml,.yml,text/yaml,application/x-yaml" />
-              <small className="field-hint">{t.adpManifestHint}</small>
-            </label>
-          ) : null}
-            </div>
-          </section>
+            <section className="publish-section full">
+              <h3>{t.publishRequiredAssets}</h3>
+              <div className="publish-section-grid platform-variant-list">
+                {!(type === 'skill' && skillKind === 'package') ? (
+                  <>
+                    {platformVariants.map((variant, index) => (
+                      <div className="publish-field-card platform-variant-card full" key={variant.id}>
+                        <input name="variantIndex" type="hidden" value={index} />
+                        <label>
+                          <span>{t.os}</span>
+                          <select name={`variantOS.${index}`} value={variant.os} onChange={(event) => updatePlatformVariant(variant.id, { os: event.target.value, arch: event.target.value === 'universal' ? '' : variant.arch })}>
+                            <option value="universal">universal</option><option value="darwin">darwin</option><option value="linux">linux</option><option value="windows">windows</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span>{t.arch}</span>
+                          <select name={`variantArch.${index}`} required={variant.os !== 'universal'} disabled={variant.os === 'universal'} value={variant.arch} onChange={(event) => updatePlatformVariant(variant.id, { arch: event.target.value })}>
+                            <option value="">—</option><option value="arm64">arm64</option><option value="amd64">amd64</option><option value="arm">arm</option><option value="386">386</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span>{t.archiveType}</span>
+                          <select name={`variantArchiveType.${index}`} value={variant.archiveType} onChange={(event) => updatePlatformVariant(variant.id, { archiveType: event.target.value })}>
+                            {archiveOptionsFor(type, { sandboxKind }).map((option) => <option value={option} key={option}>{option}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          <span className={artifactRequired ? 'required-field-label' : ''}>{t.artifact}</span>
+                          <input name={`variantArtifact.${index}`} type="file" required={artifactRequired} />
+                        </label>
+                        <button className="secondary-action" type="button" disabled={platformVariants.length === 1} onClick={() => removePlatformVariant(variant.id)}><Trash2 size={14} /><span>{t.removePlatformVariant}</span></button>
+                      </div>
+                    ))}
+                    <button className="secondary-action" type="button" onClick={addPlatformVariant}><Plus size={14} /><span>{t.addPlatformVariant}</span></button>
+                    {type === 'skill' ? <small className="field-hint full">{t.skillArtifactVersionHint}</small> : null}
+                    {!artifactRequired ? <small className="field-hint full">{t.artifactOptional}</small> : null}
+                  </>
+                ) : null}
+                {supportsADP ? (
+                  <label className="full">
+                    <span>{t.adpManifest}</span>
+                    <input name="adpManifest" type="file" accept=".yaml,.yml,text/yaml,application/x-yaml" />
+                    <small className="field-hint">{t.adpManifestHint}</small>
+                  </label>
+                ) : null}
+              </div>
+            </section>
           ) : null}
 
           <section className="publish-section full">
@@ -523,31 +560,6 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             </button>
             {showAdvanced ? (
               <div className="publish-section-grid">
-                <label>
-                  <span>{t.os}</span>
-                  <select name="platformOS" value={platformOS} onChange={handlePlatformOSChange}>
-                    <option value="universal">universal</option>
-                    <option value="darwin">darwin</option>
-                    <option value="linux">linux</option>
-                    <option value="windows">windows</option>
-                  </select>
-                </label>
-                <label>
-                  <span>{t.arch}</span>
-                  <select
-                    name="platformArch"
-                    required={platformOS !== 'universal'}
-                    disabled={platformOS === 'universal'}
-                    value={platformArch}
-                    onChange={(event) => setPlatformArch(event.target.value)}
-                  >
-                    <option value="">{platformOS === 'universal' ? '—' : t.selectArchitecture}</option>
-                    <option value="arm64">arm64</option>
-                    <option value="amd64">amd64</option>
-                    <option value="arm">arm</option>
-                    <option value="386">386</option>
-                  </select>
-                </label>
                 <label>
                   <span>{t.minDesktopVersion}</span>
                   <input name="platformMinDesktopVersion" defaultValue={initialPlatform?.minDesktopVersion || initialItem?.minDesktopVersion || ''} placeholder="1.2.0" />

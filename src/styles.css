@@ -3527,6 +3527,17 @@ img {
   padding: 12px;
 }
 
+.platform-variant-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.platform-variant-card > .secondary-action {
+  justify-self: start;
+}
+
 .publish-form .checkbox-field {
   min-height: 34px;
   border: 1px solid var(--line);
@@ -4037,6 +4048,10 @@ img {
 
   .publish-type-grid,
   .publish-section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-variant-card {
     grid-template-columns: 1fr;
   }
 
