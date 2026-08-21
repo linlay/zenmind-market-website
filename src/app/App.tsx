@@ -143,6 +143,7 @@ export function App() {
   const [moderatingCommentID, setModeratingCommentID] = useState(0);
   const [reviewingKey, setReviewingKey] = useState('');
   const [unpublishingKey, setUnpublishingKey] = useState('');
+  const [deletingKey, setDeletingKey] = useState('');
   const [downloadingKey, setDownloadingKey] = useState('');
   const [favoritingKey, setFavoritingKey] = useState('');
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
@@ -738,6 +739,38 @@ export function App() {
     }
   }
 
+  async function handleDeleteItem(item) {
+    if (!item || deletingKey) return;
+    if (!authSession?.user?.id) {
+      notify(t.loginRequired, 'error');
+      return;
+    }
+    const name = localized(item.name, locale) || item.id;
+    if (!window.confirm(t.deleteComponentConfirm(name))) return;
+
+    const key = `${item.type}:${item.id}`;
+    const scope = authSession.user.role === 'admin' ? 'admin' : 'creator';
+    setDeletingKey(key);
+    try {
+      await requestJSON(`${apiBase}/${scope}/items/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`, {
+        method: 'DELETE',
+      });
+      await Promise.all([
+        loadCatalog(),
+        loadCreatorItems(undefined, authSession),
+        loadFavoriteItems(undefined, authSession),
+        authSession.user.role === 'admin' ? loadAdminReviews(undefined, authSession) : Promise.resolve(),
+        authSession.user.role === 'admin' ? loadAdminComments(undefined, authSession) : Promise.resolve(),
+      ]);
+      if (selected?.type === item.type && selected?.id === item.id) setSelected(null);
+      notify(t.deleteComponentSuccess, 'success');
+    } catch (reason) {
+      notify(t.deleteComponentFailed(errorMessage(reason)), 'error');
+    } finally {
+      setDeletingKey('');
+    }
+  }
+
   async function handleModerateComment(comment) {
     if (!comment || moderatingCommentID) return;
     setModeratingCommentID(comment.id);
@@ -1044,6 +1077,8 @@ export function App() {
             reviewingKey={reviewingKey}
             onUnpublishLatest={handleUnpublishLatest}
             unpublishingKey={unpublishingKey}
+            onDeleteItem={handleDeleteItem}
+            deletingKey={deletingKey}
             onLoadAdminReviews={handleLoadAdminReviews}
             isLoadingAdminReviews={isLoadingAdminReviews}
             onModerateComment={handleModerateComment}
@@ -1070,6 +1105,8 @@ export function App() {
             onDetails={openDetailsForSurface}
             onReview={null}
             reviewingKey={reviewingKey}
+            onDeleteItem={handleDeleteItem}
+            deletingKey={deletingKey}
           />
         ) : <Navigate to="/" replace />}
         market={(

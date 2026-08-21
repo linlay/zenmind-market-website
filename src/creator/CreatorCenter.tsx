@@ -97,6 +97,8 @@ export function CreatorCenter({
   onDetails,
   onReview,
   reviewingKey,
+  onDeleteItem,
+  deletingKey,
   onLoadAdminReviews,
   isLoadingAdminReviews,
 }) {
@@ -402,6 +404,12 @@ export function CreatorCenter({
                         <button className="table-action" type="button" onClick={() => onDetails(item)}>
                           <ArrowRight size={14} />
                           <span>{t.creatorOpenMarket}</span>
+                        </button>
+                      ) : null}
+                      {onDeleteItem ? (
+                        <button className="table-action is-danger" type="button" disabled={deletingKey === `${item.type}:${item.id}`} onClick={() => onDeleteItem(item)}>
+                          <Trash2 size={14} />
+                          <span>{t.deleteComponent}</span>
                         </button>
                       ) : null}
                     </span>

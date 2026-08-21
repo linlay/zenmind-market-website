@@ -70,6 +70,8 @@ export function AdminCenter({
   reviewingKey,
   onUnpublishLatest,
   unpublishingKey,
+  onDeleteItem,
+  deletingKey,
   onLoadAdminReviews,
   isLoadingAdminReviews,
   onModerateComment,
@@ -143,6 +145,7 @@ export function AdminCenter({
                   <span>{formatDate(item.updatedAt || item.publishedAt, locale)}</span>
                   <span className="table-actions">
                     <button className="table-action" type="button" disabled={reviewingKey === `${item.type}:${item.id}`} onClick={() => openReviewDetail(item)}><ListChecks size={14} /><span>{t.reviewOpen}</span></button>
+                    <button className="table-action is-danger" type="button" disabled={deletingKey === `${item.type}:${item.id}`} onClick={() => onDeleteItem(item)}><Trash2 size={14} /><span>{t.deleteComponent}</span></button>
                   </span>
                 </div>
               ))}
@@ -175,6 +178,7 @@ export function AdminCenter({
                     <button className="table-action" type="button" onClick={() => openVersions(item)}><Calendar size={14} /><span>{t.creatorVersions}</span></button>
                     <button className="table-action" type="button" onClick={() => onDetails(item)}><ArrowRight size={14} /><span>{t.creatorOpenMarket}</span></button>
                     <button className="table-action is-danger" type="button" disabled={unpublishingKey === key} onClick={() => onUnpublishLatest(item)}><Trash2 size={14} /><span>{t.adminUnpublishLatest}</span></button>
+                    <button className="table-action is-danger" type="button" disabled={deletingKey === key} onClick={() => onDeleteItem(item)}><X size={14} /><span>{t.deleteComponent}</span></button>
                   </span>
                 </div>;
               })}
