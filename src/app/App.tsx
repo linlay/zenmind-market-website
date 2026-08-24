@@ -882,8 +882,9 @@ export function App() {
       const variantIndexes = form.getAll('variantIndex').map((value) => String(value));
       const variantFiles = variantIndexes.map((index) => selectedFormFile(formElement, form, `variantArtifact.${index}`));
       const artifact = selectedFormFile(formElement, form, 'artifact');
-      const hasSelectedArtifact = variantIndexes.length ? variantFiles.some(Boolean) : Boolean(artifact);
-      const hasAllVariantArtifacts = variantIndexes.every((_, index) => Boolean(variantFiles[index]));
+      const repositorySource = String(form.get('artifactSource') || 'upload') === 'repository';
+      const hasSelectedArtifact = repositorySource || (variantIndexes.length ? variantFiles.some(Boolean) : Boolean(artifact));
+      const hasAllVariantArtifacts = repositorySource || variantIndexes.every((_, index) => Boolean(variantFiles[index]));
       const image = selectedFormFile(formElement, form, 'image');
       const hasSelectedImage = Boolean(image);
       const adpManifest = selectedFormFile(formElement, form, 'adpManifest');
@@ -910,6 +911,10 @@ export function App() {
       const artifactRequired = artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill });
       if (artifactRequired && (!hasSelectedArtifact || (variantIndexes.length > 0 && !hasAllVariantArtifacts))) {
         notify(t.artifactRequired, 'error');
+        return;
+      }
+      if (repositorySource && !String(form.get('repositoryUrl') || '').trim()) {
+        notify(t.publishFailed(t.repositoryUrlRequired), 'error');
         return;
       }
       let platformMetadata;
@@ -1024,6 +1029,14 @@ export function App() {
         });
         if (hasSelectedImage) body.append('image', image);
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
+        if (repositorySource) {
+          body.append('artifactSource', 'repository');
+          body.append('repositoryProvider', String(form.get('repositoryProvider') || 'gitlab'));
+          body.append('repositoryUrl', String(form.get('repositoryUrl') || '').trim());
+          body.append('repositoryRef', String(form.get('repositoryRef') || '').trim());
+          body.append('repositoryPath', String(form.get('repositoryPath') || '').trim());
+          body.append('repositoryAccessToken', String(form.get('repositoryAccessToken') || '').trim());
+        }
         await requestJSON(authSession.user?.role === 'admin' ? `${apiBase}/admin/${marketRoute(type)}/publish` : `${apiBase}/creator/publish`, {
           method: 'POST',
           body,

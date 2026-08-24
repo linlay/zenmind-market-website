@@ -95,6 +95,26 @@ describe('publish platform selection', () => {
 	  expect(container.querySelector('[name="variantArtifact.0"]')).toBeRequired();
 	  expect(container.querySelector('[name="variantArtifact.1"]')).toBeRequired();
 	});
+
+  it('switches a single skill artifact to a private repository source', () => {
+    const { container } = render(
+      <PublishPage
+        t={getMarketCopy('zh-CN')}
+        locale="zh-CN"
+        initialItem={initialItem}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        isPublishing={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('从 GitHub / GitLab 仓库导入'));
+    expect(screen.getByLabelText('仓库平台')).toHaveValue('gitlab');
+    expect(screen.getByLabelText('仓库地址')).toBeRequired();
+    expect(screen.getByLabelText(/^Access Token（私有仓库必填）/)).toHaveAttribute('type', 'password');
+    expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeRequired();
+    expect(screen.queryByText('添加平台制品')).not.toBeInTheDocument();
+  });
 });
 
 describe('publish access policy', () => {

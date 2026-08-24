@@ -192,14 +192,6 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
           {platform ? <span className="platform-chip">{platform}</span> : null}
           {item.type === 'mcp' && item.mcpServerCode ? <span className="platform-chip">{item.mcpServerCode}</span> : null}
         </div>
-        {item.skillKind === 'package' && item.includedSkills.length ? (
-          <div className="card-included">
-            <strong>{t.skillIncluded}</strong>
-            {item.includedSkills.slice(0, 4).map((skill) => (
-              <span key={skill.id}>{skill.name || skill.id}</span>
-            ))}
-          </div>
-        ) : null}
       </div>
       <footer className={isAuthenticated ? '' : 'is-browse-only'}>
         <button className="link-button" type="button" onClick={onDetails}>

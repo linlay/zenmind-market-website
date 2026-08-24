@@ -1640,9 +1640,9 @@ img {
 }
 
 .creator-table-row {
-  min-width: 1362px;
+  min-width: 1442px;
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) minmax(100px, 0.7fr) minmax(150px, 0.9fr) 84px 82px 82px 82px 72px 82px 126px 250px;
+  grid-template-columns: minmax(200px, 1.5fr) minmax(90px, 0.6fr) minmax(150px, 0.9fr) 72px 60px 60px 60px 56px 60px 110px minmax(420px, auto);
   gap: 12px;
   align-items: center;
   min-height: 62px;
@@ -1681,8 +1681,8 @@ img {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 9px;
-  font-size: 12px;
+  padding: 0 7px;
+  font-size: 11px;
   font-weight: 730;
 }
 
@@ -1695,8 +1695,9 @@ img {
 .table-actions {
   display: flex;
   align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
+  gap: 5px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .review-badge {
@@ -2119,34 +2120,6 @@ img {
   color: #0f766e;
   background: color-mix(in srgb, #14b8a6 13%, var(--surface));
   border-color: color-mix(in srgb, #14b8a6 30%, var(--line));
-}
-
-.card-included {
-  border-top: 1px solid color-mix(in srgb, var(--line) 62%, transparent);
-  padding-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.card-included strong {
-  flex-basis: 100%;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.2;
-}
-
-.card-included span {
-  min-height: 24px;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--surface-muted) 80%, transparent);
-  color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  padding: 0 8px;
-  font-size: 11px;
-  line-height: 1;
 }
 
 .market-card footer {
@@ -3545,6 +3518,25 @@ img {
 
 .platform-variant-card > .secondary-action {
   justify-self: start;
+}
+
+.repository-source-picker {
+  display: flex;
+  gap: 10px;
+}
+
+.repository-source-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.repository-source-card .full {
+  grid-column: 1 / -1;
+}
+
+.repository-upload-hidden {
+  display: none !important;
 }
 
 .publish-form .checkbox-field {

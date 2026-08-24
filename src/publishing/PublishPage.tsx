@@ -93,6 +93,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [sandboxKind, setSandboxKind] = useState(initialSandboxKind);
   const [websiteKind, setWebsiteKind] = useState(initialWebsiteKind);
   const [skillKind, setSkillKind] = useState(initialSkillKind);
+  const [artifactSource, setArtifactSource] = useState('upload');
   const [showAdvanced, setShowAdvanced] = useState(updateMode);
 	const [platformVariants, setPlatformVariants] = useState(initialVariants);
   const [skillSearch, setSkillSearch] = useState('');
@@ -159,6 +160,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     const nextSkillKind = option.skillKind || 'single';
     setType(nextType);
     setSkillKind(nextType === 'skill' ? nextSkillKind : 'single');
+    setArtifactSource('upload');
     const nextSandboxKind = nextType === 'sandbox-image' ? 'environment-template' : sandboxKind;
     const nextWebsiteKind = nextType === 'website-app' ? 'local-app' : websiteKind;
     if (nextType === 'sandbox-image') setSandboxKind(nextSandboxKind);
@@ -176,9 +178,14 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
 	  setPlatformVariants((current) => current.map((variant) => variant.id === id ? { ...variant, ...patch } : variant));
 	}
 
-	function addPlatformVariant() {
+  function addPlatformVariant() {
 	  setPlatformVariants((current) => [...current, { id: Date.now(), os: 'windows', arch: 'amd64', archiveType: defaultArchiveTypeFor(type, { sandboxKind, websiteKind }) }]);
 	}
+
+  function selectArtifactSource(source) {
+    setArtifactSource(source);
+    if (source === 'repository') setPlatformVariants((current) => current.slice(0, 1));
+  }
 
 	function removePlatformVariant(id) {
 	  setPlatformVariants((current) => current.length > 1 ? current.filter((variant) => variant.id !== id) : current);
@@ -461,6 +468,46 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               <div className="publish-section-grid platform-variant-list">
                 {!(type === 'skill' && skillKind === 'package') ? (
                   <>
+                    {type === 'skill' && skillKind === 'single' ? (
+                      <div className="repository-source-picker full">
+                        <label className="checkbox-field">
+                          <input name="artifactSource" type="radio" value="upload" checked={artifactSource === 'upload'} onChange={() => selectArtifactSource('upload')} />
+                          <span>{t.artifactSourceUpload}</span>
+                        </label>
+                        <label className="checkbox-field">
+                          <input name="artifactSource" type="radio" value="repository" checked={artifactSource === 'repository'} onChange={() => selectArtifactSource('repository')} />
+                          <span>{t.artifactSourceRepository}</span>
+                        </label>
+                      </div>
+                    ) : <input name="artifactSource" type="hidden" value="upload" />}
+                    {artifactSource === 'repository' && type === 'skill' && skillKind === 'single' ? (
+                      <div className="publish-field-card repository-source-card full">
+                        <label>
+                          <span className="required-field-label">{t.repositoryProvider}</span>
+                          <select name="repositoryProvider" defaultValue="gitlab" required>
+                            <option value="gitlab">GitLab</option>
+                            <option value="github">GitHub</option>
+                          </select>
+                        </label>
+                        <label className="full">
+                          <span className="required-field-label">{t.repositoryUrl}</span>
+                          <input name="repositoryUrl" type="url" required placeholder="https://gitlab.example.com/group/skill.git" />
+                        </label>
+                        <label>
+                          <span>{t.repositoryRef}</span>
+                          <input name="repositoryRef" placeholder="main / v1.0.0 / commit SHA" />
+                        </label>
+                        <label>
+                          <span>{t.repositoryPath}</span>
+                          <input name="repositoryPath" placeholder="skills/my-skill" />
+                        </label>
+                        <label className="full">
+                          <span>{t.repositoryAccessToken}</span>
+                          <input name="repositoryAccessToken" type="password" autoComplete="new-password" placeholder={t.repositoryAccessTokenPlaceholder} />
+                          <small className="field-hint">{t.repositoryAccessTokenHint}</small>
+                        </label>
+                      </div>
+                    ) : null}
                     {platformVariants.map((variant, index) => (
                       <div className="publish-field-card platform-variant-card full" key={variant.id}>
                         <input name="variantIndex" type="hidden" value={index} />
@@ -482,14 +529,14 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                             {archiveOptionsFor(type, { sandboxKind }).map((option) => <option value={option} key={option}>{option}</option>)}
                           </select>
                         </label>
-                        <label>
+                        <label className={artifactSource === 'repository' && type === 'skill' && skillKind === 'single' ? 'repository-upload-hidden' : ''}>
                           <span className={artifactRequired ? 'required-field-label' : ''}>{t.artifact}</span>
-                          <input name={`variantArtifact.${index}`} type="file" required={artifactRequired} />
+                          <input name={`variantArtifact.${index}`} type="file" required={artifactRequired && !(artifactSource === 'repository' && type === 'skill' && skillKind === 'single')} />
                         </label>
-                        <button className="secondary-action" type="button" disabled={platformVariants.length === 1} onClick={() => removePlatformVariant(variant.id)}><Trash2 size={14} /><span>{t.removePlatformVariant}</span></button>
+                        <button className="secondary-action" type="button" disabled={platformVariants.length === 1 || artifactSource === 'repository'} onClick={() => removePlatformVariant(variant.id)}><Trash2 size={14} /><span>{t.removePlatformVariant}</span></button>
                       </div>
                     ))}
-                    <button className="secondary-action" type="button" onClick={addPlatformVariant}><Plus size={14} /><span>{t.addPlatformVariant}</span></button>
+                    {artifactSource !== 'repository' ? <button className="secondary-action" type="button" onClick={addPlatformVariant}><Plus size={14} /><span>{t.addPlatformVariant}</span></button> : null}
                     {type === 'skill' ? <small className="field-hint full">{t.skillArtifactVersionHint}</small> : null}
                     {!artifactRequired ? <small className="field-hint full">{t.artifactOptional}</small> : null}
                   </>
