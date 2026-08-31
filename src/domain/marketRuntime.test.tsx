@@ -17,6 +17,19 @@ describe('market catalog normalization', () => {
     expect(item.detailViewCount).toBe(12);
   });
 
+  it('uses targets returned by the API for artifact platform selection', () => {
+    const item = mergeCatalogItem({
+      id: 'targeted',
+      type: 'cli-tool',
+      targets: {
+        'darwin-arm64': { platform: 'darwin-arm64', os: 'darwin', arch: 'arm64' },
+      },
+    });
+
+    expect(item.platformOptions).toEqual(['darwin-arm64']);
+    expect(item.platformMap['darwin-arm64']).toMatchObject({ os: 'darwin', arch: 'arm64' });
+  });
+
   it('maps internal review workflow states to the existing UI states', () => {
     expect(mergeCatalogItem({ id: 'security', type: 'skill', reviewStatus: 'security_pending' }).reviewStatus).toBe('pending');
     expect(mergeCatalogItem({ id: 'admin', type: 'skill', pendingReviewStatus: 'admin_pending' }).pendingReviewStatus).toBe('pending');

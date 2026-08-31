@@ -83,7 +83,7 @@ export function VersionHistoryModal({ state, locale, t, onClose }) {
                   {version.version === (item.version || item.latestVersion) ? <small>{t.creatorCurrentVersion}</small> : null}
                 </span>
                 <span>{formatDate(version.publishedAt, locale)}</span>
-                <span>{Object.keys(version.assets || {}).length || Object.keys(version.platforms || {}).length} {t.assets}</span>
+                <span>{Object.keys(version.assets || {}).length || Object.keys(version.targets || {}).length} {t.assets}</span>
               </div>
             ))}
           </div>
@@ -208,7 +208,7 @@ export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, on
               <ReviewSection title={t.dependencies} icon={Shapes}>
                 <div className="review-technical-grid">
                   <ReviewCodeBlock label={t.dependencies} value={item.dependencies} />
-                  <ReviewCodeBlock label={t.platforms} value={item.platforms} />
+                  <ReviewCodeBlock label={t.platforms} value={item.targets} />
                   {item.install ? <ReviewCodeBlock label={t.installProtocol} value={item.install} /> : null}
                   {item.uninstall ? <ReviewCodeBlock label="Uninstall" value={item.uninstall} /> : null}
                   {item.detect ? <ReviewCodeBlock label="Detect" value={item.detect} /> : null}

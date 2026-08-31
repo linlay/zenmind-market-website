@@ -15,7 +15,7 @@ export const screenshotFixtures = [
     positiveRate: 96,
     metadata: {},
     assets: {},
-    platforms: {},
+    targets: {},
     dependencies: [],
   },
   {
@@ -34,7 +34,7 @@ export const screenshotFixtures = [
     positiveRate: 98,
     metadata: {},
     assets: {},
-    platforms: {},
+    targets: {},
     dependencies: [],
   },
   {
@@ -53,7 +53,7 @@ export const screenshotFixtures = [
     positiveRate: 94,
     metadata: {},
     assets: {},
-    platforms: {},
+    targets: {},
     dependencies: [],
   },
   {
@@ -72,7 +72,7 @@ export const screenshotFixtures = [
     positiveRate: 97,
     metadata: {},
     assets: {},
-    platforms: {},
+    targets: {},
     dependencies: [],
   },
   {
@@ -91,7 +91,7 @@ export const screenshotFixtures = [
     positiveRate: 98,
     metadata: {},
     assets: {},
-    platforms: {},
+    targets: {},
     dependencies: [],
   },
   {
@@ -110,7 +110,7 @@ export const screenshotFixtures = [
     positiveRate: 95,
     metadata: {},
     assets: {},
-    platforms: {},
+    targets: {},
     dependencies: [],
   },
   {
@@ -129,7 +129,7 @@ export const screenshotFixtures = [
     positiveRate: 96,
     metadata: {},
     assets: {},
-    platforms: {},
+    targets: {},
     dependencies: [],
   },
   {
@@ -148,7 +148,7 @@ export const screenshotFixtures = [
     positiveRate: 97,
     metadata: {},
     assets: {},
-    platforms: {},
+    targets: {},
     dependencies: [],
   },
 ];

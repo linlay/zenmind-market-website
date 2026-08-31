@@ -47,7 +47,7 @@ describe('review detail modal', () => {
             sizeBytes: 3163,
           },
         },
-        platforms: {
+        targets: {
           universal: {
             platform: 'universal',
             metadata: {},

@@ -93,7 +93,7 @@ export function initialTheme() {
 export function mergeCatalogItem(apiItem) {
   const type = normalizeType(apiItem.type);
   const assetMap = apiItem.assets || {};
-  const platformMap = synthesizePlatformMap(apiItem.platforms || {}, assetMap);
+  const platformMap = synthesizePlatformMap(apiItem.targets || {}, assetMap);
   const skill = normalizeSkillProfile(apiItem.skill, type);
   const assets = Object.entries(assetMap).map(([platform, asset]) => `${platform}/${asset.archiveType || 'artifact'} ${formatBytes(asset.sizeBytes)}`);
   const downloadCount = parseCount(apiItem.downloadCount ?? apiItem.metadata?.downloads ?? 0);
