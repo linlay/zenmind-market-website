@@ -12,6 +12,7 @@ const copy = {
   sortPopular: 'Popular',
   sortLatest: 'Latest',
   sortRating: 'Rating',
+  favoritesOnly: 'My favorites only',
   loadingTitle: 'Loading',
   loadingBody: 'Loading catalog',
   loadingErrorTitle: 'Error',
@@ -37,12 +38,14 @@ describe('market page', () => {
         locale="en-US"
         skillCategories={['all']}
         skillCounts={{ all: 0 }}
+        favoritesOnly={false}
         sortMode="popular"
         status="ready"
         error=""
         t={copy}
         onCategoryChange={vi.fn()}
         onSkillCategoryChange={vi.fn()}
+        onFavoritesOnlyChange={vi.fn()}
         onSortModeChange={onSortModeChange}
         renderCatalog={() => <div>Catalog</div>}
       />,
@@ -50,5 +53,38 @@ describe('market page', () => {
 
     fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'latest' } });
     expect(onSortModeChange).toHaveBeenCalledWith('latest');
+  });
+
+  it('lets an authenticated user filter to personal favorites', () => {
+    const onFavoritesOnlyChange = vi.fn();
+
+    render(
+      <MarketPage
+        activeCategory="all"
+        activeSkillCategory="all"
+        categories={[{ id: 'all', icon: () => null, colorClass: '' }]}
+        categoryCounts={{ all: 2 }}
+        currentCategoryName="All"
+        emptyCopy={{ title: 'Empty', body: 'No entries' }}
+        filtered={[]}
+        isAuthenticated
+        locale="en-US"
+        skillCategories={['all']}
+        skillCounts={{ all: 0 }}
+        favoritesOnly={false}
+        sortMode="popular"
+        status="ready"
+        error=""
+        t={copy}
+        onCategoryChange={vi.fn()}
+        onSkillCategoryChange={vi.fn()}
+        onFavoritesOnlyChange={onFavoritesOnlyChange}
+        onSortModeChange={vi.fn()}
+        renderCatalog={() => <div>Catalog</div>}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('My favorites only'));
+    expect(onFavoritesOnlyChange).toHaveBeenCalledWith(true);
   });
 });

@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
-import { PackageOpen } from 'lucide-react';
+import { Heart, PackageOpen } from 'lucide-react';
 
 type Category = {
   id: string;
@@ -19,12 +19,14 @@ type MarketPageProps = {
   locale: string;
   skillCategories: string[];
   skillCounts: Record<string, number>;
+  favoritesOnly: boolean;
   sortMode: string;
   status: string;
   error: string;
   t: any;
   onCategoryChange: (category: string) => void;
   onSkillCategoryChange: (category: string) => void;
+  onFavoritesOnlyChange: (enabled: boolean) => void;
   onSortModeChange: (mode: string) => void;
   renderCatalog: () => ReactNode;
 };
@@ -37,14 +39,17 @@ export function MarketPage({
   currentCategoryName,
   emptyCopy,
   filtered,
+  isAuthenticated,
   skillCategories,
   skillCounts,
+  favoritesOnly,
   sortMode,
   status,
   error,
   t,
   onCategoryChange,
   onSkillCategoryChange,
+  onFavoritesOnlyChange,
   onSortModeChange,
   renderCatalog,
 }: MarketPageProps) {
@@ -85,18 +90,33 @@ export function MarketPage({
             <h1>{currentCategoryName}</h1>
             <span>{t.count(filtered.length)}</span>
           </div>
-          <label className="sort-control">
-            <span>{t.sortLabel}</span>
-            <select
-              aria-label={t.sortLabel}
-              value={sortMode}
-              onChange={(event) => onSortModeChange(event.target.value)}
-            >
-              <option value="popular">{t.sortPopular}</option>
-              <option value="latest">{t.sortLatest}</option>
-              <option value="rating">{t.sortRating}</option>
-            </select>
-          </label>
+          <div className="catalog-controls">
+            <label className="sort-control">
+              <span>{t.sortLabel}</span>
+              <select
+                aria-label={t.sortLabel}
+                value={sortMode}
+                onChange={(event) => onSortModeChange(event.target.value)}
+              >
+                <option value="popular">{t.sortPopular}</option>
+                <option value="latest">{t.sortLatest}</option>
+                <option value="rating">{t.sortRating}</option>
+              </select>
+            </label>
+            {isAuthenticated ? (
+              <button
+                className={favoritesOnly ? 'favorites-only-control is-active' : 'favorites-only-control'}
+                type="button"
+                aria-label={t.favoritesOnly}
+                aria-pressed={favoritesOnly}
+                title={t.favoritesOnly}
+                onClick={() => onFavoritesOnlyChange(!favoritesOnly)}
+              >
+                <Heart size={17} fill={favoritesOnly ? 'currentColor' : 'none'} aria-hidden="true" />
+                <span>{t.favoritesOnly}</span>
+              </button>
+            ) : null}
+          </div>
         </div>
 
         {activeCategory === 'skill' ? (

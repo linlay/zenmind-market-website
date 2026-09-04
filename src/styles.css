@@ -1086,6 +1086,34 @@ img {
   font-size: 12px;
 }
 
+.catalog-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.favorites-only-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.favorites-only-control:hover,
+.favorites-only-control:focus-visible {
+  color: var(--brand);
+}
+
+.favorites-only-control.is-active {
+  color: var(--brand);
+}
+
 .sort-control select,
 .platform-select select,
 .publish-form select,

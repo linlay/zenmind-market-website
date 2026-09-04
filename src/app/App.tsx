@@ -124,6 +124,7 @@ export function App() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [sortMode, setSortMode] = useState('popular');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [catalogOrderOverride, setCatalogOrderOverride] = useState(null);
   const [theme, setTheme] = useState(initialTheme);
   const [selected, setSelected] = useState(null);
@@ -138,7 +139,6 @@ export function App() {
   const [authStatus, setAuthStatus] = useState('loading');
   const [creatorItems, setCreatorItems] = useState([]);
   const [creatorItemsStatus, setCreatorItemsStatus] = useState('idle');
-  const [favoriteItems, setFavoriteItems] = useState([]);
   const [adminItems, setAdminItems] = useState([]);
   const [securityReviewItems, setSecurityReviewItems] = useState([]);
   const [adminComments, setAdminComments] = useState([]);
@@ -263,23 +263,6 @@ export function App() {
     }
   }, [authSession]);
 
-  const loadFavoriteItems = useCallback(async (signal, sessionOverride = null) => {
-    const session = sessionOverride || authSession;
-    if (!session?.user?.id) {
-      setFavoriteItems([]);
-      return { ok: false, reason: 'missing-user' };
-    }
-    try {
-      const data = await requestJSON(`${apiBase}/me/favorites`, { signal });
-      setFavoriteItems(Array.isArray(data.items) ? data.items : []);
-      return { ok: true };
-    } catch (reason) {
-      if (reason?.name === 'AbortError') return { ok: false, reason };
-      setFavoriteItems([]);
-      return { ok: false, reason };
-    }
-  }, [authSession]);
-
   const loadAdminComments = useCallback(async (signal, sessionOverride = null) => {
     const session = sessionOverride || authSession;
     if (!session?.user?.id || session.user?.role !== 'admin') {
@@ -352,9 +335,8 @@ export function App() {
     if (!isCreatorOpen && !publishMatch && !editMatch) return undefined;
     const controller = new AbortController();
     loadCreatorItems(controller.signal);
-    loadFavoriteItems(controller.signal);
     return () => controller.abort();
-  }, [editMatch?.params.id, editMatch?.params.type, isCreatorOpen, loadCreatorItems, loadFavoriteItems, publishMatch?.params.id, publishMatch?.params.type]);
+  }, [editMatch?.params.id, editMatch?.params.type, isCreatorOpen, loadCreatorItems, publishMatch?.params.id, publishMatch?.params.type]);
 
   useEffect(() => {
     if (!isAdminOpen || authSession?.user?.role !== 'admin') return undefined;
@@ -414,10 +396,6 @@ export function App() {
     }
   }, [creatorCatalog, creatorItemsStatus, editMatch?.params.id, editMatch?.params.type, navigate]);
 
-  const favoriteCatalog = useMemo(() => {
-    return favoriteItems.map((item) => mergeCatalogItem(item));
-  }, [favoriteItems]);
-
   const publishableSkills = useMemo(() => {
     return catalog.filter((item) => item.type === 'skill' && item.skillKind !== 'package');
   }, [catalog]);
@@ -444,7 +422,7 @@ export function App() {
     return { categories };
   }, [catalog]);
 
-  const marketOrderSignature = [activeCategory, activeSkillCategory, locale, query.trim().toLowerCase(), sortMode].join('\u0000');
+  const marketOrderSignature = [activeCategory, activeSkillCategory, favoritesOnly, locale, query.trim().toLowerCase(), sortMode].join('\u0000');
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const result = catalog.filter((item) => {
@@ -452,6 +430,7 @@ export function App() {
       if (activeCategory === 'skill') {
         if (activeSkillCategory !== 'all' && item.skillCategory !== activeSkillCategory) return false;
       }
+      if (favoritesOnly && !item.favorited) return false;
       if (!needle) return true;
       return [
         item.id,
@@ -484,7 +463,7 @@ export function App() {
       }
       return compareItems(a, b);
     });
-  }, [activeCategory, activeSkillCategory, catalog, catalogOrderOverride, locale, marketOrderSignature, query, sortMode]);
+  }, [activeCategory, activeSkillCategory, catalog, catalogOrderOverride, favoritesOnly, locale, marketOrderSignature, query, sortMode]);
 
   const currentCategoryName = activeCategory === 'all' ? t.all : t.categories[activeCategory];
   const emptyCopy = catalog.length === 0
@@ -690,7 +669,6 @@ export function App() {
       setSelected((current) => (
         current && current.id === merged.id && current.type === merged.type ? merged : current
       ));
-      if (isCreatorOpen) await loadFavoriteItems();
     } catch (reason) {
       if (reason?.status === 401) {
         notify(t.favoriteAuthRequired, 'error');
@@ -825,7 +803,6 @@ export function App() {
       await Promise.all([
         loadCatalog(),
         loadCreatorItems(undefined, authSession),
-        loadFavoriteItems(undefined, authSession),
         authSession.user.role === 'admin' ? loadAdminReviews(undefined, authSession) : Promise.resolve(),
         authSession.user.role === 'admin' ? loadAdminComments(undefined, authSession) : Promise.resolve(),
       ]);
@@ -1217,7 +1194,6 @@ export function App() {
           <CreatorCenter
             mode="creator"
             items={creatorCatalog}
-            favoriteItems={favoriteCatalog}
             authSession={authSession}
             locale={locale}
             t={t}
@@ -1253,12 +1229,14 @@ export function App() {
           locale={locale}
           skillCategories={skillCategoryFilters}
           skillCounts={skillCounts.categories}
+          favoritesOnly={favoritesOnly}
           sortMode={sortMode}
           status={status}
           error={error}
           t={t}
           onCategoryChange={chooseCategory}
           onSkillCategoryChange={(category) => navigate(category === 'all' ? '/category/skill' : `/skills/${encodeURIComponent(category)}`)}
+          onFavoritesOnlyChange={setFavoritesOnly}
           onSortModeChange={setSortMode}
           renderCatalog={() => activeCategory === 'skill' ? (
             <SkillCatalogView

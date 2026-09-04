@@ -93,7 +93,6 @@ function PublicationBadge({ item, t }) {
 export function CreatorCenter({
   mode = 'creator',
   items,
-  favoriteItems = [],
   authSession,
   locale,
   t,
@@ -429,25 +428,6 @@ export function CreatorCenter({
                 ))}
               </div>
             ) : <EmptyInline title={t.creatorEmptyTitle} body={t.creatorEmptyBody} />}
-          </section>
-
-          <section className="creator-panel">
-            <div className="panel-head">
-              <span><Heart size={16} />{t.creatorMyFavorites}</span>
-            </div>
-            {favoriteItems.length ? (
-              <div className="recent-list">
-                {favoriteItems.slice(0, 5).map((item) => (
-                  <button className="recent-row" type="button" key={`${item.type}:${item.id}`} onClick={() => onDetails(item)}>
-                    <img src={item.icon || item.screenshot} alt="" />
-                    <span>
-                      <strong>{localized(item.name, locale) || item.id}</strong>
-                      <small>{item.author || t.defaultAuthor} · {displayType(item.type, t)}</small>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : <EmptyInline title={t.creatorNoFavorites} body={t.creatorNoFavoritesBody} />}
           </section>
         </div>
       </div>
