@@ -9,6 +9,7 @@ import {
   AlertOctagon,
   ArrowRight,
   Bot,
+  BookOpen,
   Box,
   Brain,
   Calendar,
@@ -59,6 +60,7 @@ import { MetadataEditPage } from '../creator/MetadataEditPage';
 import { DetailModal, MarketCard, SkillCatalogView } from '../market/CatalogViews';
 import { MarketPage } from '../market/MarketPage';
 import { PublishPage } from '../publishing/PublishPage';
+import { UserManualPage } from '../manual/UserManualPage';
 import { Toast } from '../shared/Feedback';
 import { getMarketCopy } from '../i18n/marketCopy';
 import {
@@ -118,6 +120,7 @@ export function App() {
   const isCreatorOpen = location.pathname === '/creator';
   const isAdminOpen = location.pathname === '/admin';
   const isSecurityReviewOpen = location.pathname === '/security-review';
+  const isManualOpen = location.pathname === '/guide' || location.pathname.startsWith('/guide/');
   const isScreenshotDemo = new URLSearchParams(location.search).get('demo') === '1';
   const [apiItems, setApiItems] = useState([]);
   const [status, setStatus] = useState('loading');
@@ -1075,10 +1078,14 @@ export function App() {
           </span>
         </a>
 
-        <label className="global-search">
-          <Search size={16} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchPlaceholder} />
-        </label>
+        {isManualOpen ? (
+          <div className="manual-topbar-context"><BookOpen size={16} /><span>用户操作手册</span></div>
+        ) : (
+          <label className="global-search">
+            <Search size={16} />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchPlaceholder} />
+          </label>
+        )}
 
         <div className="top-actions">
           <button className="icon-button" type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title={t.themeToggle} aria-label={t.themeToggle}>
@@ -1241,6 +1248,14 @@ export function App() {
             deletingKey={deletingKey}
           />
         ) : <Navigate to="/" replace />}
+        manual={(
+          <UserManualPage
+            onClose={() => {
+              const background = location.state?.background;
+              navigate(typeof background === 'string' && background !== '/guide' ? background : '/');
+            }}
+          />
+        )}
         market={(
           <MarketPage
           activeCategory={activeCategory}
@@ -1299,6 +1314,24 @@ export function App() {
           />
         )}
       />
+
+      <button
+        className={isManualOpen ? 'manual-floating-button is-open' : 'manual-floating-button'}
+        type="button"
+        onClick={() => {
+          if (isManualOpen) {
+            const background = location.state?.background;
+            navigate(typeof background === 'string' && background !== '/guide' ? background : '/');
+            return;
+          }
+          navigate('/guide', { state: { background: location.pathname } });
+        }}
+        aria-label={isManualOpen ? '返回市场' : '打开用户操作手册'}
+        title={isManualOpen ? '返回市场' : '用户操作手册'}
+      >
+        {isManualOpen ? <ArrowRight size={17} /> : <BookOpen size={17} />}
+        <span>{isManualOpen ? '返回市场' : '操作手册'}</span>
+      </button>
 
       {selected ? (
         <DetailModal

@@ -7,6 +7,7 @@ type AppSurfaceProps = {
   admin: ReactNode;
   security: ReactNode;
   creator: ReactNode;
+  manual: ReactNode;
   market: ReactNode;
 };
 
@@ -16,6 +17,7 @@ export function AppSurface({
   admin,
   security,
   creator,
+  manual,
   market,
 }: AppSurfaceProps) {
   return (
@@ -26,6 +28,7 @@ export function AppSurface({
       <Route path="/creator" element={creator} />
       <Route path="/admin" element={admin} />
       <Route path="/security-review" element={security} />
+      <Route path="/guide/*" element={manual} />
       <Route path="/publish" element={publishing} />
       <Route path="/publish/:type/:id" element={publishing} />
       <Route path="/edit/:type/:id" element={editing} />

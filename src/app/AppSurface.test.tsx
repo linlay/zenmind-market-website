@@ -8,6 +8,45 @@ function CurrentPath() {
 import { AppSurface } from './AppSurface';
 
 describe('application surface', () => {
+  it('shows the user manual at its stable route', () => {
+    render(
+      <MemoryRouter initialEntries={['/guide']}>
+        <AppSurface
+          publishing={<div>Publishing workspace</div>}
+          editing={<div>Editing workspace</div>}
+          admin={<div>Admin workspace</div>}
+          security={<div>Security workspace</div>}
+          creator={<div>Creator workspace</div>}
+          manual={<div>Manual workspace</div>}
+          market={<div>Market workspace</div>}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Manual workspace')).toBeInTheDocument();
+    expect(screen.queryByText('Market workspace')).not.toBeInTheDocument();
+  });
+
+  it('keeps manual chapter routes inside the manual workspace', () => {
+    render(
+      <MemoryRouter initialEntries={['/guide/publishing/skills']}>
+        <CurrentPath />
+        <AppSurface
+          publishing={<div>Publishing workspace</div>}
+          editing={<div>Editing workspace</div>}
+          admin={<div>Admin workspace</div>}
+          security={<div>Security workspace</div>}
+          creator={<div>Creator workspace</div>}
+          manual={<div>Manual workspace</div>}
+          market={<div>Market workspace</div>}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Manual workspace')).toBeInTheDocument();
+    expect(screen.getByLabelText('current path')).toHaveTextContent('/guide/publishing/skills');
+  });
+
   it('shows the publishing workspace at its route', () => {
     render(
       <MemoryRouter initialEntries={['/publish']}>
@@ -15,6 +54,7 @@ describe('application surface', () => {
           publishing={<div>Publishing workspace</div>}
           admin={<div>Admin workspace</div>}
           creator={<div>Creator workspace</div>}
+          manual={<div>Manual workspace</div>}
           market={<div>Market workspace</div>}
         />
       </MemoryRouter>,
@@ -32,6 +72,7 @@ describe('application surface', () => {
             publishing={<div>Publishing workspace</div>}
             admin={<div>Admin workspace</div>}
             creator={<div>Creator workspace</div>}
+            manual={<div>Manual workspace</div>}
             market={<div>Market workspace</div>}
           />
       </MemoryRouter>,
@@ -49,6 +90,7 @@ describe('application surface', () => {
           publishing={<div>Publishing workspace</div>}
           admin={<div>Admin workspace</div>}
           creator={<div>Creator workspace</div>}
+          manual={<div>Manual workspace</div>}
           market={<div>Market workspace</div>}
         />
       </MemoryRouter>,
@@ -66,6 +108,7 @@ describe('application surface', () => {
           publishing={<div>Publishing workspace</div>}
           admin={<div>Admin workspace</div>}
           creator={<div>Creator workspace</div>}
+          manual={<div>Manual workspace</div>}
           market={<div>Market workspace</div>}
         />
       </MemoryRouter>,
@@ -83,6 +126,7 @@ describe('application surface', () => {
           publishing={<div>Publishing workspace</div>}
           admin={<div>Admin workspace</div>}
           creator={<div>Creator workspace</div>}
+          manual={<div>Manual workspace</div>}
           market={<div>Market workspace</div>}
         />
       </MemoryRouter>,
