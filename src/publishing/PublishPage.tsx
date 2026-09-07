@@ -101,6 +101,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [mcpSearch, setMCPSearch] = useState('');
   const [mcpServers, setMCPServers] = useState([]);
   const [mcpStatus, setMCPStatus] = useState('idle');
+  const [mcpSource, setMCPSource] = useState(updateMode && initialType === 'mcp' && initialItem.mcpSource === 'custom' ? 'custom' : 'gateway');
   const [selectedMCP, setSelectedMCP] = useState(updateMode && initialType === 'mcp' ? {
     code: initialItem.mcpServerCode,
     name: localized(initialItem.name, locale),
@@ -152,8 +153,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   }, []);
 
   useEffect(() => {
-    if (type === 'mcp' && step === 'details' && !updateMode && mcpStatus === 'idle') loadMCPServers();
-  }, [loadMCPServers, mcpStatus, step, type, updateMode]);
+    if (type === 'mcp' && mcpSource === 'gateway' && step === 'details' && !updateMode && mcpStatus === 'idle') loadMCPServers();
+  }, [loadMCPServers, mcpSource, mcpStatus, step, type, updateMode]);
 
   function applyPublishType(option) {
     const nextType = normalizeType(option.type);
@@ -171,6 +172,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     setSkillSearch('');
     setSelectedSkillIDs([]);
     setSelectedMCP(null);
+    setMCPSource('gateway');
     setStep('details');
   }
 
@@ -296,13 +298,33 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           {type === 'skill' ? <input name="skillKind" type="hidden" value={skillKind} /> : null}
           {type === 'mcp' ? (
             <section className="publish-section full">
-              <h3>{t.mcpGatewaySource}</h3>
+              <h3>{t.mcpSourceLabel}</h3>
               {updateMode ? (
                 <div className="mcp-selected-source">
-                  <strong>{selectedMCP?.name || selectedMCP?.code}</strong>
-                  <code>{selectedMCP?.endpointUrl}</code>
+                  <strong>{mcpSource === 'custom' ? t.mcpSourceCustom : t.mcpSourceGateway}</strong>
+                  <code>{mcpSource === 'custom' ? initialItem.mcpEndpointUrl : selectedMCP?.endpointUrl}</code>
                 </div>
               ) : (
+                <div className="mcp-source-toggle" role="group" aria-label={t.mcpSourceLabel}>
+                  <button
+                    className={mcpSource === 'gateway' ? 'mcp-source-option is-selected' : 'mcp-source-option'}
+                    type="button"
+                    onClick={() => setMCPSource('gateway')}
+                  >
+                    <Store size={15} />
+                    <span>{t.mcpSourceGateway}</span>
+                  </button>
+                  <button
+                    className={mcpSource === 'custom' ? 'mcp-source-option is-selected' : 'mcp-source-option'}
+                    type="button"
+                    onClick={() => setMCPSource('custom')}
+                  >
+                    <Globe size={15} />
+                    <span>{t.mcpSourceCustom}</span>
+                  </button>
+                </div>
+              )}
+              {mcpSource === 'gateway' && !updateMode ? (
                 <div className="mcp-picker">
                   <div className="mcp-picker-search">
                     <Search size={15} />
@@ -326,24 +348,50 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                     ))}
                   </div>
                 </div>
-              )}
-              <input name="mcpServerCode" type="hidden" value={selectedMCP?.code || ''} />
-              <input name="mcpEndpointUrl" type="hidden" value={selectedMCP?.endpointUrl || ''} />
-              <input name="mcpGatewayConfigVersion" type="hidden" value={selectedMCP?.configVersion || ''} />
-              <input name="mcpTools" type="hidden" value={JSON.stringify(selectedMCP?.tools || [])} />
+              ) : null}
+              {mcpSource === 'custom' && !updateMode ? (
+                <div className="mcp-custom-form">
+                  <label>
+                    <span className="required-field-label">{t.mcpCustomEndpoint}</span>
+                    <input name="mcpEndpointUrl" type="url" required placeholder="https://your-mcp.example.com/mcp" />
+                    <small className="field-hint">{t.mcpCustomEndpointInvalid}</small>
+                  </label>
+                  <label>
+                    <span>{t.mcpCustomServerKey}</span>
+                    <input name="mcpCustomServerKey" placeholder="my-mcp" pattern="[a-z0-9._-]+" />
+                    <small className="field-hint">{t.mcpCustomServerKeyHint}</small>
+                  </label>
+                  <label>
+                    <span>{t.mcpCustomTools}</span>
+                    <input name="mcpCustomTools" placeholder="search,fetch" />
+                    <small className="field-hint">{t.mcpCustomToolsHint}</small>
+                  </label>
+                </div>
+              ) : null}
+              <input name="mcpSource" type="hidden" value={mcpSource} />
+              {mcpSource === 'gateway' ? (
+                <>
+                  <input name="mcpServerCode" type="hidden" value={selectedMCP?.code || ''} />
+                  <input name="mcpGatewayConfigVersion" type="hidden" value={selectedMCP?.configVersion || ''} />
+                  <input name="mcpTools" type="hidden" value={JSON.stringify(selectedMCP?.tools || [])} />
+                </>
+              ) : null}
+              {mcpSource === 'gateway' || updateMode ? (
+                <input name="mcpEndpointUrl" type="hidden" value={selectedMCP?.endpointUrl || initialItem?.mcpEndpointUrl || ''} />
+              ) : null}
             </section>
           ) : null}
-          <section className="publish-section full" key={type === 'mcp' ? selectedMCP?.code || 'mcp-empty' : 'basic'}>
+          <section className="publish-section full" key={type === 'mcp' ? (mcpSource === 'custom' ? 'mcp-custom' : selectedMCP?.code || 'mcp-empty') : 'basic'}>
             <h3>{t.publishBasicInfo}</h3>
             <div className="publish-section-grid">
               <label>
                 <span className="required-field-label">{t.componentId}</span>
-                <input name="id" required readOnly={updateMode || type === 'mcp'} defaultValue={updateMode ? initialItem.id : type === 'mcp' ? selectedMCPMarketID : ''} placeholder="my-agent" pattern="[a-z0-9._-]+" />
+                <input name="id" required readOnly={updateMode || (type === 'mcp' && mcpSource === 'gateway')} defaultValue={updateMode ? initialItem.id : type === 'mcp' && mcpSource === 'gateway' ? selectedMCPMarketID : ''} placeholder="my-agent" pattern="[a-z0-9._-]+" />
                 {updateMode ? <small className="field-hint">{t.publishVersionLocked}</small> : null}
               </label>
               <label>
                 <span className="required-field-label">{t.name}</span>
-                <input name="name" required defaultValue={updateMode ? localized(initialItem.name, locale) : type === 'mcp' ? selectedMCP?.name || '' : ''} placeholder="My Agent" />
+                <input name="name" required defaultValue={updateMode ? localized(initialItem.name, locale) : type === 'mcp' && mcpSource === 'gateway' ? selectedMCP?.name || '' : ''} placeholder="My Agent" />
               </label>
               <label>
                 <span className="required-field-label">{t.version}</span>
@@ -355,7 +403,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               </label>
               <label className="full">
                 <span className="required-field-label">{t.description}</span>
-                <textarea name="description" rows="4" required defaultValue={updateMode ? localized(initialItem.description, locale) : type === 'mcp' ? selectedMCP?.description || '' : ''} />
+                <textarea name="description" rows="4" required defaultValue={updateMode ? localized(initialItem.description, locale) : type === 'mcp' && mcpSource === 'gateway' ? selectedMCP?.description || '' : ''} />
               </label>
             </div>
           </section>

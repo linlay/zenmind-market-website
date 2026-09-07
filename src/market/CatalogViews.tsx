@@ -191,6 +191,7 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
           {(item.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
           {platform ? <span className="platform-chip">{platform}</span> : null}
           {item.type === 'mcp' && item.mcpServerCode ? <span className="platform-chip">{item.mcpServerCode}</span> : null}
+          {item.type === 'mcp' && item.mcpSource === 'custom' ? <span className="platform-chip">{t.mcpSourceBadgeCustom}</span> : null}
         </div>
       </div>
       <footer className={isAuthenticated ? '' : 'is-browse-only'}>
@@ -329,7 +330,10 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
               <section className="side-section">
                 <h3>MCP</h3>
                 <div className="mcp-detail-facts">
-                  <span><strong>{t.componentId}</strong><code>{item.mcpServerCode}</code></span>
+                  <span><strong>{t.mcpSourceLabel}</strong><code>{item.mcpSource === 'custom' ? t.mcpSourceBadgeCustom : t.mcpSourceBadgeGateway}</code></span>
+                  {item.mcpServerCode ? (
+                    <span><strong>{t.componentId}</strong><code>{item.mcpServerCode}</code></span>
+                  ) : null}
                   <span><strong>{t.mcpEndpoint}</strong><code>{item.mcpEndpointUrl}</code></span>
                 </div>
                 {item.mcpTools?.length ? (

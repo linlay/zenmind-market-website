@@ -3717,6 +3717,47 @@ img {
   gap: 12px;
 }
 
+.mcp-source-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mcp-source-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 620;
+  cursor: pointer;
+}
+
+.mcp-source-option:hover {
+  border-color: var(--primary);
+}
+
+.mcp-source-option.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--brand);
+}
+
+.mcp-custom-form {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.mcp-custom-form .full,
+.mcp-custom-form label:nth-child(1) {
+  grid-column: 1 / -1;
+}
+
 .mcp-picker-search {
   display: flex;
   align-items: center;

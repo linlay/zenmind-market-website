@@ -852,9 +852,26 @@ export function App() {
         return;
       }
       const description = String(form.get('description') || '').trim();
-      if (type === 'mcp' && !String(form.get('mcpServerCode') || '').trim()) {
-        notify(t.mcpGatewayRequired, 'error');
-        return;
+      if (type === 'mcp') {
+        const mcpSource = String(form.get('mcpSource') || 'gateway');
+        if (mcpSource === 'gateway' && !String(form.get('mcpServerCode') || '').trim()) {
+          notify(t.mcpGatewayRequired, 'error');
+          return;
+        }
+        if (mcpSource === 'custom') {
+          const customEndpoint = String(form.get('mcpEndpointUrl') || '').trim();
+          if (!customEndpoint) {
+            notify(t.mcpCustomEndpointRequired, 'error');
+            return;
+          }
+          try {
+            const parsedURL = new URL(customEndpoint);
+            if (parsedURL.protocol !== 'http:' && parsedURL.protocol !== 'https:') throw new Error('invalid protocol');
+          } catch {
+            notify(t.mcpCustomEndpointInvalid, 'error');
+            return;
+          }
+        }
       }
       const variantIndexes = form.getAll('variantIndex').map((value) => String(value));
       const variantFiles = variantIndexes.map((index) => selectedFormFile(formElement, form, `variantArtifact.${index}`));
@@ -987,11 +1004,19 @@ export function App() {
       if (author) metadata.metadata.author = author;
       if (metadataUrl) metadata.metadata.url = metadataUrl;
       if (type === 'mcp') {
+        const mcpSource = String(form.get('mcpSource') || 'gateway');
+        metadata.metadata.source = mcpSource;
         metadata.metadata.gatewayServerCode = String(form.get('mcpServerCode') || '').trim();
         metadata.metadata.endpointUrl = String(form.get('mcpEndpointUrl') || '').trim();
         metadata.metadata.gatewayConfigVersion = String(form.get('mcpGatewayConfigVersion') || '').trim();
-        metadata.metadata.tools = String(form.get('mcpTools') || '[]');
-        metadata.tags = [...new Set([...metadata.tags, 'MCP', 'gateway'])];
+        if (mcpSource === 'custom') {
+          const customTools = String(form.get('mcpCustomTools') || '').split(',').map((tool) => tool.trim()).filter(Boolean);
+          metadata.metadata.tools = JSON.stringify(customTools);
+          metadata.metadata.serverKey = String(form.get('mcpCustomServerKey') || '').trim().toLowerCase();
+        } else {
+          metadata.metadata.tools = String(form.get('mcpTools') || '[]');
+        }
+        metadata.tags = [...new Set([...metadata.tags, 'MCP', mcpSource === 'custom' ? 'custom' : 'gateway'])];
       }
       if (hasSelectedADPManifest && !hasSelectedArtifact) {
         metadata.adpYaml = await adpManifest.text();

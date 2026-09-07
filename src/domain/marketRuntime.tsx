@@ -124,6 +124,7 @@ export function mergeCatalogItem(apiItem) {
     skillPackageMode: skill.packageMode,
     skillFeatured: Boolean(skill.featured),
     includedSkills: skill.includedSkills,
+    mcpSource: apiItem.metadata?.source || 'gateway',
     mcpServerCode: apiItem.metadata?.gatewayServerCode || '',
     mcpEndpointUrl: apiItem.metadata?.endpointUrl || '',
     mcpGatewayConfigVersion: apiItem.metadata?.gatewayConfigVersion || '',
