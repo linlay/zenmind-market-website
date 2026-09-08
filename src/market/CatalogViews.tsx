@@ -2,17 +2,15 @@
 import {
   AlertCircle,
   AlertOctagon,
-  ArrowRight,
   Bot,
   Box,
   Brain,
   Calendar,
   Cat,
   CheckCircle2,
+  ChevronDown,
   Copy,
   Download,
-  File,
-  Folder,
   Globe,
   HardDrive,
   Heart,
@@ -38,13 +36,15 @@ import {
   BarChart3,
   ListChecks,
   MessageSquare,
+  MessageCircleMore,
   Pencil,
   Store,
-  ThumbsDown,
-  ThumbsUp,
+  Star,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { errorMessage, requestJSON } from '../api/client';
 import {
   apiBase,
@@ -56,19 +56,14 @@ import {
   skillCategoryLabel,
   isSkillPackage,
   marketRoute,
+  usageHintsFromMetadata,
 } from '../domain/market';
-import { formatVersionLabel } from '../domain/version';
 import {
   availablePlatformKeys,
   preferredPlatformKey,
   platformForKey,
   downloadKeyForItem,
-  platformDependencies,
-  dependencyKey,
   commandEntries,
-  assetEntries,
-  formatAssetSize,
-  formatAssetSizeForPlatform,
   hasArtifact,
   canInstallWithADP,
 } from '../domain/platform';
@@ -140,21 +135,69 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
   const canDownload = item.type === 'mcp' || hasArtifact(item, platform) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
-  const skillLabel = item.type === 'skill' ? skillKindLabel(item.skillKind, t) : '';
-  const skillCategory = item.type === 'skill' ? skillCategoryLabel(item.skillCategory, t) : '';
+  const usageHints = item.type === 'skill' ? usageHintsFromMetadata(item.metadata) : [];
+  const usageHintKey = usageHints.join('\u0000');
+  const cardRef = useRef(null);
+  const [usageHintVisible, setUsageHintVisible] = useState(false);
+  const [activeUsageHint, setActiveUsageHint] = useState(0);
   const cardClassName = ['market-card', variant ? `is-${variant}` : ''].filter(Boolean).join(' ');
+  const itemName = localized(item.name, locale);
+  useEffect(() => {
+    if (!usageHints.length) {
+      setUsageHintVisible(false);
+      return undefined;
+    }
+    const card = cardRef.current;
+    if (!card || typeof IntersectionObserver === 'undefined') {
+      setUsageHintVisible(true);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setUsageHintVisible(true);
+        observer.disconnect();
+      }
+    }, { threshold: 0.15 });
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [usageHintKey]);
+  useEffect(() => {
+    setActiveUsageHint(0);
+    if (!usageHintVisible || usageHints.length < 2) return undefined;
+    const timer = window.setInterval(() => setActiveUsageHint((current) => (current + 1) % usageHints.length), 3200);
+    return () => window.clearInterval(timer);
+  }, [usageHintKey, usageHintVisible]);
+  function openCardDetails(event) {
+    if (event.target.closest('button, a, input, select, textarea')) return;
+    onDetails();
+  }
   return (
-    <article className={cardClassName}>
+    <article
+      ref={cardRef}
+      className={usageHintVisible ? `${cardClassName} is-usage-hint-visible` : cardClassName}
+      tabIndex={0}
+      aria-label={`${t.details}: ${itemName}`}
+      onClick={openCardDetails}
+      onKeyDown={(event) => {
+        if ((event.key === 'Enter' || event.key === ' ') && event.target === event.currentTarget) {
+          event.preventDefault();
+          onDetails();
+        }
+      }}
+    >
       <div className="card-body">
         <div className="card-title-row">
           <span className="card-artwork" title={displayType(item.type, t)} aria-label={displayType(item.type, t)}>
             {item.icon ? <img src={item.icon} alt="" /> : <Icon className={category?.colorClass || 'is-muted'} size={18} />}
           </span>
           <h2>
-            {localized(item.name, locale)}
+            {itemName}
           </h2>
           <div className="card-head-meta">
-            <span className="card-version">{formatVersionLabel(item.version)}</span>
+            <span className="card-download-stat" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
+              <Download size={13} />
+              <span>{formatCount(item.downloads)}</span>
+            </span>
             {isAuthenticated ? (
               <button
                 className={item.favorited ? 'card-favorite-action is-active' : 'card-favorite-action'}
@@ -176,29 +219,13 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
           </div>
         </div>
         <p>{localized(item.description, locale) || t.noDescription}</p>
+        {usageHints.length ? <div className="card-usage-hint" aria-label={t.usageHintTitle}><p className="card-usage-hint-text" key={activeUsageHint}><span className="usage-hint-icon" aria-hidden="true"><MessageCircleMore size={16} /></span><span>{usageHints[activeUsageHint]}</span></p></div> : null}
         <div className="card-author">
           <User size={13} />
           <span className="card-author-name" title={`${t.author}: ${item.author}`}>{item.author}</span>
-          <span className="card-author-separator" aria-hidden="true">·</span>
-          <span className="card-download-stat" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
-            <Download size={13} />
-            <span>{formatCount(item.downloads)}</span>
-          </span>
-        </div>
-        <div className="tag-row">
-          {skillLabel ? <span className={item.skillKind === 'package' ? 'skill-kind-chip package' : 'skill-kind-chip'}>{skillLabel}</span> : null}
-          {skillCategory ? <span>{skillCategory}</span> : null}
-          {(item.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}
-          {platform ? <span className="platform-chip">{platform}</span> : null}
-          {item.type === 'mcp' && item.mcpServerCode ? <span className="platform-chip">{item.mcpServerCode}</span> : null}
-          {item.type === 'mcp' && item.mcpSource === 'custom' ? <span className="platform-chip">{t.mcpSourceBadgeCustom}</span> : null}
         </div>
       </div>
-      <footer className={isAuthenticated ? '' : 'is-browse-only'}>
-        <button className="link-button" type="button" onClick={onDetails}>
-          <span>{t.details}</span>
-          <ArrowRight size={13} />
-        </button>
+      <footer className="card-hover-action">
         {isAuthenticated ? (
           <button className="primary-action" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
             {canInstall ? <Copy size={13} /> : <Download size={13} />}
@@ -215,12 +242,13 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
   const platformKeys = availablePlatformKeys(item);
   const activePlatformKey = preferredPlatformKey(item, selectedPlatformKey);
   const activePlatform = platformForKey(item, activePlatformKey);
-  const deps = platformDependencies(activePlatform, item);
+  const specificPlatformKeys = platformKeys.filter((platform) => String(platform).toLowerCase() !== 'universal');
   const commands = commandEntries(activePlatform, t);
   const canDownload = item.type === 'mcp' || hasArtifact(item, activePlatformKey) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   const readme = localized(item.readme, locale);
+  const usageHints = item.type === 'skill' ? usageHintsFromMetadata(item.metadata) : [];
   const localizedFeatures = localized(item.features, locale);
   const features = Array.isArray(localizedFeatures) ? localizedFeatures.filter(Boolean) : [];
   const hasCoreFeatures = Boolean(String(readme || '').trim() || features.length);
@@ -229,8 +257,37 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
       <aside className="detail-modal" role="dialog" aria-modal="true" aria-label={localized(item.name, locale)} onMouseDown={(event) => event.stopPropagation()}>
         <button className="modal-close" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
         <div className="detail-grid">
+          <section className="detail-hero">
+            <div className="detail-icon"><Icon size={30} /></div>
+            <div className="detail-hero-copy">
+              <div className="detail-overline">
+                <span>{displayType(item.type, t)}</span>
+                {item.type === 'skill' ? <span>{skillKindLabel(item.skillKind, t)}</span> : null}
+                {item.type === 'skill' ? <span>{skillCategoryLabel(item.skillCategory, t)}</span> : null}
+                {item.type === 'skill' && item.skillScenario ? <span>{t.skillScenarios[item.skillScenario] || item.skillScenario}</span> : null}
+                {item.type === 'skill' && item.skillLevel ? <span>{t.skillLevels[item.skillLevel] || item.skillLevel}</span> : null}
+                {item.type === 'skill' && item.skillFeatured ? <span>{t.skillFeatured}</span> : null}
+                {(item.tags || []).map((tag) => <span key={tag}>#{tag}</span>)}
+                {specificPlatformKeys.map((platform) => <span key={platform}><Box size={13} />{platform}</span>)}
+              </div>
+              <div className="detail-heading">
+                <h2>{localized(item.name, locale)}</h2>
+                <p>{localized(item.description, locale)}</p>
+              </div>
+              <div className="detail-chip-row">
+                <span>{item.version || item.latestVersion || '-'}</span>
+                <span><User size={14} />{item.author || t.defaultAuthor}</span>
+                <span><Download size={14} />{formatCount(item.downloads)}</span>
+                {isAuthenticated ? (
+                  <button className={item.favorited ? 'is-active' : ''} type="button" onClick={onFavorite} disabled={isFavoriting} aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}>
+                    <Heart size={14} fill={item.favorited ? 'currentColor' : 'none'} />{formatCount(item.favoriteCount)}
+                  </button>
+                ) : <span><Heart size={14} />{formatCount(item.favoriteCount)}</span>}
+              </div>
+            </div>
+          </section>
           <section className="detail-main">
-            {item.icon ? (
+            {item.type !== 'skill' && item.icon ? (
               <div className="media-panel">
                 <img src={item.screenshot} alt="" />
               </div>
@@ -241,91 +298,16 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
                 {videoPlaying ? <span className="video-running">{t.videoPlaying}</span> : <span className="play-overlay"><Play size={26} fill="currentColor" /></span>}
               </button>
             ) : null}
-            {hasCoreFeatures ? (
+            {item.type === 'skill' && item.skillKind !== 'package' ? <SkillMarkdownCard item={item} t={t} /> : hasCoreFeatures ? (
               <section className="readme-section">
                 <h3>{localized(item.readmeTitle, locale) || t.readmeFallback}</h3>
                 {readme ? <p>{readme}</p> : null}
                 {features.length ? <ul>{features.map((feature) => <li key={feature}>{feature}</li>)}</ul> : null}
               </section>
             ) : null}
-            <CommentSection item={item} isAuthenticated={isAuthenticated} locale={locale} t={t} onChanged={onCommentsChanged} />
           </section>
 
           <section className="detail-side">
-            <div className="detail-heading">
-              <div className="detail-icon"><Icon size={30} /></div>
-              <span>{displayType(item.type, t)}</span>
-              <h2>{localized(item.name, locale)}</h2>
-              <p>{localized(item.description, locale)}</p>
-            </div>
-
-            <div className="meta-grid">
-              <div className="meta-row">
-                <User size={14} />
-                <span>{t.developer}</span>
-                <strong>{item.author || t.defaultAuthor}</strong>
-              </div>
-              <div className="meta-row">
-                <Calendar size={14} />
-                <span>{t.createdAt}</span>
-                <strong>{formatDate(item.createdAt || item.publishedAt, locale)}</strong>
-              </div>
-              <div className="meta-row">
-                <HardDrive size={14} />
-                <span>{t.size}</span>
-                <strong>{formatAssetSizeForPlatform(item, activePlatformKey) || item.size || formatAssetSize(item)}</strong>
-              </div>
-              <div className="meta-row">
-                <Download size={14} />
-                <span>{t.downloads}</span>
-                <strong>{formatCount(item.downloads)}</strong>
-              </div>
-              {isAuthenticated ? (
-                <button
-                  className={item.favorited ? 'meta-row meta-button is-active' : 'meta-row meta-button'}
-                  type="button"
-                  onClick={onFavorite}
-                  disabled={isFavoriting}
-                  title={favoriteLabel}
-                  aria-label={`${favoriteLabel}: ${formatCount(item.favoriteCount)}`}
-                >
-                  <Heart size={14} fill={item.favorited ? 'currentColor' : 'none'} />
-                  <span>{t.favorites}</span>
-                  <strong>{formatCount(item.favoriteCount)}</strong>
-                </button>
-              ) : (
-                <div className="meta-row">
-                  <Heart size={14} />
-                  <span>{t.favorites}</span>
-                  <strong>{formatCount(item.favoriteCount)}</strong>
-                </div>
-              )}
-            </div>
-
-            {item.type === 'skill' ? (
-              <section className="side-section">
-                <h3>{t.skillCategoryTitle}</h3>
-                <div className="skill-facts">
-                  <span>{skillKindLabel(item.skillKind, t)}</span>
-                  <span>{skillCategoryLabel(item.skillCategory, t)}</span>
-                  {item.skillScenario ? <span>{t.skillScenarios[item.skillScenario] || item.skillScenario}</span> : null}
-                  {item.skillLevel ? <span>{t.skillLevels[item.skillLevel] || item.skillLevel}</span> : null}
-                  {item.skillFeatured ? <span>{t.skillFeatured}</span> : null}
-                </div>
-                {item.skillKind === 'package' ? (
-                  <div className="included-skill-list">
-                    <strong>{t.skillIncluded}</strong>
-                    {item.includedSkills.length ? item.includedSkills.map((skill) => (
-                      <div className="included-skill" key={skill.id}>
-                        <span>{skill.name || skill.id}</span>
-                        <small>{skill.id}</small>
-                      </div>
-                    )) : <p className="empty-detail">{t.noDependencies}</p>}
-                  </div>
-                ) : null}
-              </section>
-            ) : null}
-
             {item.type === 'mcp' ? (
               <section className="side-section">
                 <h3>MCP</h3>
@@ -344,49 +326,12 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
               </section>
             ) : null}
 
-            <section className="side-section">
-              <h3>{t.platforms}</h3>
-              {platformKeys.length ? (
-                <div className="platform-detail">
-                  {platformKeys.length > 1 ? (
-                    <label className="platform-select">
-                      <span>{t.currentPlatform}</span>
-                      <select value={activePlatformKey} onChange={(event) => onPlatformChange(event.target.value)}>
-                        {platformKeys.map((platform) => <option value={platform} key={platform}>{platform}</option>)}
-                      </select>
-                    </label>
-                  ) : (
-                    <div className="platform-single">
-                      <Box size={13} />
-                      <span>{activePlatformKey}</span>
-                    </div>
-                  )}
-                  <div className="platform-facts">
-                    {activePlatform?.os ? <span>{t.os}: {activePlatform.os}</span> : null}
-                    {activePlatform?.arch ? <span>{t.arch}: {activePlatform.arch}</span> : null}
-                    {activePlatform?.minDesktopVersion ? <span>{t.minDesktopVersion}: {activePlatform.minDesktopVersion}</span> : null}
-                    {hasArtifact(item, activePlatformKey) ? <span>{t.assets}: {formatAssetSizeForPlatform(item, activePlatformKey)}</span> : null}
-                  </div>
-                  {activePlatform?.description ? <p className="platform-copy">{activePlatform.description}</p> : null}
-                </div>
-              ) : <p className="empty-detail">{t.noPlatformDetails}</p>}
-            </section>
-
-            <section className="side-section">
-              <h3>{t.dependencies}</h3>
-              <div className="dependency-list">
-                {deps.length ? deps.map((dep) => {
-                  const key = dependencyKey(dep);
-                  return (
-                    <div className="dep-row" key={`${key}:${dep.name || dep.displayName || dep.kind}`}>
-                      <span className={dep.required ? 'dep-dot warn' : 'dep-dot optional'} />
-                      <strong>{localized(dep.name || dep.displayName || key, locale)}</strong>
-                      <small>{dep.required ? t.depRequired : t.depOptional}</small>
-                    </div>
-                  );
-                }) : <p className="empty-detail">{t.noDependencies}</p>}
-              </div>
-            </section>
+            {usageHints.length ? (
+              <section className="side-section usage-hint-section">
+                <h3>{t.usageHintTitle}</h3>
+                <ol>{usageHints.map((hint) => <li key={hint}>{hint}</li>)}</ol>
+              </section>
+            ) : null}
 
             {commands.length ? (
               <section className="side-section">
@@ -405,48 +350,121 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
               </section>
             ) : null}
 
-            <section className="side-section">
-              <h3>{t.assets}</h3>
-              <div className="asset-tree">
-                {(assetEntries(item) || []).map((asset) => {
-                  const isDir = asset.label.includes('/');
-                  const AssetIcon = isDir ? Folder : File;
-                  return (
-                    <div className={asset.platform === activePlatformKey ? 'is-selected' : ''} key={asset.label}>
-                      <AssetIcon size={14} />
-                      <span>{asset.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {isAuthenticated ? (
-              <div className="detail-action">
-                <button className="primary-action wide" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
-                  {canInstall ? <Copy size={16} /> : <Download size={16} />}
-                  <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
-                </button>
-                {canInstall && canDownload ? (
-                  <button className="secondary-action wide" type="button" disabled={isDownloading} onClick={onDownload}>
-                    <Download size={16} />
-                    <span>{isDownloading ? t.downloading : t.downloadArtifact}</span>
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+          </section>
+          <section className="detail-feedback">
+            <RatingSection item={item} isAuthenticated={isAuthenticated} t={t} />
+            <CommentSection item={item} isAuthenticated={isAuthenticated} locale={locale} t={t} onChanged={onCommentsChanged} />
           </section>
         </div>
+        {isAuthenticated ? (
+          <footer className="detail-action-bar">
+            <button className="primary-action wide" type="button" disabled={canInstall ? false : !canDownload || isDownloading} onClick={canInstall ? onInstall : onDownload}>
+              {canInstall ? <Copy size={16} /> : <Download size={16} />}
+              <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
+            </button>
+            {canInstall && canDownload ? (
+              <button className="secondary-action wide" type="button" disabled={isDownloading} onClick={onDownload}>
+                <Download size={16} />
+                <span>{isDownloading ? t.downloading : t.downloadArtifact}</span>
+              </button>
+            ) : null}
+          </footer>
+        ) : null}
       </aside>
     </div>
   );
 }
 
+export function SkillMarkdownCard({ item, t }) {
+  const [expanded, setExpanded] = useState(false);
+  const [state, setState] = useState({ status: 'loading', content: '', error: '' });
+  useEffect(() => {
+    const controller = new AbortController();
+    requestJSON(`${apiBase}/skills/${encodeURIComponent(item.id)}/skill-md`, { signal: controller.signal })
+      .then((data) => setState({ status: 'ready', content: String(data?.content || ''), error: '' }))
+      .catch((reason) => reason?.name !== 'AbortError' && setState({ status: 'error', content: '', error: errorMessage(reason) }));
+    return () => controller.abort();
+  }, [item.id, item.version]);
+  const readableContent = stripMarkdownFrontMatter(state.content);
+  return (
+    <section className={expanded ? 'skill-md-card is-expanded' : 'skill-md-card'}>
+      <div className="skill-md-content">
+        {state.status === 'loading' ? <p>{t.skillMdLoading}</p> : null}
+        {state.error ? <p className="comment-error">{t.skillMdFailed(state.error)}</p> : null}
+        {state.status === 'ready' ? (
+          readableContent ? (
+            <div className="skill-md-document">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer">{children}</a>,
+                }}
+              >
+                {readableContent}
+              </ReactMarkdown>
+            </div>
+          ) : <p>{t.skillMdEmpty}</p>
+        ) : null}
+      </div>
+      {state.status === 'ready' && readableContent ? <button className="skill-md-toggle" type="button" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>{expanded ? t.collapse : t.expand}<ChevronDown size={15} /></button> : null}
+    </section>
+  );
+}
+
+export function stripMarkdownFrontMatter(content) {
+  const source = String(content || '').replace(/^\uFEFF/, '');
+  if (!/^---[ \t]*\r?\n/.test(source)) return source;
+  const closingFence = source.match(/\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/);
+  if (!closingFence || closingFence.index === undefined) return source;
+  return source.slice(closingFence.index + closingFence[0].length).replace(/^\s+/, '');
+}
+
+export function RatingSection({ item, isAuthenticated, t }) {
+  const empty = { average: 0, total: 0, counts: [0, 0, 0, 0, 0], myRating: 0, canRate: false };
+  const [summary, setSummary] = useState(empty);
+  const [hovered, setHovered] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const route = marketRoute(item.type);
+  const load = useCallback(() => requestJSON(`${apiBase}/${route}/${encodeURIComponent(item.id)}/rating`).then((data) => setSummary({ ...empty, ...data, counts: Array.isArray(data?.counts) ? data.counts : empty.counts })).catch((reason) => setError(t.ratingFailed(errorMessage(reason)))), [item.id, route, t]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const downloaded = (event) => { if (event.detail?.type === item.type && event.detail?.id === item.id) setSummary((current) => ({ ...current, canRate: true })); };
+    window.addEventListener('market:downloaded', downloaded);
+    return () => window.removeEventListener('market:downloaded', downloaded);
+  }, [item.id, item.type]);
+  async function rate(value) {
+    if (!isAuthenticated || !summary.canRate || saving) return;
+    setSaving(true); setError('');
+    try {
+      const updated = await requestJSON(`${apiBase}/${route}/${encodeURIComponent(item.id)}/rating`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rating: value }) });
+      setSummary({ ...empty, ...updated, counts: updated.counts || empty.counts });
+    } catch (reason) { setError(reason?.status === 403 ? t.ratingDownloadRequired : t.ratingFailed(errorMessage(reason))); }
+    finally { setSaving(false); }
+  }
+  const max = Math.max(1, ...summary.counts);
+  const active = hovered || summary.myRating;
+  return (
+    <section className="rating-section">
+      <div className="rating-heading"><div><span>{t.ratingEyebrow}</span><h3>{t.ratingTitle}</h3></div><p>{t.ratingCount(summary.total)}</p></div>
+      <div className="rating-overview">
+        <div className="rating-score"><strong className={summary.total ? '' : 'is-empty'}>{summary.total ? Number(summary.average).toFixed(1) : t.ratingNone}</strong><div className="rating-static-stars">{[1,2,3,4,5].map((star) => <Star key={star} fill={star <= Math.round(summary.average) ? 'currentColor' : 'none'} />)}</div></div>
+        <div className="rating-bars">{[5,4,3,2,1].map((star) => <div key={star}><span>{star} {t.starUnit}</span><i><b style={{ width: `${(summary.counts[star - 1] / max) * 100}%` }} /></i><small>{summary.counts[star - 1]}</small></div>)}</div>
+      </div>
+      <div className="rating-action"><strong>{summary.myRating ? t.ratingYours : t.ratingPrompt}</strong><div role="group" aria-label={t.ratingTitle} onMouseLeave={() => setHovered(0)}>{[1,2,3,4,5].map((star) => <button key={star} type="button" aria-label={t.rateStar(star)} disabled={!isAuthenticated || !summary.canRate || saving} onMouseEnter={() => setHovered(star)} onFocus={() => setHovered(star)} onClick={() => rate(star)}><Star fill={star <= active ? 'currentColor' : 'none'} /></button>)}</div></div>
+      {!isAuthenticated ? <p className="rating-hint">{t.ratingLoginRequired}</p> : !summary.canRate ? <p className="rating-hint">{t.ratingDownloadRequired}</p> : null}
+      {error ? <p className="comment-error">{error}</p> : null}
+    </section>
+  );
+}
+
 export function CommentSection({ item, isAuthenticated, locale, t, onChanged }) {
   const [state, setState] = useState({ status: 'loading', comments: [], summary: { total: 0, positive: 0, negative: 0, positiveRate: 0 }, error: '' });
-  const [sentiment, setSentiment] = useState('positive');
   const [content, setContent] = useState('');
   const [editingID, setEditingID] = useState(0);
+  const [isComposerOpen, setComposerOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
   const [saving, setSaving] = useState(false);
   const route = marketRoute(item.type);
 
@@ -468,14 +486,16 @@ export function CommentSection({ item, isAuthenticated, locale, t, onChanged }) 
 
   function beginEdit(comment) {
     setEditingID(comment.id);
-    setSentiment(comment.sentiment);
     setContent(comment.content);
+    setComposerOpen(true);
   }
 
   function cancelEdit() {
     setEditingID(0);
-    setSentiment('positive');
     setContent('');
+    setRating(0);
+    setHoveredRating(0);
+    setComposerOpen(false);
   }
 
   async function submitComment(event) {
@@ -487,8 +507,15 @@ export function CommentSection({ item, isAuthenticated, locale, t, onChanged }) 
       await requestJSON(`${apiBase}/${route}/${encodeURIComponent(item.id)}/comments${suffix}`, {
         method: editingID ? 'PATCH' : 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sentiment, content }),
+        body: JSON.stringify({ sentiment: rating && rating < 3 ? 'negative' : 'positive', content }),
       });
+      if (rating) {
+        await requestJSON(`${apiBase}/${route}/${encodeURIComponent(item.id)}/rating`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ rating }),
+        });
+      }
       cancelEdit();
       await loadComments();
       await onChanged?.();
@@ -511,37 +538,44 @@ export function CommentSection({ item, isAuthenticated, locale, t, onChanged }) 
   }
 
   const summary = state.summary || {};
+  if (state.status === 'ready' && !state.comments.length && !isComposerOpen && !state.error) {
+    return isAuthenticated ? (
+      <button className="comment-empty-trigger" type="button" onClick={() => setComposerOpen(true)}>
+        <MessageSquare size={15} />
+        <span>{t.commentStart}</span>
+      </button>
+    ) : null;
+  }
   return (
     <section className="comment-section">
       <div className="comment-heading">
         <h3><MessageSquare size={16} />{t.commentTitle}</h3>
         <div className="comment-summary">
           <span>{t.comments} <strong>{formatCount(summary.total)}</strong></span>
-          <span>{t.commentPositiveRate} <strong>{summary.total ? `${Math.round(summary.positiveRate || 0)}%` : '-'}</strong></span>
         </div>
+        {isAuthenticated ? <button className="comment-composer-toggle" type="button" onClick={() => isComposerOpen ? cancelEdit() : setComposerOpen(true)}><MessageSquare size={14} />{isComposerOpen ? t.commentCancelEdit : t.commentStart}</button> : null}
       </div>
-      {isAuthenticated ? (
+      {isAuthenticated && isComposerOpen ? (
         <form className="comment-form" onSubmit={submitComment}>
-          <div className="sentiment-control">
-            <button className={sentiment === 'positive' ? 'is-active positive' : ''} type="button" onClick={() => setSentiment('positive')}><ThumbsUp size={14} />{t.commentPositive}</button>
-            <button className={sentiment === 'negative' ? 'is-active negative' : ''} type="button" onClick={() => setSentiment('negative')}><ThumbsDown size={14} />{t.commentNegative}</button>
+          <div className="comment-rating-control" role="group" aria-label={t.ratingTitle} onMouseLeave={() => setHoveredRating(0)}>
+            <span>{t.ratingTitle}</span>
+            {[1, 2, 3, 4, 5].map((star) => <button key={star} type="button" aria-label={t.rateStar(star)} onMouseEnter={() => setHoveredRating(star)} onFocus={() => setHoveredRating(star)} onClick={() => setRating(star)}><Star fill={star <= (hoveredRating || rating) ? 'currentColor' : 'none'} /></button>)}
           </div>
           <textarea value={content} onChange={(event) => setContent(event.target.value)} minLength={5} maxLength={1000} required placeholder={t.commentPlaceholder} />
           <div className="comment-form-actions">
-            {editingID ? <button className="secondary-action" type="button" onClick={cancelEdit}>{t.commentCancelEdit}</button> : null}
+            <button className="secondary-action" type="button" onClick={cancelEdit}>{t.commentCancelEdit}</button>
             <button className="primary-action" type="submit" disabled={saving || content.trim().length < 5}>{editingID ? t.commentUpdate : t.commentSubmit}</button>
           </div>
         </form>
-      ) : <p className="comment-login-hint">{t.commentLoginHint}</p>}
+      ) : !isAuthenticated ? <p className="comment-login-hint">{t.commentLoginHint}</p> : null}
       {state.error ? <p className="comment-error">{state.error}</p> : null}
       {state.status === 'loading' ? <p className="comment-empty">{t.commentLoading}</p> : null}
-      {state.status === 'ready' && !state.comments.length ? <p className="comment-empty">{t.commentEmpty}</p> : null}
+      {state.status === 'ready' && !state.comments.length && !isComposerOpen ? <p className="comment-empty">{t.commentEmpty}</p> : null}
       <div className="comment-list">
         {state.comments.map((comment) => (
           <article className="comment-row" key={comment.id}>
             <div className="comment-row-head">
               <strong>{comment.author}</strong>
-              <span className={`comment-sentiment is-${comment.sentiment}`}>{comment.sentiment === 'positive' ? <ThumbsUp size={12} /> : <ThumbsDown size={12} />}{comment.sentiment === 'positive' ? t.commentPositive : t.commentNegative}</span>
               <time>{formatDate(comment.createdAt, locale)}</time>
             </div>
             <p>{comment.content}</p>

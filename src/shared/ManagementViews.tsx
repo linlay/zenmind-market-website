@@ -205,9 +205,8 @@ export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, on
                 )) : <p className="empty-detail">{t.reviewNoArtifacts}</p>}
               </ReviewSection>
 
-              <ReviewSection title={t.dependencies} icon={Shapes}>
+              <ReviewSection title={t.installProtocol} icon={Shapes}>
                 <div className="review-technical-grid">
-                  <ReviewCodeBlock label={t.dependencies} value={item.dependencies} />
                   <ReviewCodeBlock label={t.platforms} value={item.targets} />
                   {item.install ? <ReviewCodeBlock label={t.installProtocol} value={item.install} /> : null}
                   {item.uninstall ? <ReviewCodeBlock label="Uninstall" value={item.uninstall} /> : null}

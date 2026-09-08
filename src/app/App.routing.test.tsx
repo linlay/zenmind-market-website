@@ -117,7 +117,8 @@ describe('market routing', () => {
     );
 
     await screen.findByText('Demo plugin');
-    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    expect(screen.queryByRole('button', { name: 'Details' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Details: Demo plugin'));
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Demo plugin' })).toBeInTheDocument();
@@ -173,7 +174,7 @@ describe('market routing', () => {
     });
   });
 
-  it('returns from publishing to the market through the single header action', async () => {
+  it('returns from publishing to its creator-center background through the cancel action', async () => {
     stubMarketAPI({ id: 'creator-1', role: 'creator' });
     render(
       <MemoryRouter initialEntries={[{ pathname: '/publish', state: { background: '/creator' } }]}>
@@ -182,9 +183,10 @@ describe('market routing', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Back to Market' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Agents/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
     await waitFor(() => {
-      expect(screen.getByLabelText('current path')).toHaveTextContent('/');
+      expect(screen.getByLabelText('current path')).toHaveTextContent('/creator');
     });
   });
 
@@ -232,7 +234,8 @@ describe('market routing', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Review Admin' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'admin-1, Admin' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Review Admin' }));
     await waitFor(() => {
       expect(screen.getByLabelText('current path')).toHaveTextContent('/admin');
     });

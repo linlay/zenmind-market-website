@@ -2,7 +2,7 @@
 import { ArrowLeft, CheckCircle2, Plus, Save, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import { requestJSON } from '../api/client';
-import { apiBase, localized } from '../domain/market';
+import { apiBase, localized, usageHintsFromMetadata } from '../domain/market';
 import { formatVersionLabel } from '../domain/version';
 
 export function MetadataEditPage({ item, currentUser, locale, t, onClose, onSubmit, isSaving }) {
@@ -73,6 +73,13 @@ export function MetadataEditPage({ item, currentUser, locale, t, onClose, onSubm
               <span>{t.tags}</span>
               <input name="tags" defaultValue={(item.tags || []).join(', ')} placeholder="AI, Tool" />
             </label>
+            {item.type === 'skill' ? (
+              <label className="full">
+                <span>{t.usageHint}</span>
+                {[0, 1, 2].map((index) => <input key={index} name="usageHints" maxLength="80" defaultValue={usageHintsFromMetadata(item.metadata)[index] || ''} placeholder={t.usageHintPlaceholder} />)}
+                <small className="field-hint">{t.usageHintHint}</small>
+              </label>
+            ) : null}
             <label className="full">
               <span>{t.readme}</span>
               <textarea name="readme" rows="7" defaultValue={localized(item.readme, locale)} />

@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
-import { Heart, PackageOpen } from 'lucide-react';
+import { Heart, PackageOpen, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 type Category = {
   id: string;
@@ -23,11 +23,13 @@ type MarketPageProps = {
   sortMode: string;
   status: string;
   error: string;
+  isSidebarCollapsed: boolean;
   t: any;
   onCategoryChange: (category: string) => void;
   onSkillCategoryChange: (category: string) => void;
   onFavoritesOnlyChange: (enabled: boolean) => void;
   onSortModeChange: (mode: string) => void;
+  onSidebarCollapsedChange: (collapsed: boolean) => void;
   renderCatalog: () => ReactNode;
 };
 
@@ -46,16 +48,27 @@ export function MarketPage({
   sortMode,
   status,
   error,
+  isSidebarCollapsed,
   t,
   onCategoryChange,
   onSkillCategoryChange,
   onFavoritesOnlyChange,
   onSortModeChange,
+  onSidebarCollapsedChange,
   renderCatalog,
 }: MarketPageProps) {
   return (
-    <div className="workspace">
-      <aside className="sidebar">
+    <div className={isSidebarCollapsed ? 'workspace is-sidebar-collapsed' : 'workspace'}>
+      <aside className={isSidebarCollapsed ? 'sidebar is-collapsed' : 'sidebar'}>
+        <button
+          className="sidebar-toggle"
+          type="button"
+          onClick={() => onSidebarCollapsedChange(!isSidebarCollapsed)}
+          data-tooltip={isSidebarCollapsed ? undefined : t.collapseSidebar}
+          aria-label={isSidebarCollapsed ? t.expandSidebar : t.collapseSidebar}
+        >
+          {isSidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+        </button>
         <div className="sidebar-main">
           <section>
             <h3>{t.categoriesTitle}</h3>
@@ -69,6 +82,7 @@ export function MarketPage({
                     className={active ? 'category-button is-active' : 'category-button'}
                     type="button"
                     onClick={() => onCategoryChange(category.id)}
+                    title={isSidebarCollapsed ? (category.id === 'all' ? t.all : t.categories[category.id]) : undefined}
                   >
                     <span className="category-label">
                       <Icon className={category.colorClass} size={15} />

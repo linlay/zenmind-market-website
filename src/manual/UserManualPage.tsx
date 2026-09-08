@@ -220,7 +220,7 @@ export function UserManualPage({ onClose }: UserManualPageProps) {
               <li><strong>打开详情。</strong><span>点击卡片左下角“详情”。组件详情以弹窗显示，点击右上角关闭或弹窗外空白处返回。</span></li>
               <li><strong>确认平台。</strong><span>有平台下拉框时选择你的系统与架构。不了解架构：Apple 芯片 Mac 通常是 darwin-arm64；多数 Windows 电脑是 windows-amd64。</span></li>
               <li><strong>选择动作。</strong><span>显示“下载”时会下载对应平台制品；MCP 下载的是配置文件；技能包下载的是组合包。显示“一键安装”时，按钮会把 <code>adp install ...</code> 命令复制到剪贴板，需要到已安装 ADP 的终端中粘贴执行。</span></li>
-              <li><strong>收藏或评论。</strong><span>收藏后可在首页启用“仅看我的收藏”。评论不是星级评分，而是“好评/差评 + 文字”。</span></li>
+              <li><strong>收藏、评分或评论。</strong><span>收藏后可在首页启用“仅看我的收藏”。下载过组件后可提交 1–5 星评分；写评论时也可一并选择星级。</span></li>
             </StepList>
             <Note tone="warning"><strong>安全提醒：</strong>运行命令前，先查看依赖、安装命令和制品来源。按钮显示“暂无制品”时，说明作者没有提供可下载文件，不能强行安装。</Note>
           </section>

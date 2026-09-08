@@ -676,6 +676,16 @@ function parseStringArray(value) {
   }
 }
 
+export function usageHintsFromMetadata(metadata) {
+  const hints = parseStringArray(metadata?.usageHints)
+    .map((hint) => hint.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  if (hints.length) return hints;
+  const legacyHint = String(metadata?.usageHint || '').trim();
+  return legacyHint ? [legacyHint] : [];
+}
+
 export function defaultArchiveTypeFor(type, options = {}) {
   return archiveOptionsFor(type, options)[0] || 'zip';
 }

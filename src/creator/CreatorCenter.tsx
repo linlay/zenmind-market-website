@@ -105,6 +105,7 @@ export function CreatorCenter({
   deletingKey,
   onLoadAdminReviews,
   isLoadingAdminReviews,
+  onStartPublish,
 }) {
   const [typeFilter, setTypeFilter] = useState('all');
   const [itemQuery, setItemQuery] = useState('');
@@ -176,6 +177,12 @@ export function CreatorCenter({
           <h1>{isAdminMode ? t.reviewCenter : t.creatorTitle}</h1>
           <p>{isAdminMode ? t.reviewAdminTokenHint : t.creatorSubtitle}</p>
         </div>
+        {!isAdminMode && onStartPublish ? (
+          <button className="publish-button creator-publish-button" type="button" onClick={onStartPublish}>
+            <Plus size={16} />
+            <span>{t.publish}</span>
+          </button>
+        ) : null}
       </div>
 
       <div className="creator-scroll">

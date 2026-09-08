@@ -82,7 +82,6 @@ import {
 import {
   preferredPlatformKey,
   downloadKeyForItem,
-  platformDependencies,
   platformKeyFromSelection,
   hasArtifact,
   triggerBrowserDownload,
@@ -154,6 +153,7 @@ export function App() {
   const [downloadingKey, setDownloadingKey] = useState('');
   const [favoritingKey, setFavoritingKey] = useState('');
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const userMenuRef = useRef(null);
   const t = getMarketCopy(
     locale,
@@ -561,6 +561,12 @@ export function App() {
           userIds: form.getAll('accessUserIds').map((value) => String(value).trim()).filter(Boolean),
         },
       };
+      const usageHints = form.getAll('usageHints').map((hint) => String(hint).trim()).filter(Boolean).slice(0, 3);
+      if (editSource.type === 'skill') {
+        if (usageHints.length) payload.metadata.usageHints = JSON.stringify(usageHints);
+        else delete payload.metadata.usageHints;
+        delete payload.metadata.usageHint;
+      }
       if (payload.accessPolicy.mode === 'restricted' && !payload.accessPolicy.departmentIds.length && !payload.accessPolicy.userIds.length) {
         notify(t.accessRestrictedRequired, 'error');
         return;
@@ -589,6 +595,7 @@ export function App() {
       setDownloadingKey(key);
       try {
         triggerBrowserDownload(`${apiBase}/mcps/${encodeURIComponent(item.id)}/download`);
+        window.dispatchEvent(new CustomEvent('market:downloaded', { detail: { type: item.type, id: item.id } }));
         notify(t.downloadStarted(localized(item.name, locale) || item.id), 'success');
       } catch (reason) {
         notify(t.downloadFailed(errorMessage(reason)), 'error');
@@ -602,6 +609,7 @@ export function App() {
       setDownloadingKey(key);
       try {
         triggerBrowserDownload(`${apiBase}/skills/${encodeURIComponent(item.id)}/package/download`);
+        window.dispatchEvent(new CustomEvent('market:downloaded', { detail: { type: item.type, id: item.id } }));
         notify(t.downloadStarted(localized(item.name, locale) || item.id), 'success');
       } catch (reason) {
         notify(t.downloadFailed(errorMessage(reason)), 'error');
@@ -628,6 +636,7 @@ export function App() {
       const resolvedPlatform = resolved.platform || platform;
       const downloadQuery = resolvedPlatform ? `?platform=${encodeURIComponent(resolvedPlatform)}` : '';
       triggerBrowserDownload(`${apiBase}/${route}/${id}/download${downloadQuery}`);
+      window.dispatchEvent(new CustomEvent('market:downloaded', { detail: { type: item.type, id: item.id } }));
       notify(t.downloadStarted(`${localized(item.name, locale) || item.id}${resolvedPlatform ? ` (${resolvedPlatform})` : ''}`), 'success');
     } catch (reason) {
       notify(t.downloadFailed(errorMessage(reason)), 'error');
@@ -915,11 +924,9 @@ export function App() {
         return;
       }
       let platformMetadata;
-      let platformDependencies;
       let existingMetadata;
       try {
         platformMetadata = parseJSONField(form.get('platformMetadata'), {}, t.platformMetadata, 'object', t.invalidJSON);
-        platformDependencies = parseJSONField(form.get('platformDependencies'), [], t.platformDependencies, 'array', t.invalidJSON);
         existingMetadata = parseJSONField(form.get('existingMetadata'), {}, t.publishBasicInfo, 'object', t.invalidJSON);
       } catch (reason) {
         notify(errorMessage(reason), 'error');
@@ -940,7 +947,6 @@ export function App() {
         description: String(form.get('platformDescription') || '').trim(),
         minDesktopVersion: platformMinDesktopVersion,
         metadata: platformMetadata,
-        dependencies: platformDependencies,
       };
       if (install) platform.install = install;
       if (uninstall) platform.uninstall = uninstall;
@@ -982,7 +988,6 @@ export function App() {
         assetRole: 'primary',
         archiveType: primaryArchiveType,
         metadata: existingMetadata,
-        dependencies: platformDependencies,
         platform,
         variants,
         reviewStatus: 'pending',
@@ -990,8 +995,14 @@ export function App() {
 		  mode: String(form.get('accessMode') || 'all'),
 		  departmentIds: form.getAll('accessDepartmentIds').map((value) => String(value).trim()).filter(Boolean),
 		  userIds: form.getAll('accessUserIds').map((value) => String(value).trim()).filter(Boolean),
-		},
+        },
       };
+      const usageHints = form.getAll('usageHints').map((hint) => String(hint).trim()).filter(Boolean).slice(0, 3);
+      if (type === 'skill') {
+        if (usageHints.length) metadata.metadata.usageHints = JSON.stringify(usageHints);
+        else delete metadata.metadata.usageHints;
+        delete metadata.metadata.usageHint;
+      }
       if (skill) metadata.skill = skill;
       if (metadata.accessPolicy.mode === 'restricted' && !metadata.accessPolicy.departmentIds.length && !metadata.accessPolicy.userIds.length) {
         notify(t.accessRestrictedRequired, 'error');
@@ -1101,44 +1112,15 @@ export function App() {
               <span>{t.login}</span>
             </button>
           ) : null}
-          {authSession?.user?.role === 'admin' ? (
-            <button className="creator-button" type="button" onClick={() => navigate(isAdminOpen ? '/' : '/admin')}>
-              <ShieldCheck size={15} />
-              <span>{isAdminOpen ? t.backToMarket : t.adminReviewEntry}</span>
-            </button>
-          ) : null}
-          {isSecurityReviewer ? (
-            <button className="creator-button" type="button" onClick={() => navigate(isSecurityReviewOpen ? '/' : '/security-review')}>
-              <ShieldCheck size={15} />
-              <span>{isSecurityReviewOpen ? t.backToMarket : t.securityReviewEntry}</span>
-            </button>
-          ) : null}
           {isAuthenticated && !isSecurityOnly ? (
-            <>
-              <button
-                className="creator-button"
-                type="button"
-                onClick={() => navigate(isCreatorOpen ? '/' : '/creator')}
-              >
-                {isCreatorOpen ? <Store size={15} /> : <User size={15} />}
-                <span>{isCreatorOpen ? t.backToMarket : t.creatorCenter}</span>
-              </button>
-              <button
-                className="publish-button"
-                type="button"
-                onClick={() => {
-                  if (isPublishOpen) {
-                    navigate('/');
-                    return;
-                  }
-                  setPublishSource(null);
-                  navigate('/publish', { state: { background: location.pathname } });
-                }}
-              >
-                {isPublishOpen ? <Store size={15} /> : <Plus size={15} />}
-                <span>{isPublishOpen ? t.backToMarket : t.publish}</span>
-              </button>
-            </>
+            <button
+              className="creator-button"
+              type="button"
+              onClick={() => navigate(isCreatorOpen ? '/' : '/creator')}
+            >
+              {isCreatorOpen ? <Store size={15} /> : <User size={15} />}
+              <span>{isCreatorOpen ? t.backToMarket : t.creatorCenter}</span>
+            </button>
           ) : null}
           {authSession ? (
             <div className="user-menu" ref={userMenuRef}>
@@ -1162,6 +1144,18 @@ export function App() {
                       <span>{userRoleLabel}</span>
                     </div>
                   </div>
+                  {authSession?.user?.role === 'admin' ? (
+                    <button className="user-menu-action" type="button" role="menuitem" onClick={() => { setUserMenuOpen(false); navigate('/admin'); }}>
+                      <ShieldCheck size={15} />
+                      <span>{t.adminReviewEntry}</span>
+                    </button>
+                  ) : null}
+                  {isSecurityReviewer ? (
+                    <button className="user-menu-action" type="button" role="menuitem" onClick={() => { setUserMenuOpen(false); navigate('/security-review'); }}>
+                      <ShieldCheck size={15} />
+                      <span>{t.securityReviewEntry}</span>
+                    </button>
+                  ) : null}
                   <button className="user-menu-logout" type="button" role="menuitem" onClick={handleLogout}>
                     <LogOut size={15} />
                     <span>{t.logout}</span>
@@ -1246,6 +1240,10 @@ export function App() {
             reviewingKey={reviewingKey}
             onDeleteItem={handleDeleteItem}
             deletingKey={deletingKey}
+            onStartPublish={() => {
+              setPublishSource(null);
+              navigate('/publish', { state: { background: '/creator' } });
+            }}
           />
         ) : <Navigate to="/" replace />}
         manual={(
@@ -1273,11 +1271,13 @@ export function App() {
           sortMode={sortMode}
           status={status}
           error={error}
+          isSidebarCollapsed={isSidebarCollapsed}
           t={t}
           onCategoryChange={chooseCategory}
           onSkillCategoryChange={(category) => navigate(category === 'all' ? '/category/skill' : `/skills/${encodeURIComponent(category)}`)}
           onFavoritesOnlyChange={setFavoritesOnly}
           onSortModeChange={setSortMode}
+          onSidebarCollapsedChange={setSidebarCollapsed}
           renderCatalog={() => activeCategory === 'skill' ? (
             <SkillCatalogView
               items={filtered}

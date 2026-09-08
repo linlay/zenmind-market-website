@@ -62,13 +62,10 @@ import {
   skillCategoryFilters,
   skillLevelOptions,
   skillScenarioOptions,
+  usageHintsFromMetadata,
 } from '../domain/market';
 import { nextPatchVersion } from '../domain/version';
-import {
-  platformDependencies,
-  platformForKey,
-  preferredPlatformKey,
-} from '../domain/platform';
+import { platformForKey, preferredPlatformKey } from '../domain/platform';
 
 export function PublishPage({ t, locale, availableSkills = [], initialItem = null, currentUser = null, onClose, onSubmit, isPublishing }) {
   const updateMode = Boolean(initialItem);
@@ -79,6 +76,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const initialPlatformKey = updateMode ? preferredPlatformKey(initialItem) || 'universal' : 'universal';
   const initialPlatform = updateMode ? platformForKey(initialItem, initialPlatformKey) : null;
   const initialAsset = updateMode ? initialItem.assetMap?.[initialPlatformKey] : null;
+  const initialUsageHints = usageHintsFromMetadata(initialItem?.metadata);
   const initialPlatformOS = initialPlatform?.os && initialPlatform.os !== 'universal' ? initialPlatform.os : 'universal';
   const initialPlatformArch = initialPlatformOS === 'universal' ? '' : initialPlatform?.arch || '';
 	const initialVariants = updateMode && initialItem.platformOptions?.length
@@ -663,6 +661,13 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   <span>{t.tags}</span>
                   <input name="tags" defaultValue={updateMode ? (initialItem.tags || []).join(', ') : ''} placeholder="AI, Tool" />
                 </label>
+                {type === 'skill' ? (
+                  <label className="full">
+                    <span>{t.usageHint}</span>
+                    {[0, 1, 2].map((index) => <input key={index} name="usageHints" maxLength="80" defaultValue={initialUsageHints[index] || ''} placeholder={index ? t.usageHintPlaceholder : t.usageHintPlaceholder} />)}
+                    <small className="field-hint">{t.usageHintHint}</small>
+                  </label>
+                ) : null}
                 <label>
                   <span>{t.author}</span>
                   <input name="author" defaultValue={updateMode ? initialItem.author || '' : ''} placeholder={t.defaultAuthor} />
@@ -674,10 +679,6 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                 <label className="full">
                   <span>{t.platformMetadata}</span>
                   <textarea name="platformMetadata" rows="4" defaultValue={JSON.stringify(initialPlatform?.metadata || {}, null, 2)} spellCheck="false" />
-                </label>
-                <label className="full">
-                  <span>{t.platformDependencies}</span>
-                  <textarea name="platformDependencies" rows="5" defaultValue={JSON.stringify(initialPlatform?.dependencies?.length ? initialPlatform.dependencies : initialItem?.dependencies || [], null, 2)} spellCheck="false" />
                 </label>
           {type === 'cli-tool' ? (
             <>
