@@ -317,6 +317,9 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
                 {features.length ? <ul>{features.map((feature) => <li key={feature}>{feature}</li>)}</ul> : null}
               </section>
             ) : null}
+            {isSkillPackage(item) && Array.isArray(item.includedSkills) && item.includedSkills.length ? (
+              <IncludedSkillsSection item={item} locale={locale} t={t} />
+            ) : null}
           </section>
 
           <section className="detail-side">
@@ -384,6 +387,50 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
         ) : null}
       </aside>
     </div>
+  );
+}
+
+export function IncludedSkillsSection({ item, locale, t }) {
+  const includedSkills = useMemo(
+    () => (Array.isArray(item.includedSkills) ? item.includedSkills.filter((skill) => skill && skill.id) : []),
+    [item.includedSkills],
+  );
+  const includedKey = includedSkills.map((skill) => skill.id).join('\u0000');
+  const [details, setDetails] = useState({});
+  useEffect(() => {
+    if (!includedKey) return undefined;
+    const controller = new AbortController();
+    const route = marketRoute(item.type);
+    includedKey.split('\u0000').forEach((skillID) => {
+      requestJSON(`${apiBase}/${route}/${encodeURIComponent(skillID)}`, { signal: controller.signal })
+        .then((data) => setDetails((current) => ({ ...current, [skillID]: data })))
+        .catch(() => {});
+    });
+    return () => controller.abort();
+  }, [item.type, includedKey]);
+  return (
+    <section className="included-skills-section">
+      <h3>{t.skillIncludedCount(includedSkills.length)}</h3>
+      <div className="included-skill-list">
+        {includedSkills.map((skill) => {
+          const detail = details[skill.id];
+          const name = localized(detail?.name, locale) || skill.name || skill.id;
+          const description = localized(detail?.description, locale) || '';
+          const icon = detail?.metadata?.icon || '';
+          return (
+            <article className="included-skill" key={skill.id}>
+              <span className="included-skill-artwork" aria-hidden="true">
+                {icon ? <img src={icon} alt="" /> : <Brain size={18} />}
+              </span>
+              <div className="included-skill-copy">
+                <strong title={name}>{name}</strong>
+                {description ? <p>{description}</p> : null}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
