@@ -137,6 +137,7 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   const usageHints = item.type === 'skill' ? usageHintsFromMetadata(item.metadata) : [];
   const usageHintKey = usageHints.join('\u0000');
+  const loginDownloadTipId = `card-login-download-tip-${item.type}-${item.id}`;
   const cardRef = useRef(null);
   const [usageHintVisible, setUsageHintVisible] = useState(false);
   const [activeUsageHint, setActiveUsageHint] = useState(0);
@@ -168,7 +169,7 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
     return () => window.clearInterval(timer);
   }, [usageHintKey, usageHintVisible]);
   function openCardDetails(event) {
-    if (event.target.closest('button, a, input, select, textarea')) return;
+    if (event.target.closest('button, a, input, select, textarea, [data-card-action]')) return;
     onDetails();
   }
   return (
@@ -185,6 +186,9 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
         }
       }}
     >
+      <span className="card-type-badge" aria-label={`${t.typeLabel || '类型'}: ${displayType(item.type, t)}`}>
+        {displayType(item.type, t)}
+      </span>
       <div className="card-body">
         <div className="card-title-row">
           <span className="card-artwork" title={displayType(item.type, t)} aria-label={displayType(item.type, t)}>
@@ -231,7 +235,15 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
             {canInstall ? <Copy size={13} /> : <Download size={13} />}
             <span>{canInstall ? t.installWithADP : canDownload ? isDownloading ? t.downloading : t.downloadArtifact : t.noArtifact}</span>
           </button>
-        ) : null}
+        ) : (
+          <span className="card-login-download" data-card-action tabIndex={0} aria-describedby={loginDownloadTipId}>
+            <button className="primary-action" type="button" disabled aria-label={t.downloadLoginRequired}>
+              <Download size={13} />
+              <span>{t.downloadArtifact}</span>
+            </button>
+            <span className="card-login-download-tip" id={loginDownloadTipId} role="tooltip">{t.downloadLoginRequired}</span>
+          </span>
+        )}
       </footer>
     </article>
   );

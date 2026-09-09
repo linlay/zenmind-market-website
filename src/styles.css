@@ -3344,7 +3344,30 @@ img {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
   column-gap: 12px;
+  padding-right: 76px;
   min-width: 0;
+}
+
+.card-type-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-right: 0;
+  border-radius: 0 8px 0 8px;
+  color: var(--faint);
+  background: var(--surface-soft);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .card-artwork {
@@ -3664,6 +3687,46 @@ img {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.card-login-download {
+  position: relative;
+  display: inline-flex;
+  outline: 0;
+}
+
+.card-login-download .primary-action:disabled {
+  color: var(--muted);
+  background: var(--surface-muted);
+  border-color: var(--line);
+  opacity: 1;
+}
+
+.card-login-download-tip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 4;
+  width: max-content;
+  max-width: 220px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  color: white;
+  background: var(--text);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.card-login-download:hover .card-login-download-tip,
+.card-login-download:focus-visible .card-login-download-tip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .link-button,
