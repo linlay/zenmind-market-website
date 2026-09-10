@@ -137,8 +137,10 @@ export function App() {
   const [editSource, setEditSource] = useState(null);
   const [isPublishing, setPublishing] = useState(false);
   const [isSavingMetadata, setSavingMetadata] = useState(false);
-  const [authSession, setAuthSession] = useState(null);
-  const [authStatus, setAuthStatus] = useState('loading');
+  // The standalone Market is intentionally public. Keep a stable local actor
+  // so creator, upload, download, rating, and comment controls stay available.
+  const [authSession, setAuthSession] = useState({ user: { id: 'public', username: 'Public user', role: 'creator' } });
+  const [authStatus, setAuthStatus] = useState('ready');
   const [creatorItems, setCreatorItems] = useState([]);
   const [creatorItemsStatus, setCreatorItemsStatus] = useState('idle');
   const [adminItems, setAdminItems] = useState([]);
@@ -317,19 +319,6 @@ export function App() {
   }, [loadCatalog]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    requestJSON(`${apiBase}/auth/me`, { signal: controller.signal })
-      .then((data) => {
-        if (data?.user?.id) setAuthSession({ user: data.user });
-      })
-      .catch((reason) => {
-        if (reason?.name !== 'AbortError') setAuthSession(null);
-      })
-      .finally(() => setAuthStatus('ready'));
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
     if (!isAuthenticated) return;
     loadCatalog();
   }, [isAuthenticated, loadCatalog]);
@@ -481,15 +470,6 @@ export function App() {
   function notify(message, tone = 'info') {
     const id = window.setTimeout(() => setToast(null), 3000);
     setToast({ message, tone, id });
-  }
-
-  function startLogin() {
-    window.location.assign(`${apiBase}/auth/oidc/login`);
-  }
-
-  function handleLogout() {
-    setUserMenuOpen(false);
-    window.location.assign(`${apiBase}/auth/oidc/logout`);
   }
 
   function chooseCategory(category) {
@@ -682,12 +662,7 @@ export function App() {
         current && current.id === merged.id && current.type === merged.type ? merged : current
       ));
     } catch (reason) {
-      if (reason?.status === 401) {
-        notify(t.favoriteAuthRequired, 'error');
-        startLogin();
-      } else {
-        notify(t.favoriteFailed(errorMessage(reason)), 'error');
-      }
+      notify(t.favoriteFailed(errorMessage(reason)), 'error');
     } finally {
       setFavoritingKey('');
     }
@@ -909,11 +884,6 @@ export function App() {
         notify(t.includedSkillsRequired, 'error');
         return;
       }
-      if (!isAuthenticated) {
-        notify(t.loginRequired, 'error');
-        startLogin();
-        return;
-      }
       const artifactRequired = artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill });
       if (artifactRequired && (!hasSelectedArtifact || (variantIndexes.length > 0 && !hasAllVariantArtifacts))) {
         notify(t.artifactRequired, 'error');
@@ -1106,12 +1076,6 @@ export function App() {
             <Languages size={15} />
             <span>{locale === 'zh-CN' ? '中' : 'EN'}</span>
           </button>
-          {!authSession ? (
-            <button className="language-button" type="button" onClick={startLogin}>
-              <LogIn size={15} />
-              <span>{t.login}</span>
-            </button>
-          ) : null}
           {isAuthenticated && !isSecurityOnly ? (
             <button
               className="creator-button"
@@ -1156,10 +1120,6 @@ export function App() {
                       <span>{t.securityReviewEntry}</span>
                     </button>
                   ) : null}
-                  <button className="user-menu-logout" type="button" role="menuitem" onClick={handleLogout}>
-                    <LogOut size={15} />
-                    <span>{t.logout}</span>
-                  </button>
                 </div>
               ) : null}
             </div>
