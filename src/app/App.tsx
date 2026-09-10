@@ -139,7 +139,10 @@ export function App() {
   const [isSavingMetadata, setSavingMetadata] = useState(false);
   // The standalone Market is intentionally public. Keep a stable local actor
   // so creator, upload, download, rating, and comment controls stay available.
-  const [authSession, setAuthSession] = useState({ user: { id: 'public', username: 'Public user', role: 'creator' } });
+  const [authSession, setAuthSession] = useState(() => {
+    const role = window.sessionStorage.getItem('zenmind-market:management-role');
+    return { user: { id: 'public', username: 'Public user', role: role === 'admin' || role === 'security_reviewer' ? role : 'creator' } };
+  });
   const [authStatus, setAuthStatus] = useState('ready');
   const [creatorItems, setCreatorItems] = useState([]);
   const [creatorItemsStatus, setCreatorItemsStatus] = useState('idle');
@@ -155,6 +158,8 @@ export function App() {
   const [downloadingKey, setDownloadingKey] = useState('');
   const [favoritingKey, setFavoritingKey] = useState('');
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
+  const [managementEntry, setManagementEntry] = useState(null);
+  const [managementToken, setManagementToken] = useState('');
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const userMenuRef = useRef(null);
   const t = getMarketCopy(
@@ -470,6 +475,23 @@ export function App() {
   function notify(message, tone = 'info') {
     const id = window.setTimeout(() => setToast(null), 3000);
     setToast({ message, tone, id });
+  }
+
+  function openManagement(role) {
+    setManagementToken('');
+    setManagementEntry(role);
+  }
+
+  function enterManagement(event) {
+    event.preventDefault();
+    const token = managementToken.trim();
+    if (!token || !managementEntry) return;
+    const isAdmin = managementEntry === 'admin';
+    window.sessionStorage.setItem(isAdmin ? 'zenmind-market:admin-token' : 'zenmind-market:security-token', token);
+    window.sessionStorage.setItem('zenmind-market:management-role', managementEntry);
+    setAuthSession({ user: { id: 'public', username: 'Public user', role: managementEntry } });
+    setManagementEntry(null);
+    navigate(isAdmin ? '/admin' : '/security-review');
   }
 
   function chooseCategory(category) {
@@ -1076,6 +1098,8 @@ export function App() {
             <Languages size={15} />
             <span>{locale === 'zh-CN' ? '中' : 'EN'}</span>
           </button>
+          <button className="language-button" type="button" onClick={() => openManagement('admin')}>管理入口</button>
+          <button className="language-button" type="button" onClick={() => openManagement('security_reviewer')}>安全审核</button>
           {isAuthenticated && !isSecurityOnly ? (
             <button
               className="creator-button"
@@ -1126,6 +1150,15 @@ export function App() {
           ) : null}
         </div>
       </header>
+
+      {managementEntry ? <div className="modal-backdrop" role="presentation">
+        <form className="modal-card" role="dialog" aria-modal="true" aria-label="管理令牌" onSubmit={enterManagement}>
+          <h2>{managementEntry === 'admin' ? '管理员审核' : '安全审核'}</h2>
+          <p>请输入该角色的访问令牌。令牌仅保存在当前浏览器会话。</p>
+          <input autoFocus type="password" value={managementToken} onChange={(event) => setManagementToken(event.target.value)} placeholder="Token" />
+          <div className="modal-actions"><button type="button" onClick={() => setManagementEntry(null)}>取消</button><button className="primary-action" type="submit" disabled={!managementToken.trim()}>进入</button></div>
+        </form>
+      </div> : null}
 
       <AppSurface
         publishing={authStatus === 'loading' ? null : isAuthenticated && !isSecurityOnly ? (
