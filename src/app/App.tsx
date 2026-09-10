@@ -960,7 +960,7 @@ export function App() {
         metadata: existingMetadata,
         platform,
         variants,
-        reviewStatus: 'pending',
+		reviewStatus: 'approved',
 		accessPolicy: {
 		  mode: String(form.get('accessMode') || 'all'),
 		  departmentIds: form.getAll('accessDepartmentIds').map((value) => String(value).trim()).filter(Boolean),
@@ -1023,12 +1023,12 @@ export function App() {
           body.append('repositoryPath', String(form.get('repositoryPath') || '').trim());
           body.append('repositoryAccessToken', String(form.get('repositoryAccessToken') || '').trim());
         }
-        await requestJSON(authSession.user?.role === 'admin' ? `${apiBase}/admin/${marketRoute(type)}/publish` : `${apiBase}/creator/publish`, {
+		await requestJSON(`${apiBase}/creator/publish`, {
           method: 'POST',
           body,
         });
       } else {
-        await requestJSON(authSession.user?.role === 'admin' ? `${apiBase}/admin/${marketRoute(type)}/publish` : `${apiBase}/creator/publish`, {
+		await requestJSON(`${apiBase}/creator/publish`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(metadata),
