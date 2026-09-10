@@ -3,7 +3,8 @@
 ## Standalone local edition
 
 With the local Market server, the UI uses the shared `public` actor and does
-not start an OIDC flow. Upload and download actions are available immediately.
+not start an OIDC flow. Components publish immediately after validation, and
+upload and download actions are available immediately.
 
 React + Vite marketplace browser that can be mounted at `/` or a runtime
 sub-path such as `/market/`.
