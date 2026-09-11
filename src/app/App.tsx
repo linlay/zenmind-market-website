@@ -572,11 +572,22 @@ export function App() {
         return;
       }
       const version = canonicalVersion(editSource.version || editSource.latestVersion);
-      await requestJSON(`${apiBase}/creator/items/${encodeURIComponent(editSource.type)}/${encodeURIComponent(editSource.id)}/versions/${encodeURIComponent(version)}/metadata`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const target = `${apiBase}/creator/items/${encodeURIComponent(editSource.type)}/${encodeURIComponent(editSource.id)}/versions/${encodeURIComponent(version)}/metadata`;
+      const image = selectedFormFile(event.currentTarget, form, 'image');
+      if (image) {
+        // A replacement image rides along as multipart form data; the server
+        // points the release's icon/screenshot metadata at the stored object.
+        const body = new FormData();
+        body.append('metadata', JSON.stringify(payload));
+        body.append('image', image);
+        await requestJSON(target, { method: 'PATCH', body });
+      } else {
+        await requestJSON(target, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
       await Promise.all([loadCatalog(), loadCreatorItems(undefined, authSession)]);
       setEditSource(null);
       navigate('/creator');
