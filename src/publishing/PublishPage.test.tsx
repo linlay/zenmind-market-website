@@ -147,7 +147,7 @@ describe('publish access policy', () => {
 });
 
 describe('connector-only publishing', () => {
-  it('offers connector packages and removes legacy MCP and CLI publish types', () => {
+  it('uploads standard connector parts separately and removes legacy MCP and CLI publish types', () => {
     const { container } = render(
       <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
     );
@@ -159,8 +159,10 @@ describe('connector-only publishing', () => {
 
     fireEvent.click(screen.getByText('连接器'));
     expect(container.querySelector('[name="type"]')).toHaveValue('connector');
-    expect(container.querySelector('[name="mcpSource"]')).not.toBeInTheDocument();
-    expect(screen.getByText(/包根目录必须包含 connector.json/)).toBeInTheDocument();
-    expect(container.querySelector('[name="variantArtifact.0"]')).toBeRequired();
+    expect(container.querySelector('[name="connectorManifest"]')).toBeRequired();
+    expect(container.querySelector('[name="connectorMCP"]')).toBeInTheDocument();
+    expect(container.querySelector('[name="connectorCLI"]')).toBeInTheDocument();
+    expect(container.querySelector('[name="connectorSkill"]')).toBeInTheDocument();
+    expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeInTheDocument();
   });
 });

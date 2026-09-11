@@ -288,7 +288,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             </div>
           </section>
 
-          {(type === 'skill' || type === 'sandbox-image' || type === 'website-app' || type === 'software-package') ? (
+          {(type === 'connector' || type === 'skill' || type === 'sandbox-image' || type === 'website-app' || type === 'software-package') ? (
             <section className="publish-section full">
               <h3>{t.publishTypeSettings}</h3>
               <div className="publish-section-grid">
@@ -354,6 +354,18 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               </label>
             </>
           ) : null}
+          {type === 'connector' ? (
+            <div className="connector-part-upload full">
+              <p className="field-hint">{t.connectorPartUploadHint}</p>
+              <div className="publish-section-grid">
+                <label><span className="required-field-label">connector.json</span><input name="connectorManifest" type="file" accept="application/json,.json" required /></label>
+                <label><span>mcp.json</span><input name="connectorMCP" type="file" accept="application/json,.json" /></label>
+                <label><span>cli.json</span><input name="connectorCLI" type="file" accept="application/json,.json" /></label>
+                <label><span>SKILL.md</span><input name="connectorSkill" type="file" accept=".md,text/markdown,text/plain" /></label>
+              </div>
+              <small className="field-hint">{t.connectorPartUploadRequirement}</small>
+            </div>
+          ) : null}
           {type === 'sandbox-image' ? (
             <label>
               <span className="required-field-label">{t.sandboxKind}</span>
@@ -390,7 +402,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             </section>
           ) : null}
 
-          {showAssetSection ? (
+          {showAssetSection && type !== 'connector' ? (
             <section className="publish-section full">
               <h3>{t.publishRequiredAssets}</h3>
               <div className="publish-section-grid platform-variant-list">

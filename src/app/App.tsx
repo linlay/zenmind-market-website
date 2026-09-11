@@ -871,6 +871,11 @@ export function App() {
       const hasSelectedImage = Boolean(image);
       const adpManifest = selectedFormFile(formElement, form, 'adpManifest');
       const hasSelectedADPManifest = Boolean(adpManifest);
+      const connectorManifest = selectedFormFile(formElement, form, 'connectorManifest');
+      const connectorMCP = selectedFormFile(formElement, form, 'connectorMCP');
+      const connectorCLI = selectedFormFile(formElement, form, 'connectorCLI');
+      const connectorSkill = selectedFormFile(formElement, form, 'connectorSkill');
+      const hasConnectorParts = type === 'connector' && Boolean(connectorManifest) && Boolean(connectorMCP || connectorCLI);
       const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';
       const skill = type === 'skill' ? {
         kind: skillKind,
@@ -891,7 +896,7 @@ export function App() {
         return;
       }
       const artifactRequired = artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill });
-      if (artifactRequired && (!hasSelectedArtifact || (variantIndexes.length > 0 && !hasAllVariantArtifacts))) {
+      if (artifactRequired && (type === 'connector' ? !hasConnectorParts : (!hasSelectedArtifact || (variantIndexes.length > 0 && !hasAllVariantArtifacts)))) {
         notify(t.artifactRequired, 'error');
         return;
       }
@@ -992,7 +997,7 @@ export function App() {
         metadata.adpYaml = await adpManifest.text();
       }
 
-      if (hasSelectedArtifact || hasSelectedImage) {
+      if (hasSelectedArtifact || hasSelectedImage || hasConnectorParts) {
         const body = new FormData();
         body.append('metadata', JSON.stringify(metadata));
         if (artifact) body.append('artifact', artifact);
@@ -1001,6 +1006,10 @@ export function App() {
         });
         if (hasSelectedImage) body.append('image', image);
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
+        if (connectorManifest) body.append('connectorManifest', connectorManifest);
+        if (connectorMCP) body.append('connectorMCP', connectorMCP);
+        if (connectorCLI) body.append('connectorCLI', connectorCLI);
+        if (connectorSkill) body.append('connectorSkill', connectorSkill);
         if (repositorySource) {
           body.append('artifactSource', 'repository');
           body.append('repositoryProvider', String(form.get('repositoryProvider') || 'gitlab'));

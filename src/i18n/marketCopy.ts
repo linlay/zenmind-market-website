@@ -330,7 +330,7 @@ export const marketCopy = {
     publishHideAdvanced: '收起高级选项',
     publishTypeRequirements: '需要准备',
     publishTypeDescriptions: {
-      connector: '上传统一连接器包，可组合 MCP、CLI 和 Skill 能力。',
+      connector: '分别上传标准连接器声明、MCP、CLI 和 Skill 文件，由市场校验并保存为连接器制品。',
       skill: '上传单个技能，支持一键安装。',
       'skill-package': '关联已有技能，生成可一键下载的技能组合。',
       plugin: '上传插件制品，提供扩展能力。',
@@ -341,7 +341,7 @@ export const marketCopy = {
       'software-package': '发布 Python、Node.js 等软件依赖包。',
     },
     publishTypeRequirementsMap: {
-      connector: 'zip 制品，包根目录必须包含 connector.json 及对应的 mcp.json / cli.json',
+      connector: 'connector.json，至少一个 mcp.json / cli.json；可选 SKILL.md',
       skill: 'zip 制品、含 metadata.version 的 SKILL.md；可选 adp.yaml',
       'skill-package': '至少 1 个已存在技能 ID',
       plugin: 'zip 制品、manifest.json',
@@ -351,6 +351,8 @@ export const marketCopy = {
       'website-app': 'webapp.json 或外部 URL',
       'software-package': 'zip / tar.gz 依赖包',
     },
+    connectorPartUploadHint: '按《智能体连接器规范》分别上传各能力声明；不再接收完整 ZIP 包。',
+    connectorPartUploadRequirement: 'connector.json 必填，且必须至少上传 mcp.json 或 cli.json。SKILL.md 会保存到标准 skills/ 目录。',
     type: '类型',
     componentId: '组件 ID',
     name: '名称',
@@ -754,7 +756,7 @@ export const marketCopy = {
     publishHideAdvanced: 'Hide advanced options',
     publishTypeRequirements: 'Requires',
     publishTypeDescriptions: {
-      connector: 'Upload one connector package that may combine MCP, CLI, and Skill capabilities.',
+      connector: 'Upload standard connector, MCP, CLI, and Skill files separately; Market validates and stores a connector artifact.',
       skill: 'Upload a single skill; add ADP only when extra dependencies need installation.',
       'skill-package': 'Link existing skills into a downloadable package.',
       plugin: 'Upload a plugin artifact for extension capabilities.',
@@ -765,7 +767,7 @@ export const marketCopy = {
       'software-package': 'Publish software dependencies such as Python or Node.js.',
     },
     publishTypeRequirementsMap: {
-      connector: 'zip artifact with connector.json and the matching mcp.json / cli.json at the package root',
+      connector: 'connector.json plus at least one mcp.json / cli.json; optional SKILL.md',
       skill: 'zip artifact, SKILL.md with metadata.version; optional adp.yaml',
       'skill-package': 'At least one existing skill ID',
       plugin: 'zip artifact, manifest.json',
@@ -775,6 +777,8 @@ export const marketCopy = {
       'website-app': 'webapp.json or external URL',
       'software-package': 'zip / tar.gz dependency package',
     },
+    connectorPartUploadHint: 'Upload each capability declaration under the Connector Specification; complete ZIP packages are no longer accepted.',
+    connectorPartUploadRequirement: 'connector.json is required and at least one of mcp.json or cli.json must be uploaded. SKILL.md is stored in the standard skills/ directory.',
     type: 'Type',
     componentId: 'Component ID',
     name: 'Name',

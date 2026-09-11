@@ -254,7 +254,7 @@ export function UserManualPage({ onClose }: UserManualPageProps) {
                 { number: 1, label: '发布步骤：当前是“选择类型”，选中后进入“填写信息”。', x: '14%', y: '19%' },
                 { number: 2, label: '单项技能：上传一个技能；卡片下方列出必须材料。', x: '18%', y: '37%' },
                 { number: 3, label: '技能包：关联已有技能，不是上传一个普通压缩包。', x: '50%', y: '37%' },
-                { number: 4, label: '连接器：上传包含 connector.json 的统一连接器 ZIP。', x: '18%', y: '55%' },
+                { number: 4, label: '连接器：分别上传 connector.json、MCP、CLI 和可选 Skill 文件。', x: '18%', y: '55%' },
                 { number: 5, label: '网站应用：下一步选择本地应用或外部链接。', x: '82%', y: '55%' },
               ]}
             />
@@ -478,7 +478,7 @@ version: "1.2.0"
             <div className="manual-component-stack">
               {[
                 ['03', '智能体', '含 agent.yml 或 agent.yaml 的 ZIP。', '说明智能体能完成的任务、需要什么输入、输出什么结果以及不适用范围。', '定义文件能被解析，引用的资源都在包内，版本和展示信息一致。', '只有说明没有运行定义；资源路径写错；把普通脚本当智能体。'],
-                ['04', '连接器', '包含 connector.json 以及匹配 mcp.json、cli.json 或 skills/ 的 ZIP。', '在 connector.json 声明身份、主要调用方式和认证模式；MCP、CLI 与 Skill 能力分别放入规范目录。', '清单版本和 ID 与发布表单一致；认证模板、HTTPS 地址、CLI 生命周期及 Skill frontmatter 均可通过校验。', '继续使用旧 MCP/CLI 商品格式；把真实凭据写入包；清单字段冲突或缺少对应能力文件。'],
+                ['04', '连接器', '分别上传 connector.json，并至少上传 mcp.json 或 cli.json；可选 SKILL.md。', '在 connector.json 声明身份、主要调用方式和认证模式；市场将 MCP、CLI 与 Skill 文件组装到规范目录。', '清单版本和 ID 与发布表单一致；认证模板、HTTPS 地址、CLI 生命周期及 Skill frontmatter 均可通过校验。', '继续使用旧 MCP/CLI 商品格式；上传完整 ZIP；把真实凭据写入清单；字段冲突或缺少对应能力文件。'],
                 ['05', '桌面宠物', '包含 pet.json 和 pet-idle.png 的资源包。', '名称、说明和展示图要准确表现宠物；pet.json 中的资源路径必须与包内文件一致。', '待机图片能正常读取，文件名大小写正确，包内没有无关敏感文件。', '缺少必需图片；配置引用不存在的动作资源；图片与描述不一致。'],
                 ['07', '网站应用', 'local-app 准备含 webapp.json 的制品；external 准备有效外部 URL。', '先选 local-app 或 external。外部网站直接填 URL，不需要为了上传而制作无关压缩包。', '本地入口、端口和资源路径正确；外部地址使用 HTTPS 且对目标用户可访问。', '类型选错；URL 指向登录后无权限的页面；本地包缺少 webapp.json。'],
                 ['08', '软件依赖包', 'ZIP 或 tar.gz 依赖包。', '为不同系统和架构分别添加平台制品，并在 README 中说明安装、验证和卸载方法。', '包名、版本、系统、架构全部一致；依赖来源和许可证信息清楚。', '把专用包标成 universal；压缩类型与实际文件不符；缺少安装说明。'],
@@ -585,7 +585,7 @@ version: "1.2.0"
               <details><summary>为什么上传技能后提示版本错误？</summary><p>核对表单版本与 ZIP 中 SKILL.md 的 YAML <code>metadata.version</code>，两者必须完全一致，例如都为 1.2.0。</p></details>
               <details><summary>为什么无法添加平台？</summary><p>同一个系统和架构组合只能出现一次。检查是否已有 windows-amd64、darwin-arm64 等重复项。</p></details>
               <details><summary>为什么限定人群无法提交？</summary><p>至少选择一个部门或指定用户。用户搜索至少输入 2 个字符；目录不可用时重新登录，仍失败则联系管理员。</p></details>
-              <details><summary>为什么不能再单独提交 MCP 或 CLI？</summary><p>这两种旧商品类型已经删除。请创建连接器 ZIP，并通过 connector.json 与 mcp.json/cli.json 声明相应能力。</p></details>
+              <details><summary>为什么不能再单独提交 MCP 或 CLI？</summary><p>这两种旧商品类型已经删除。请按连接器表单分别上传 connector.json 与 mcp.json/cli.json；市场会校验并保存标准连接器包。</p></details>
               <details><summary>新版本为什么没有马上出现在市场？</summary><p>新版本必须更高，并依次完成安全审核与管理员审核。审核期间，市场继续显示旧版本，这是正常保护机制。</p></details>
               <details><summary>为什么“编辑附加信息”不能换文件？</summary><p>该入口专门保护已发布制品，只允许改展示信息和访问范围。要换文件、平台、依赖或安装协议，请选择“发布新版本”。</p></details>
             </div>
