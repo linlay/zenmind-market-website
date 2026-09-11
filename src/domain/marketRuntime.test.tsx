@@ -17,6 +17,17 @@ describe('market catalog normalization', () => {
     expect(item.detailViewCount).toBe(12);
   });
 
+  it('keeps an icon separate from detail media', () => {
+    const item = mergeCatalogItem({
+      id: 'website-app',
+      type: 'website-app',
+      metadata: { icon: 'https://example.com/icon.png' },
+    });
+
+    expect(item.icon).toBe('https://example.com/icon.png');
+    expect(item.screenshot).toBe('');
+  });
+
   it('uses targets returned by the API for artifact platform selection', () => {
     const item = mergeCatalogItem({
       id: 'targeted',

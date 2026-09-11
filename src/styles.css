@@ -4009,6 +4009,14 @@ img {
   border-radius: 14px;
 }
 
+.detail-hero .detail-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
 .detail-hero-copy {
   min-width: 0;
   flex: 1;

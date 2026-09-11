@@ -127,8 +127,11 @@ export function mergeCatalogItem(apiItem) {
     connectorMCPTransports: parseStringArray(apiItem.metadata?.connectorMCPTransports),
     connectorSkillNames: parseStringArray(apiItem.metadata?.connectorSkillNames),
     connectorSpecVersion: apiItem.metadata?.connectorSpecVersion || '',
-    icon: apiItem.metadata?.icon || apiItem.metadata?.screenshot || '',
-    screenshot: apiItem.metadata?.screenshot || apiItem.metadata?.icon || defaultMediaImage,
+    // Icons and screenshots serve different places in the UI.  In particular,
+    // do not reuse an icon as the detail-page media: it would be enlarged into
+    // a 16:9 panel for website apps that have no screenshot.
+    icon: apiItem.metadata?.icon || '',
+    screenshot: apiItem.metadata?.screenshot || '',
     videoThumb: apiItem.metadata?.videoThumb || '',
     hasVideo: Boolean(apiItem.metadata?.videoThumb || apiItem.metadata?.videoUrl),
     author: apiItem.author || apiItem.metadata?.author || '',

@@ -130,7 +130,9 @@ export function SkillCatalogView({ items, activeSkillCategory, isAuthenticated, 
 
 export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInstall, onDownload, onFavorite, isDownloading, isFavoriting, variant = '' }) {
   const category = categoryMeta.find((entry) => entry.id === item.type);
-  const Icon = category?.icon || PackageOpen;
+  const isSkillPackageCard = item.type === 'skill' && item.skillKind === 'package';
+  const Icon = isSkillPackageCard ? PackageOpen : category?.icon || PackageOpen;
+  const cardTypeLabel = isSkillPackageCard ? skillKindLabel(item.skillKind, t) : displayType(item.type, t);
   const platform = preferredPlatformKey(item);
   const canDownload = hasArtifact(item, platform) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
@@ -188,13 +190,13 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
         }
       }}
     >
-      <span className="card-type-badge" aria-label={`${t.typeLabel || '类型'}: ${displayType(item.type, t)}`}>
-        {displayType(item.type, t)}
+      <span className="card-type-badge" aria-label={`${t.typeLabel || '类型'}: ${cardTypeLabel}`}>
+        {cardTypeLabel}
       </span>
       <div className="card-body">
         <div className="card-title-row">
-          <span className="card-artwork" title={displayType(item.type, t)} aria-label={displayType(item.type, t)}>
-            {item.icon ? <img src={item.icon} alt="" /> : <Icon className={category?.colorClass || 'is-muted'} size={18} />}
+          <span className="card-artwork" title={cardTypeLabel} aria-label={cardTypeLabel}>
+            {item.icon || item.screenshot ? <img src={item.icon || item.screenshot} alt="" /> : <Icon className={category?.colorClass || 'is-muted'} size={18} />}
           </span>
           <h2>
             {itemName}
@@ -273,7 +275,9 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
         <button className="modal-close" type="button" onClick={onClose} aria-label={t.close}><X size={18} /></button>
         <div className="detail-grid">
           <section className="detail-hero">
-            <div className="detail-icon"><Icon size={30} /></div>
+            <div className="detail-icon">
+              {item.icon ? <img src={item.icon} alt="" /> : <Icon size={30} />}
+            </div>
             <div className="detail-hero-copy">
               <div className="detail-overline">
                 <span>{displayType(item.type, t)}</span>
@@ -302,7 +306,7 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
             </div>
           </section>
           <section className="detail-main">
-            {item.type !== 'skill' && item.icon ? (
+            {item.type !== 'skill' && item.screenshot && item.screenshot !== item.icon ? (
               <div className="media-panel">
                 <img src={item.screenshot} alt="" />
               </div>
