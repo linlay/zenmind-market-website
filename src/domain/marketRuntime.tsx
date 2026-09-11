@@ -12,13 +12,12 @@ import {
   PackageOpen,
   Puzzle,
   Network,
-  Terminal,
 } from 'lucide-react';
 
 export const apiBase = import.meta.env.VITE_MARKET_API_BASE || `${marketBasePath}/api/v1`;
 export const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
 export const locales = ['zh-CN', 'en-US'];
-export const canonicalTypes = ['skill', 'plugin', 'agent', 'mcp', 'sandbox-image', 'pet', 'cli-tool', 'website-app', 'software-package'];
+export const canonicalTypes = ['connector', 'skill', 'plugin', 'agent', 'sandbox-image', 'pet', 'website-app', 'software-package'];
 export const defaultMediaImage = svgDataUri(`
   <svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
     <defs>
@@ -47,13 +46,12 @@ export const marketBrand = resolveMarketBrand(brandId);
 
 export const categoryMeta = [
   { id: 'all', icon: LayoutGrid, colorClass: 'is-muted' },
+  { id: 'connector', icon: Network, colorClass: 'is-blue' },
   { id: 'skill', icon: Brain, colorClass: 'is-purple' },
   { id: 'plugin', icon: Puzzle, colorClass: 'is-blue' },
   { id: 'agent', icon: Bot, colorClass: 'is-indigo' },
-  { id: 'mcp', icon: Network, colorClass: 'is-blue' },
   { id: 'sandbox-image', icon: Box, colorClass: 'is-emerald' },
   { id: 'pet', icon: Cat, colorClass: 'is-amber' },
-  { id: 'cli-tool', icon: Terminal, colorClass: 'is-rose' },
   { id: 'website-app', icon: Globe, colorClass: 'is-cyan' },
   { id: 'software-package', icon: HardDrive, colorClass: 'is-emerald' },
 ];
@@ -61,18 +59,17 @@ export const categoryMeta = [
 export const hiddenMarketTypeIDs = ['plugin', 'sandbox-image'];
 
 export function isMarketTypeVisible(type) {
-  return !hiddenMarketTypeIDs.includes(type);
+  return (type === 'all' || canonicalTypes.includes(type)) && !hiddenMarketTypeIDs.includes(type);
 }
 
 export function publishTypeOptions() {
   return [
+    { id: 'connector', type: 'connector', icon: Network, label: (t) => t.categories.connector },
     { id: 'skill', type: 'skill', skillKind: 'single', icon: Brain, label: (t) => t.skillSingle },
     { id: 'skill-package', type: 'skill', skillKind: 'package', icon: PackageOpen, label: (t) => t.skillPackage },
     { id: 'plugin', type: 'plugin', icon: Puzzle, label: (t) => t.categories.plugin },
     { id: 'agent', type: 'agent', icon: Bot, label: (t) => t.categories.agent },
-    { id: 'mcp', type: 'mcp', icon: Network, label: (t) => t.categories.mcp },
     { id: 'sandbox-image', type: 'sandbox-image', icon: Box, label: (t) => t.categories['sandbox-image'] },
-    { id: 'cli-tool', type: 'cli-tool', icon: Terminal, label: (t) => t.categories['cli-tool'] },
     { id: 'website-app', type: 'website-app', icon: Globe, label: (t) => t.categories['website-app'] },
     { id: 'software-package', type: 'software-package', icon: HardDrive, label: (t) => t.categories['software-package'] },
     { id: 'pet', type: 'pet', icon: Cat, label: (t) => t.categories.pet },
@@ -124,11 +121,12 @@ export function mergeCatalogItem(apiItem) {
     skillPackageMode: skill.packageMode,
     skillFeatured: Boolean(skill.featured),
     includedSkills: skill.includedSkills,
-    mcpSource: apiItem.metadata?.source || 'gateway',
-    mcpServerCode: apiItem.metadata?.gatewayServerCode || '',
-    mcpEndpointUrl: apiItem.metadata?.endpointUrl || '',
-    mcpGatewayConfigVersion: apiItem.metadata?.gatewayConfigVersion || '',
-    mcpTools: parseStringArray(apiItem.metadata?.tools),
+    connectorPrimaryType: apiItem.metadata?.connectorPrimaryType || '',
+    connectorAuthMode: apiItem.metadata?.connectorAuthMode || '',
+    connectorCapabilities: parseStringArray(apiItem.metadata?.connectorCapabilities),
+    connectorMCPTransports: parseStringArray(apiItem.metadata?.connectorMCPTransports),
+    connectorSkillNames: parseStringArray(apiItem.metadata?.connectorSkillNames),
+    connectorSpecVersion: apiItem.metadata?.connectorSpecVersion || '',
     icon: apiItem.metadata?.icon || apiItem.metadata?.screenshot || '',
     screenshot: apiItem.metadata?.screenshot || apiItem.metadata?.icon || defaultMediaImage,
     videoThumb: apiItem.metadata?.videoThumb || '',
@@ -347,7 +345,6 @@ export function platformForKey(item, key) {
 
 export function downloadKeyForItem(item, platformKey = '') {
   if (!item) return '';
-  if (item.type === 'mcp') return `${item.type}:${item.id}:config`;
   if (item.type === 'skill' && item.skillKind === 'package') return `${item.type}:${item.id}:package`;
   return `${item.type}:${item.id}:${preferredPlatformKey(item, platformKey) || 'any'}`;
 }
@@ -421,20 +418,18 @@ export function inferArchFromPlatform(platform) {
 
 export function marketRoute(type) {
   switch (normalizeType(type)) {
+    case 'connector':
+      return 'connectors';
     case 'skill':
       return 'skills';
     case 'plugin':
       return 'plugins';
     case 'agent':
       return 'agents';
-    case 'mcp':
-      return 'mcps';
     case 'sandbox-image':
       return 'sandbox-images';
     case 'pet':
       return 'pets';
-    case 'cli-tool':
-      return 'cli-tools';
     case 'website-app':
       return 'webapps';
     case 'software-package':
@@ -553,7 +548,7 @@ export function triggerBrowserDownload(url) {
 }
 
 export function canInstallWithADP(item) {
-  return Boolean(item?.adpInstallUrl && (item.type === 'cli-tool' || item.type === 'skill'));
+  return Boolean(item?.adpInstallUrl && item.type === 'skill');
 }
 
 export function adpInstallCommand(item) {
@@ -632,8 +627,6 @@ export function detectSpecFromForm(form) {
 
 export function artifactRequiredFor(type, options = {}) {
   type = normalizeType(type);
-  if (type === 'mcp') return false;
-  if (type === 'cli-tool') return false;
   if (type === 'website-app' && options.websiteKind === 'external') return false;
   if (type === 'skill' && options.skill?.kind === 'package') return false;
   return true;
@@ -642,18 +635,17 @@ export function artifactRequiredFor(type, options = {}) {
 export function supportsADPFor(type, options = {}) {
   type = normalizeType(type);
   if (type === 'skill' && options.skill?.kind === 'package') return false;
-  return type === 'cli-tool' || type === 'skill';
+  return type === 'skill';
 }
 
 export function archiveOptionsFor(type, options = {}) {
   switch (normalizeType(type)) {
-    case 'mcp':
-      return ['json'];
+    case 'connector':
+      return ['zip'];
     case 'skill':
     case 'plugin':
     case 'agent':
     case 'pet':
-    case 'cli-tool':
     case 'website-app':
       return ['zip'];
     case 'software-package':

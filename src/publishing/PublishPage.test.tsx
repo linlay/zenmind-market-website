@@ -146,51 +146,21 @@ describe('publish access policy', () => {
   });
 });
 
-describe('publish mcp source', () => {
-  it('switches between gateway and custom MCP sources', () => {
+describe('connector-only publishing', () => {
+  it('offers connector packages and removes legacy MCP and CLI publish types', () => {
     const { container } = render(
       <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
     );
 
-    fireEvent.click(screen.getByText('MCP'));
-    expect(container.querySelector('[name="mcpSource"]')).toHaveValue('gateway');
-    expect(container.querySelector('.mcp-picker')).toBeInTheDocument();
-    expect(container.querySelector('[name="mcpEndpointUrl"]')).not.toBeRequired();
+    const publishTypeLabels = Array.from(container.querySelectorAll('.publish-type-card strong')).map((node) => node.textContent);
+    expect(publishTypeLabels).toContain('连接器');
+    expect(publishTypeLabels).not.toContain('MCP');
+    expect(publishTypeLabels).not.toContain('CLI 工具');
 
-    fireEvent.click(screen.getByText('自定义地址'));
-    expect(container.querySelector('[name="mcpSource"]')).toHaveValue('custom');
-    expect(container.querySelector('.mcp-picker')).not.toBeInTheDocument();
-    expect(container.querySelector('[name="mcpEndpointUrl"]')).toBeRequired();
-    expect(container.querySelector('[name="mcpCustomServerKey"]')).toBeInTheDocument();
-    expect(container.querySelector('[name="mcpCustomTools"]')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('从网关选择'));
-    expect(container.querySelector('[name="mcpSource"]')).toHaveValue('gateway');
-    expect(container.querySelector('.mcp-picker')).toBeInTheDocument();
-  });
-
-  it('locks the custom source when publishing a new version', () => {
-    const { container } = render(
-      <PublishPage
-        t={getMarketCopy('zh-CN')}
-        locale="zh-CN"
-        initialItem={{
-          ...initialItem,
-          id: 'partner-search-mcp',
-          type: 'mcp',
-          mcpSource: 'custom',
-          mcpServerCode: '',
-          mcpEndpointUrl: 'https://mcp.partner.test/search/mcp',
-        }}
-        onClose={vi.fn()}
-        onSubmit={vi.fn()}
-        isPublishing={false}
-      />,
-    );
-
-    expect(container.querySelector('[name="mcpSource"]')).toHaveValue('custom');
-    expect(screen.getByText('https://mcp.partner.test/search/mcp')).toBeInTheDocument();
-    expect(container.querySelector('.mcp-source-toggle')).not.toBeInTheDocument();
-    expect(container.querySelector('[name="mcpEndpointUrl"]')).toHaveValue('https://mcp.partner.test/search/mcp');
+    fireEvent.click(screen.getByText('连接器'));
+    expect(container.querySelector('[name="type"]')).toHaveValue('connector');
+    expect(container.querySelector('[name="mcpSource"]')).not.toBeInTheDocument();
+    expect(screen.getByText(/包根目录必须包含 connector.json/)).toBeInTheDocument();
+    expect(container.querySelector('[name="variantArtifact.0"]')).toBeRequired();
   });
 });

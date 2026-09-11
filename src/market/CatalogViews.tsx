@@ -132,10 +132,12 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
   const category = categoryMeta.find((entry) => entry.id === item.type);
   const Icon = category?.icon || PackageOpen;
   const platform = preferredPlatformKey(item);
-  const canDownload = item.type === 'mcp' || hasArtifact(item, platform) || isSkillPackage(item);
+  const canDownload = hasArtifact(item, platform) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   const usageHints = item.type === 'skill' ? usageHintsFromMetadata(item.metadata) : [];
+  const primaryTag = (item.tags || []).map((tag) => String(tag || '').trim()).find(Boolean);
+  const primaryTagLabel = primaryTag || (item.type === 'skill' ? skillCategoryLabel(item.skillCategory, t) : '');
   const usageHintKey = usageHints.join('\u0000');
   const loginDownloadTipId = `card-login-download-tip-${item.type}-${item.id}`;
   const cardRef = useRef(null);
@@ -196,7 +198,14 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
           </span>
           <h2>
             {itemName}
+            {primaryTagLabel ? <span className={primaryTag ? 'card-primary-tag' : 'card-primary-tag is-category'} title={primaryTag ? `${t.tags}: ${primaryTag}` : primaryTagLabel}>{primaryTagLabel}</span> : null}
           </h2>
+        </div>
+        <p>{localized(item.description, locale) || t.noDescription}</p>
+        {usageHints.length ? <div className="card-usage-hint" aria-label={t.usageHintTitle}><p className="card-usage-hint-text" key={activeUsageHint}><span className="usage-hint-icon" aria-hidden="true"><MessageCircleMore size={16} /></span><span>{usageHints[activeUsageHint]}</span></p></div> : null}
+        <div className="card-author">
+          <User size={13} />
+          <span className="card-author-name" title={`${t.author}: ${item.author}`}>{item.author}</span>
           <div className="card-head-meta">
             <span className="card-download-stat" title={t.downloads} aria-label={`${t.downloads}: ${formatCount(item.downloads)}`}>
               <Download size={13} />
@@ -221,12 +230,6 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
               </span>
             )}
           </div>
-        </div>
-        <p>{localized(item.description, locale) || t.noDescription}</p>
-        {usageHints.length ? <div className="card-usage-hint" aria-label={t.usageHintTitle}><p className="card-usage-hint-text" key={activeUsageHint}><span className="usage-hint-icon" aria-hidden="true"><MessageCircleMore size={16} /></span><span>{usageHints[activeUsageHint]}</span></p></div> : null}
-        <div className="card-author">
-          <User size={13} />
-          <span className="card-author-name" title={`${t.author}: ${item.author}`}>{item.author}</span>
         </div>
       </div>
       <footer className="card-hover-action">
@@ -256,7 +259,7 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
   const activePlatform = platformForKey(item, activePlatformKey);
   const specificPlatformKeys = platformKeys.filter((platform) => String(platform).toLowerCase() !== 'universal');
   const commands = commandEntries(activePlatform, t);
-  const canDownload = item.type === 'mcp' || hasArtifact(item, activePlatformKey) || isSkillPackage(item);
+  const canDownload = hasArtifact(item, activePlatformKey) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   const readme = localized(item.readme, locale);
@@ -323,19 +326,17 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
           </section>
 
           <section className="detail-side">
-            {item.type === 'mcp' ? (
+            {item.type === 'connector' ? (
               <section className="side-section">
-                <h3>MCP</h3>
+                <h3>{t.connectorProfile}</h3>
                 <div className="mcp-detail-facts">
-                  <span><strong>{t.mcpSourceLabel}</strong><code>{item.mcpSource === 'custom' ? t.mcpSourceBadgeCustom : t.mcpSourceBadgeGateway}</code></span>
-                  {item.mcpServerCode ? (
-                    <span><strong>{t.componentId}</strong><code>{item.mcpServerCode}</code></span>
-                  ) : null}
-                  <span><strong>{t.mcpEndpoint}</strong><code>{item.mcpEndpointUrl}</code></span>
+                  <span><strong>{t.connectorPrimaryType}</strong><code>{item.connectorPrimaryType || '-'}</code></span>
+                  <span><strong>{t.connectorAuthMode}</strong><code>{item.connectorAuthMode || '-'}</code></span>
+                  <span><strong>{t.connectorSpecVersion}</strong><code>{item.connectorSpecVersion || '-'}</code></span>
                 </div>
-                {item.mcpTools?.length ? (
+                {item.connectorCapabilities?.length ? (
                   <div className="skill-facts">
-                    {item.mcpTools.map((tool) => <span key={tool}>{tool}</span>)}
+                    {item.connectorCapabilities.map((capability) => <span key={capability}>{capability}</span>)}
                   </div>
                 ) : null}
               </section>

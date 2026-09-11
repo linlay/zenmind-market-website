@@ -31,7 +31,6 @@ import {
   Shapes,
   ShieldCheck,
   Sun,
-  Terminal,
   Trash2,
   Upload,
   User,
@@ -39,12 +38,11 @@ import {
   ListChecks,
   MessageSquare,
   Pencil,
-  Store,
   ThumbsDown,
   ThumbsUp,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { errorMessage, requestJSON } from '../api/client';
 import {
   publishTypeOptions,
@@ -96,18 +94,6 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
 	const [platformVariants, setPlatformVariants] = useState(initialVariants);
   const [skillSearch, setSkillSearch] = useState('');
   const [selectedSkillIDs, setSelectedSkillIDs] = useState(updateMode ? (initialItem.includedSkills || []).map((skill) => skill.id) : []);
-  const [mcpSearch, setMCPSearch] = useState('');
-  const [mcpServers, setMCPServers] = useState([]);
-  const [mcpStatus, setMCPStatus] = useState('idle');
-  const [mcpSource, setMCPSource] = useState(updateMode && initialType === 'mcp' && initialItem.mcpSource === 'custom' ? 'custom' : 'gateway');
-  const [selectedMCP, setSelectedMCP] = useState(updateMode && initialType === 'mcp' ? {
-    code: initialItem.mcpServerCode,
-    name: localized(initialItem.name, locale),
-    description: localized(initialItem.description, locale),
-    endpointUrl: initialItem.mcpEndpointUrl,
-    configVersion: initialItem.mcpGatewayConfigVersion,
-    tools: initialItem.mcpTools || [],
-  } : null);
   const initialAccessPolicy = initialItem?.accessPolicy || { mode: 'all', departmentIds: [], userIds: [] };
   const [accessMode, setAccessMode] = useState(initialAccessPolicy.mode === 'all' ? 'all' : 'restricted');
   const departments = currentUser?.organization?.departments || [];
@@ -134,25 +120,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const SelectedIcon = selectedType?.icon || PackageOpen;
   const artifactRequired = artifactRequiredFor(type, { websiteKind, skill: { kind: skillKind } });
   const supportsADP = supportsADPFor(type, { skill: { kind: skillKind } });
-  const showAssetSection = type !== 'mcp' && (!(type === 'skill' && skillKind === 'package') || supportsADP);
+  const showAssetSection = !(type === 'skill' && skillKind === 'package') || supportsADP;
   const filteredSkills = filterPublishSkills(availableSkills, skillSearch, locale);
-  const selectedMCPMarketID = String(selectedMCP?.code || '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
-
-  const loadMCPServers = useCallback(async (query = '') => {
-    setMCPStatus('loading');
-    try {
-      const result = await requestJSON(`${apiBase}/mcp-gateway/servers${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`);
-      setMCPServers(result.items || []);
-      setMCPStatus('ready');
-    } catch (reason) {
-      setMCPServers([]);
-      setMCPStatus('error');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (type === 'mcp' && mcpSource === 'gateway' && step === 'details' && !updateMode && mcpStatus === 'idle') loadMCPServers();
-  }, [loadMCPServers, mcpSource, mcpStatus, step, type, updateMode]);
 
   function applyPublishType(option) {
     const nextType = normalizeType(option.type);
@@ -169,8 +138,6 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
 	setPlatformVariants([{ id: Date.now(), os: 'universal', arch: '', archiveType: defaultArchiveTypeFor(nextType, { sandboxKind: nextSandboxKind, websiteKind: nextWebsiteKind }) }]);
     setSkillSearch('');
     setSelectedSkillIDs([]);
-    setSelectedMCP(null);
-    setMCPSource('gateway');
     setStep('details');
   }
 
@@ -294,102 +261,17 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           <input name="archiveType" type="hidden" value={archiveType} />
           {updateMode ? <input name="existingMetadata" type="hidden" value={JSON.stringify(initialItem.metadata || {})} /> : null}
           {type === 'skill' ? <input name="skillKind" type="hidden" value={skillKind} /> : null}
-          {type === 'mcp' ? (
-            <section className="publish-section full">
-              <h3>{t.mcpSourceLabel}</h3>
-              {updateMode ? (
-                <div className="mcp-selected-source">
-                  <strong>{mcpSource === 'custom' ? t.mcpSourceCustom : t.mcpSourceGateway}</strong>
-                  <code>{mcpSource === 'custom' ? initialItem.mcpEndpointUrl : selectedMCP?.endpointUrl}</code>
-                </div>
-              ) : (
-                <div className="mcp-source-toggle" role="group" aria-label={t.mcpSourceLabel}>
-                  <button
-                    className={mcpSource === 'gateway' ? 'mcp-source-option is-selected' : 'mcp-source-option'}
-                    type="button"
-                    onClick={() => setMCPSource('gateway')}
-                  >
-                    <Store size={15} />
-                    <span>{t.mcpSourceGateway}</span>
-                  </button>
-                  <button
-                    className={mcpSource === 'custom' ? 'mcp-source-option is-selected' : 'mcp-source-option'}
-                    type="button"
-                    onClick={() => setMCPSource('custom')}
-                  >
-                    <Globe size={15} />
-                    <span>{t.mcpSourceCustom}</span>
-                  </button>
-                </div>
-              )}
-              {mcpSource === 'gateway' && !updateMode ? (
-                <div className="mcp-picker">
-                  <div className="mcp-picker-search">
-                    <Search size={15} />
-                    <input value={mcpSearch} onChange={(event) => setMCPSearch(event.target.value)} placeholder={t.mcpGatewaySearch} />
-                    <button className="secondary-action" type="button" onClick={() => loadMCPServers(mcpSearch)}>{t.mcpGatewaySearchAction}</button>
-                  </div>
-                  {mcpStatus === 'loading' ? <p className="skill-picker-empty">{t.mcpGatewayLoading}</p> : null}
-                  {mcpStatus !== 'loading' && !mcpServers.length ? <p className="skill-picker-empty">{t.mcpGatewayEmpty}</p> : null}
-                  <div className="mcp-picker-list">
-                    {mcpServers.map((server) => (
-                      <button
-                        className={selectedMCP?.code === server.code ? 'mcp-picker-option is-selected' : 'mcp-picker-option'}
-                        type="button"
-                        key={server.code}
-                        onClick={() => setSelectedMCP(server)}
-                      >
-                        <span><strong>{server.name || server.code}</strong><small>{server.code} · {server.toolCount} tools</small></span>
-                        <small>{server.description || server.endpointUrl}</small>
-                        {selectedMCP?.code === server.code ? <CheckCircle2 size={16} /> : null}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {mcpSource === 'custom' && !updateMode ? (
-                <div className="mcp-custom-form">
-                  <label>
-                    <span className="required-field-label">{t.mcpCustomEndpoint}</span>
-                    <input name="mcpEndpointUrl" type="url" required placeholder="https://your-mcp.example.com/mcp" />
-                    <small className="field-hint">{t.mcpCustomEndpointInvalid}</small>
-                  </label>
-                  <label>
-                    <span>{t.mcpCustomServerKey}</span>
-                    <input name="mcpCustomServerKey" placeholder="my-mcp" pattern="[a-z0-9._-]+" />
-                    <small className="field-hint">{t.mcpCustomServerKeyHint}</small>
-                  </label>
-                  <label>
-                    <span>{t.mcpCustomTools}</span>
-                    <input name="mcpCustomTools" placeholder="search,fetch" />
-                    <small className="field-hint">{t.mcpCustomToolsHint}</small>
-                  </label>
-                </div>
-              ) : null}
-              <input name="mcpSource" type="hidden" value={mcpSource} />
-              {mcpSource === 'gateway' ? (
-                <>
-                  <input name="mcpServerCode" type="hidden" value={selectedMCP?.code || ''} />
-                  <input name="mcpGatewayConfigVersion" type="hidden" value={selectedMCP?.configVersion || ''} />
-                  <input name="mcpTools" type="hidden" value={JSON.stringify(selectedMCP?.tools || [])} />
-                </>
-              ) : null}
-              {mcpSource === 'gateway' || updateMode ? (
-                <input name="mcpEndpointUrl" type="hidden" value={selectedMCP?.endpointUrl || initialItem?.mcpEndpointUrl || ''} />
-              ) : null}
-            </section>
-          ) : null}
-          <section className="publish-section full" key={type === 'mcp' ? (mcpSource === 'custom' ? 'mcp-custom' : selectedMCP?.code || 'mcp-empty') : 'basic'}>
+          <section className="publish-section full">
             <h3>{t.publishBasicInfo}</h3>
             <div className="publish-section-grid">
               <label>
                 <span className="required-field-label">{t.componentId}</span>
-                <input name="id" required readOnly={updateMode || (type === 'mcp' && mcpSource === 'gateway')} defaultValue={updateMode ? initialItem.id : type === 'mcp' && mcpSource === 'gateway' ? selectedMCPMarketID : ''} placeholder="my-agent" pattern="[a-z0-9._-]+" />
+                <input name="id" required readOnly={updateMode} defaultValue={updateMode ? initialItem.id : ''} placeholder="my-agent" pattern="[a-z0-9._-]+" />
                 {updateMode ? <small className="field-hint">{t.publishVersionLocked}</small> : null}
               </label>
               <label>
                 <span className="required-field-label">{t.name}</span>
-                <input name="name" required defaultValue={updateMode ? localized(initialItem.name, locale) : type === 'mcp' && mcpSource === 'gateway' ? selectedMCP?.name || '' : ''} placeholder="My Agent" />
+                <input name="name" required defaultValue={updateMode ? localized(initialItem.name, locale) : ''} placeholder="My Agent" />
               </label>
               <label>
                 <span className="required-field-label">{t.version}</span>
@@ -401,7 +283,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               </label>
               <label className="full">
                 <span className="required-field-label">{t.description}</span>
-                <textarea name="description" rows="4" required defaultValue={updateMode ? localized(initialItem.description, locale) : type === 'mcp' && mcpSource === 'gateway' ? selectedMCP?.description || '' : ''} />
+                <textarea name="description" rows="4" required defaultValue={updateMode ? localized(initialItem.description, locale) : ''} />
               </label>
             </div>
           </section>
@@ -680,26 +562,6 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   <span>{t.platformMetadata}</span>
                   <textarea name="platformMetadata" rows="4" defaultValue={JSON.stringify(initialPlatform?.metadata || {}, null, 2)} spellCheck="false" />
                 </label>
-          {type === 'cli-tool' ? (
-            <>
-              <label className="full">
-                <span>{t.installCommand}</span>
-                <input name="installCommand" defaultValue={initialPlatform?.install?.command || initialItem?.install?.command || ''} placeholder="brew install zmctl" />
-              </label>
-              <label className="full">
-                <span>{t.uninstallCommand}</span>
-                <input name="uninstallCommand" defaultValue={initialPlatform?.uninstall?.command || initialItem?.uninstall?.command || ''} placeholder="brew uninstall zmctl" />
-              </label>
-              <label className="full">
-                <span>{t.detectCommands}</span>
-                <textarea name="detectCommands" rows="3" defaultValue={(initialPlatform?.detect?.commands || initialItem?.detect?.commands || []).join('\n')} placeholder="zmctl" />
-              </label>
-              <label className="full">
-                <span>{t.versionCommand}</span>
-                <input name="versionCommand" defaultValue={initialPlatform?.detect?.versionCommand || initialItem?.detect?.versionCommand || ''} placeholder="zmctl --version" />
-              </label>
-            </>
-          ) : null}
                 <label className="full">
                   <span>{t.readme}</span>
                   <textarea name="readme" rows="5" defaultValue={updateMode ? localized(initialItem.readme, locale) : ''} />

@@ -590,20 +590,6 @@ export function App() {
 
   async function handleDownload(item, platformOverride = '') {
     if (!item || downloadingKey) return;
-    if (item.type === 'mcp') {
-      const key = `${item.type}:${item.id}:config`;
-      setDownloadingKey(key);
-      try {
-        triggerBrowserDownload(`${apiBase}/mcps/${encodeURIComponent(item.id)}/download`);
-        window.dispatchEvent(new CustomEvent('market:downloaded', { detail: { type: item.type, id: item.id } }));
-        notify(t.downloadStarted(localized(item.name, locale) || item.id), 'success');
-      } catch (reason) {
-        notify(t.downloadFailed(errorMessage(reason)), 'error');
-      } finally {
-        setDownloadingKey('');
-      }
-      return;
-    }
     if (item.type === 'skill' && item.skillKind === 'package') {
       const key = `${item.type}:${item.id}:package`;
       setDownloadingKey(key);
@@ -864,27 +850,6 @@ export function App() {
         return;
       }
       const description = String(form.get('description') || '').trim();
-      if (type === 'mcp') {
-        const mcpSource = String(form.get('mcpSource') || 'gateway');
-        if (mcpSource === 'gateway' && !String(form.get('mcpServerCode') || '').trim()) {
-          notify(t.mcpGatewayRequired, 'error');
-          return;
-        }
-        if (mcpSource === 'custom') {
-          const customEndpoint = String(form.get('mcpEndpointUrl') || '').trim();
-          if (!customEndpoint) {
-            notify(t.mcpCustomEndpointRequired, 'error');
-            return;
-          }
-          try {
-            const parsedURL = new URL(customEndpoint);
-            if (parsedURL.protocol !== 'http:' && parsedURL.protocol !== 'https:') throw new Error('invalid protocol');
-          } catch {
-            notify(t.mcpCustomEndpointInvalid, 'error');
-            return;
-          }
-        }
-      }
       const variantIndexes = form.getAll('variantIndex').map((value) => String(value));
       const variantFiles = variantIndexes.map((index) => selectedFormFile(formElement, form, `variantArtifact.${index}`));
       const artifact = selectedFormFile(formElement, form, 'artifact');
@@ -1008,30 +973,10 @@ export function App() {
         notify(t.accessRestrictedRequired, 'error');
         return;
       }
-      if (type === 'cli-tool') {
-        if (install) metadata.install = install;
-        if (uninstall) metadata.uninstall = uninstall;
-        if (detect) metadata.detect = detect;
-      }
       const author = String(form.get('author') || '').trim();
       const metadataUrl = String(form.get('metadataUrl') || '').trim();
       if (author) metadata.metadata.author = author;
       if (metadataUrl) metadata.metadata.url = metadataUrl;
-      if (type === 'mcp') {
-        const mcpSource = String(form.get('mcpSource') || 'gateway');
-        metadata.metadata.source = mcpSource;
-        metadata.metadata.gatewayServerCode = String(form.get('mcpServerCode') || '').trim();
-        metadata.metadata.endpointUrl = String(form.get('mcpEndpointUrl') || '').trim();
-        metadata.metadata.gatewayConfigVersion = String(form.get('mcpGatewayConfigVersion') || '').trim();
-        if (mcpSource === 'custom') {
-          const customTools = String(form.get('mcpCustomTools') || '').split(',').map((tool) => tool.trim()).filter(Boolean);
-          metadata.metadata.tools = JSON.stringify(customTools);
-          metadata.metadata.serverKey = String(form.get('mcpCustomServerKey') || '').trim().toLowerCase();
-        } else {
-          metadata.metadata.tools = String(form.get('mcpTools') || '[]');
-        }
-        metadata.tags = [...new Set([...metadata.tags, 'MCP', mcpSource === 'custom' ? 'custom' : 'gateway'])];
-      }
       if (hasSelectedADPManifest && !hasSelectedArtifact) {
         metadata.adpYaml = await adpManifest.text();
       }

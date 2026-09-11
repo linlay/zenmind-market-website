@@ -10,7 +10,7 @@ describe('review detail modal', () => {
         state={{
           item: {
             id: 'test-cli',
-            type: 'cli-tool',
+            type: 'connector',
             name: 'zpr-test-1',
             version: '1.0.0',
           },
@@ -34,7 +34,7 @@ describe('review detail modal', () => {
     const detail = {
       item: {
         id: 'test-cli',
-        type: 'cli-tool',
+        type: 'connector',
         name: 'zpr-test-1',
         version: '1.0.0',
         description: 'test',
@@ -75,7 +75,7 @@ describe('review detail modal', () => {
           fileName: 'developer-workflow-pack-1.0.0.zip',
           archiveType: 'zip',
           assetRole: 'primary',
-          url: 'http://127.0.0.1:5173/api/v1/admin/reviews/cli-tool/test-cli/artifact/download?platform=universal&version=1.0.0',
+          url: 'http://127.0.0.1:5173/api/v1/admin/reviews/connector/test-cli/artifact/download?platform=universal&version=1.0.0',
           sizeBytes: 3163,
           files: [
             {
@@ -112,7 +112,7 @@ describe('review detail modal', () => {
     expect(screen.getByText('developer-workflow-pack-1.0.0.zip')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute(
       'href',
-      '/api/v1/admin/reviews/cli-tool/test-cli/artifact/download?version=1.0.0&platform=universal',
+      '/api/v1/admin/reviews/connector/test-cli/artifact/download?version=1.0.0&platform=universal',
     );
     expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('target', '_blank');
   });
@@ -125,7 +125,7 @@ describe('version history modal', () => {
         state={{
           item: {
             id: 'test-cli',
-            type: 'cli-tool',
+            type: 'connector',
             name: 'zpr-test-1',
             version: '1.0.0',
           },
