@@ -147,7 +147,7 @@ describe('publish access policy', () => {
 });
 
 describe('connector-only publishing', () => {
-  it('collects structured connector settings and removes legacy MCP and CLI publish types', () => {
+  it('collects the fields needed to assemble a complete connector package', () => {
     const { container } = render(
       <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
     );
@@ -159,18 +159,61 @@ describe('connector-only publishing', () => {
 
     fireEvent.click(screen.getByText('连接器'));
     expect(container.querySelector('[name="type"]')).toHaveValue('connector');
-    expect(container.querySelector('[name="connectorManifest"]')).not.toBeInTheDocument();
     expect(container.querySelector('[name="connectorHasMCP"]')).toBeChecked();
-    expect(container.querySelector('[name="connectorHasCLI"]')).not.toBeChecked();
-    expect(container.querySelector('[name="mcpTransport"]')).toHaveValue('stdio');
+    expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveValue('mcp');
+    expect(container.querySelector('[name="connectorAuthMode"]')).toHaveValue('null');
+    expect(container.querySelector('[name="mcpTransport"]')).toHaveValue('streamableHttp');
     expect(container.querySelector('[name="mcpAddress"]')).toBeRequired();
+    expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeInTheDocument();
+
+    fireEvent.change(container.querySelector('[name="connectorAuthMode"]'), { target: { value: 'token' } });
+    expect(container.querySelector('[name="connectorTokenKey"]')).toBeRequired();
+    expect(container.querySelector('[name="connectorTokenLabel"]')).toBeRequired();
+
     fireEvent.click(container.querySelector('[name="connectorHasCLI"]'));
     fireEvent.click(container.querySelector('[name="connectorHasSKILL"]'));
-    expect(container.querySelector('[name="connectorHasMCP"]')).toBeChecked();
-    expect(container.querySelector('[name="connectorHasCLI"]')).toBeChecked();
-    expect(container.querySelector('[name="cliCommand"]')).toBeRequired();
+    expect(container.querySelector('[name="cliMinVersion"]')).toBeRequired();
+    expect(container.querySelector('[name="cliTargetSystem"]')).toHaveValue('darwin');
+    expect(container.querySelector('[name="connectorCLIArchive"]')).toHaveAttribute('accept', 'application/zip,.zip');
     expect(container.querySelector('[name="connectorSkill"]')).toBeRequired();
-    expect(container.querySelector('[name="connectorSkillVersion"]')).toBeRequired();
-    expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeInTheDocument();
+    expect(screen.getByText(/提交时市场会生成标准目录/)).toBeInTheDocument();
+  });
+
+  it('edits one CLI operating system at a time and preserves commands while switching', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+    fireEvent.click(screen.getByText('连接器'));
+    fireEvent.click(container.querySelector('[name="connectorHasCLI"]'));
+
+    const system = container.querySelector('[name="cliTargetSystem"]');
+    const darwinVersion = container.querySelector('[name="cliVersionDarwin"]');
+    fireEvent.change(darwinVersion, { target: { value: 'tool --version' } });
+    expect(screen.queryByText('versionCheck · linux')).not.toBeInTheDocument();
+
+    fireEvent.change(system, { target: { value: 'linux' } });
+    expect(container.querySelector('[name="cliVersionLinux"]')).toBeVisible();
+    fireEvent.change(container.querySelector('[name="cliVersionLinux"]'), { target: { value: 'tool-linux --version' } });
+
+    fireEvent.change(system, { target: { value: 'darwin' } });
+    expect(container.querySelector('[name="cliVersionDarwin"]')).toHaveValue('tool --version');
+    expect(container.querySelector('[name="cliVersionLinux"]')).toHaveValue('tool-linux --version');
+  });
+
+  it('shows authentication-specific fields and locks MCP OAuth to HTTP MCP', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+    fireEvent.click(screen.getByText('连接器'));
+
+    fireEvent.change(container.querySelector('[name="connectorAuthMode"]'), { target: { value: 'oauth' } });
+    expect(container.querySelector('[name="connectorOAuthIssuer"]')).toBeRequired();
+    expect(container.querySelector('[name="connectorOAuthResource"]')).toBeRequired();
+
+    fireEvent.change(container.querySelector('[name="connectorAuthMode"]'), { target: { value: 'mcp' } });
+    expect(container.querySelector('[name="connectorHasMCP"][type="checkbox"]')).toBeChecked();
+    expect(container.querySelector('[name="connectorHasMCP"][type="checkbox"]')).toBeDisabled();
+    expect(container.querySelector('[name="mcpTransport"]')).toHaveValue('streamableHttp');
+    expect(container.querySelector('[name="mcpTransport"]')).toBeDisabled();
   });
 });

@@ -876,17 +876,75 @@ export function App() {
       const connectorHasMCP = form.get('connectorHasMCP') === 'on';
       const connectorHasCLI = form.get('connectorHasCLI') === 'on';
       const connectorHasSkill = form.get('connectorHasSKILL') === 'on';
+      const connectorCommandMap = (prefix) => Object.fromEntries([
+        ['darwin', String(form.get(`${prefix}Darwin`) || '').trim()],
+        ['linux', String(form.get(`${prefix}Linux`) || '').trim()],
+        ['win32', String(form.get(`${prefix}Win32`) || '').trim()],
+      ].filter(([, command]) => command));
+      const connectorAuthMode = String(form.get('connectorAuthMode') || 'null');
+      const connectorTokenKey = String(form.get('connectorTokenKey') || '').trim();
+      const connectorMCPTransport = String(form.get('mcpTransport') || 'streamableHttp');
+      const hostedCredentialVariable = connectorAuthMode === 'oneid-token' ? 'ONEID_TOKEN' : connectorAuthMode === 'oauth' ? 'OAUTH_ACCESS_TOKEN' : '';
+      const connectorMCPAuthTarget = String(form.get('connectorMCPAuthHeader') || '').trim()
+        || (hostedCredentialVariable ? (connectorMCPTransport === 'stdio' ? hostedCredentialVariable : 'Authorization') : '');
+      const connectorMCPAuthPrefix = String(form.get('connectorMCPAuthPrefix') || '')
+        || (hostedCredentialVariable && connectorMCPTransport === 'streamableHttp' ? 'Bearer ' : '');
       const connectorConfig = type === 'connector' ? {
-        hasMCP: connectorHasMCP,
-        hasCLI: connectorHasCLI,
+        primaryType: String(form.get('connectorPrimaryType') || '').trim(),
+        authMode: connectorAuthMode,
+        tokenSchema: connectorAuthMode === 'token' ? {
+          title: String(form.get('connectorTokenTitle') || '').trim(),
+          docUrl: String(form.get('connectorTokenDocURL') || '').trim(),
+          fields: [{
+            key: connectorTokenKey,
+            label: String(form.get('connectorTokenLabel') || '').trim(),
+            type: String(form.get('connectorTokenType') || 'password'),
+            required: true,
+          }],
+        } : null,
+        oauth: connectorAuthMode === 'oauth' ? {
+          issuer: String(form.get('connectorOAuthIssuer') || '').trim(),
+          resource: String(form.get('connectorOAuthResource') || '').trim(),
+          scopes: String(form.get('connectorOAuthScopes') || '').trim().split(/[\s,]+/).filter(Boolean),
+          authorizationEndpoint: String(form.get('connectorOAuthAuthorizationEndpoint') || '').trim(),
+          tokenEndpoint: String(form.get('connectorOAuthTokenEndpoint') || '').trim(),
+          revocationEndpoint: String(form.get('connectorOAuthRevocationEndpoint') || '').trim(),
+        } : null,
+        mcp: connectorHasMCP ? {
+          serverName: String(form.get('mcpServerName') || 'main').trim(),
+          transport: connectorMCPTransport,
+          address: String(form.get('mcpAddress') || '').trim(),
+          args: String(form.get('mcpArgs') || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean),
+          timeout: Number(form.get('mcpTimeout') || 30000),
+          authHeader: connectorMCPAuthTarget,
+          authPrefix: connectorMCPAuthPrefix,
+          staticHeaderName: String(form.get('mcpStaticHeaderName') || '').trim(),
+          staticHeaderValue: String(form.get('mcpStaticHeaderValue') || '').trim(),
+          runtimeType: String(form.get('mcpRuntimeType') || '').trim(),
+          runtimeVersion: String(form.get('mcpRuntimeVersion') || '').trim(),
+          staticEnvName: String(form.get('mcpStaticEnvName') || '').trim(),
+          staticEnvValue: String(form.get('mcpStaticEnvValue') || '').trim(),
+        } : null,
+        cli: connectorHasCLI ? {
+          runtimeType: String(form.get('cliRuntimeType') || '').trim(),
+          runtimeVersion: String(form.get('cliRuntimeVersion') || '').trim(),
+          init: connectorCommandMap('cliInit'),
+          versionCommand: connectorCommandMap('cliVersion'),
+          minVersion: String(form.get('cliMinVersion') || '').trim(),
+          versionPattern: String(form.get('cliVersionPattern') || '').trim(),
+          auth: connectorCommandMap('cliAuth'),
+          status: connectorCommandMap('cliStatus'),
+          unAuth: connectorCommandMap('cliUnAuth'),
+          statusMatch: String(form.get('cliStatusMatch') || '').trim(),
+          statusMatchJSON: String(form.get('cliStatusMatchJSON') || '').trim(),
+          authURLDomain: String(form.get('cliAuthURLDomain') || '').trim(),
+          authWaitForExit: form.get('cliAuthWaitForExit') === 'on',
+          authSuppressBrowser: form.get('cliAuthSuppressBrowser') === 'on',
+          authEnv: String(form.get('connectorCLIAuthEnv') || '').trim() || hostedCredentialVariable,
+          staticEnvName: String(form.get('cliStaticEnvName') || '').trim(),
+          staticEnvValue: String(form.get('cliStaticEnvValue') || '').trim(),
+        } : null,
         hasSkill: connectorHasSkill,
-        transport: String(form.get('mcpTransport') || ''),
-        address: String(form.get('mcpAddress') || '').trim(),
-        command: String(form.get('cliCommand') || '').trim(),
-        mcpArgs: String(form.get('mcpArgs') || '').trim().split(/\s+/).filter(Boolean),
-        cliArgs: String(form.get('cliArgs') || '').trim().split(/\s+/).filter(Boolean),
-        skillVersion: String(form.get('connectorSkillVersion') || '').trim(),
-        skillDescription: String(form.get('connectorSkillDescription') || '').trim(),
       } : null;
       const hasConnectorParts = type === 'connector' && Boolean(connectorConfig) && (connectorHasMCP || connectorHasCLI) && (!connectorHasSkill || Boolean(connectorSkill));
       const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';

@@ -91,8 +91,18 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [skillKind, setSkillKind] = useState(initialSkillKind);
   const [artifactSource, setArtifactSource] = useState('upload');
   const [connectorCapabilities, setConnectorCapabilities] = useState({ mcp: true, cli: false, skill: false });
-  const [mcpTransport, setMCPTransport] = useState('stdio');
-  const [cliUploadMode, setCLIUploadMode] = useState('config');
+  const [connectorPrimaryType, setConnectorPrimaryType] = useState('mcp');
+  const [connectorAuthMode, setConnectorAuthMode] = useState('null');
+  const [mcpTransport, setMCPTransport] = useState('streamableHttp');
+  const [mcpHasRuntime, setMCPHasRuntime] = useState(false);
+  const [connectorHasCLIAuth, setConnectorHasCLIAuth] = useState(false);
+  const [connectorHasRuntime, setConnectorHasRuntime] = useState(false);
+  const [cliTargetSystem, setCLITargetSystem] = useState('darwin');
+  const [cliSystemCommands, setCLISystemCommands] = useState({
+    darwin: { version: '', init: '', auth: '', status: '', unAuth: '' },
+    linux: { version: '', init: '', auth: '', status: '', unAuth: '' },
+    win32: { version: '', init: '', auth: '', status: '', unAuth: '' },
+  });
   const [showAdvanced, setShowAdvanced] = useState(updateMode);
 	const [platformVariants, setPlatformVariants] = useState(initialVariants);
   const [skillSearch, setSkillSearch] = useState('');
@@ -165,6 +175,30 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     setSelectedSkillIDs((current) => (
       current.includes(skillID) ? current.filter((id) => id !== skillID) : [...current, skillID]
     ));
+  }
+
+  function toggleConnectorCapability(capability, enabled) {
+    if (enabled && (capability === 'mcp' || capability === 'cli') && !connectorCapabilities.mcp && !connectorCapabilities.cli) setConnectorPrimaryType(capability);
+    if (capability === 'mcp' && !enabled && connectorPrimaryType === 'mcp') setConnectorPrimaryType('cli');
+    if (capability === 'cli' && !enabled && connectorPrimaryType === 'cli') setConnectorPrimaryType('mcp');
+    setConnectorCapabilities((current) => ({ ...current, [capability]: enabled }));
+  }
+
+  function changeConnectorAuthMode(mode) {
+    setConnectorAuthMode(mode);
+    if (mode === 'mcp') {
+      setConnectorCapabilities((current) => ({ ...current, mcp: true }));
+      setConnectorPrimaryType('mcp');
+      setMCPTransport('streamableHttp');
+    }
+    if (mode !== 'null') setConnectorHasCLIAuth(false);
+  }
+
+  function updateCLISystemCommand(field, value) {
+    setCLISystemCommands((current) => ({
+      ...current,
+      [cliTargetSystem]: { ...current[cliTargetSystem], [field]: value },
+    }));
   }
 
   function toggleDepartment(departmentID) {
@@ -361,30 +395,112 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             <div className="connector-part-upload full">
               <p className="field-hint">{t.connectorPartUploadHint}</p>
               <div className="connector-capability-picker">
-                {['mcp', 'cli', 'skill'].map((capability) => <label className="checkbox-field" key={capability}><input name={`connectorHas${capability.toUpperCase()}`} type="checkbox" checked={connectorCapabilities[capability]} onChange={(event) => setConnectorCapabilities((current) => ({ ...current, [capability]: event.target.checked }))} /><span>{capability === 'skill' ? 'Skill' : capability.toUpperCase()}</span></label>)}
+                {connectorAuthMode === 'mcp' ? <input name="connectorHasMCP" type="hidden" value="on" /> : null}
+                {['mcp', 'cli', 'skill'].map((capability) => (
+                  <label className="checkbox-field" key={capability}>
+                    <input name={`connectorHas${capability.toUpperCase()}`} type="checkbox" checked={connectorCapabilities[capability]} disabled={capability === 'mcp' && connectorAuthMode === 'mcp'} onChange={(event) => toggleConnectorCapability(capability, event.target.checked)} />
+                    <span>{capability === 'skill' ? 'Skill' : capability.toUpperCase()}</span>
+                  </label>
+                ))}
               </div>
-              {connectorCapabilities.mcp ? <>
-                <div className="publish-section-grid">
-                  <label><span className="required-field-label">{t.mcpTransport}</span><select name="mcpTransport" value={mcpTransport} onChange={(event) => setMCPTransport(event.target.value)}><option value="stdio">stdio</option><option value="streamableHttp">HTTP</option></select></label>
-                  <label><span className="required-field-label">{mcpTransport === 'stdio' ? t.mcpCommand : t.mcpURL}</span><input name="mcpAddress" type={mcpTransport === 'stdio' ? 'text' : 'url'} required placeholder={mcpTransport === 'stdio' ? 'node ./server.js' : 'https://example.com/mcp'} /></label>
-                  <label className="full"><span>{mcpTransport === 'stdio' ? t.connectorArgs : t.mcpHTTPParams}</span><input name="mcpArgs" type="text" placeholder={mcpTransport === 'stdio' ? '--port 3000 --verbose' : 'X-Tenant=demo X-Region=cn'} /></label>
+              <div className="publish-section-grid">
+                <label>
+                  <span className="required-field-label">{t.connectorPrimaryTypeField}</span>
+                  <select name="connectorPrimaryType" value={connectorPrimaryType} onChange={(event) => setConnectorPrimaryType(event.target.value)} required>
+                    {connectorCapabilities.mcp ? <option value="mcp">MCP</option> : null}
+                    {connectorCapabilities.cli ? <option value="cli">CLI</option> : null}
+                  </select>
+                </label>
+                <label>
+                  <span className="required-field-label">{t.connectorAuthModeField}</span>
+                  <select name="connectorAuthMode" value={connectorAuthMode} onChange={(event) => changeConnectorAuthMode(event.target.value)} required>
+                    <option value="null">{t.connectorAuthNull}</option>
+                    <option value="token">Token</option>
+                    <option value="oneid-token">OneID Token</option>
+                    <option value="oauth">OAuth 2.0</option>
+                    <option value="mcp">MCP OAuth 2.1</option>
+                  </select>
+                </label>
+              </div>
+
+              {connectorAuthMode === 'token' ? (
+                <div className="publish-field-card full">
+                  <h4>{t.connectorTokenTitle}</h4>
+                  <div className="publish-section-grid">
+                    <label><span>{t.connectorTokenFormTitle}</span><input name="connectorTokenTitle" placeholder="服务凭据" /></label>
+                    <label><span className="required-field-label">{t.connectorTokenKey}</span><input name="connectorTokenKey" required defaultValue="API_KEY" pattern="[A-Z][A-Z0-9_]*" /></label>
+                    <label><span className="required-field-label">{t.connectorTokenLabel}</span><input name="connectorTokenLabel" required defaultValue="API Key" /></label>
+                    <label><span>{t.connectorTokenInputType}</span><select name="connectorTokenType" defaultValue="password"><option value="password">password</option><option value="text">text</option></select></label>
+                    <label><span>{t.connectorTokenDocURL}</span><input name="connectorTokenDocURL" type="url" placeholder="https://docs.example.com/api-keys" /></label>
+                    {connectorCapabilities.mcp ? <label key={mcpTransport}><span>{mcpTransport === 'stdio' ? t.connectorMCPAuthEnv : t.connectorMCPAuthHeader}</span><input name="connectorMCPAuthHeader" defaultValue={mcpTransport === 'stdio' ? 'API_KEY' : 'X-API-Key'} /></label> : null}
+                    {connectorCapabilities.mcp && mcpTransport === 'streamableHttp' ? <label><span>{t.connectorMCPAuthPrefix}</span><input name="connectorMCPAuthPrefix" placeholder="Bearer " /></label> : null}
+                    {connectorCapabilities.cli ? <label><span>{t.connectorCLIAuthEnv}</span><input name="connectorCLIAuthEnv" defaultValue="API_KEY" pattern="[A-Z_][A-Z0-9_]*" /></label> : null}
+                  </div>
                 </div>
-              </> : null}
-              {connectorCapabilities.cli ? <>
-                <div className="publish-section-grid">
-                  <label><span className="required-field-label">{t.cliUploadMode}</span><select name="cliUploadMode" value={cliUploadMode} onChange={(event) => setCLIUploadMode(event.target.value)}><option value="config">{t.cliNoArchive}</option><option value="zip">{t.cliWithArchive}</option></select></label>
-                  {cliUploadMode === 'zip' ? <label><span className="required-field-label">{t.cliArchive}</span><input name="connectorCLIArchive" type="file" accept="application/zip,.zip" required /></label> : null}
-                  <label><span className="required-field-label">{t.cliCommand}</span><input name="cliCommand" type="text" required placeholder="bin/my-cli" /></label>
-                  <label><span>{t.connectorArgs}</span><input name="cliArgs" type="text" placeholder="--profile default" /></label>
+              ) : null}
+
+              {connectorAuthMode === 'oauth' ? (
+                <div className="publish-field-card full">
+                  <h4>{t.connectorOAuthTitle}</h4>
+                  <div className="publish-section-grid">
+                    <label><span className="required-field-label">issuer</span><input name="connectorOAuthIssuer" type="url" required placeholder="https://accounts.example.com" /></label>
+                    <label><span className="required-field-label">resource</span><input name="connectorOAuthResource" type="url" required placeholder="https://api.example.com/mcp" /></label>
+                    <label className="full"><span>{t.connectorOAuthScopes}</span><input name="connectorOAuthScopes" placeholder="documents.read documents.write" /></label>
+                    <label><span>authorization_endpoint</span><input name="connectorOAuthAuthorizationEndpoint" type="url" /></label>
+                    <label><span>token_endpoint</span><input name="connectorOAuthTokenEndpoint" type="url" /></label>
+                    <label><span>revocation_endpoint</span><input name="connectorOAuthRevocationEndpoint" type="url" /></label>
+                  </div>
                 </div>
-              </> : null}
-              {connectorCapabilities.skill ? <>
-                <div className="publish-section-grid">
+              ) : null}
+
+              {connectorCapabilities.mcp ? (
+                <div className="publish-field-card full">
+                  <h4>MCP</h4>
+                  {mcpTransport === 'stdio' ? <div className="connector-capability-picker"><label className="checkbox-field"><input type="checkbox" checked={mcpHasRuntime} onChange={(event) => setMCPHasRuntime(event.target.checked)} /><span>{t.cliRuntimeToggle}</span></label></div> : null}
+                  <div className="publish-section-grid">
+                    <label><span className="required-field-label">{t.mcpServerName}</span><input name="mcpServerName" required defaultValue="main" /></label>
+                    <label><span className="required-field-label">{t.mcpTransport}</span><select name="mcpTransport" value={mcpTransport} onChange={(event) => setMCPTransport(event.target.value)} disabled={connectorAuthMode === 'mcp'}><option value="streamableHttp">HTTP / streamableHttp</option><option value="stdio">stdio</option></select></label>
+                    <label className="full"><span className="required-field-label">{mcpTransport === 'stdio' ? t.mcpCommand : t.mcpURL}</span><input name="mcpAddress" type={mcpTransport === 'stdio' ? 'text' : 'url'} required placeholder={mcpTransport === 'stdio' ? 'office-cli' : 'https://example.com/mcp'} /></label>
+                    {mcpTransport === 'stdio' ? <label className="full"><span>{t.connectorArgs}</span><textarea name="mcpArgs" rows={3} placeholder={'mcp\nserve'} /><small className="field-hint">{t.connectorArgsHint}</small></label> : null}
+                    {mcpTransport === 'stdio' && mcpHasRuntime ? <><label><span className="required-field-label">runtime.type</span><input name="mcpRuntimeType" required placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="mcpRuntimeVersion" required placeholder=">=20" /></label></> : null}
+                    <label><span>{t.mcpTimeout}</span><input name="mcpTimeout" type="number" min="1" defaultValue="30000" /></label>
+                    {mcpTransport === 'streamableHttp' ? <><label><span>{t.mcpStaticHeaderName}</span><input name="mcpStaticHeaderName" placeholder="X-Client" /></label><label><span>{t.mcpStaticHeaderValue}</span><input name="mcpStaticHeaderValue" placeholder="AgentHost" /></label></> : null}
+                    {mcpTransport === 'stdio' ? <><label><span>{t.staticEnvName}</span><input name="mcpStaticEnvName" placeholder="REGION" /></label><label><span>{t.staticEnvValue}</span><input name="mcpStaticEnvValue" placeholder="cn" /></label></> : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {connectorCapabilities.cli ? (
+                <div className="publish-field-card full">
+                  <h4>CLI</h4>
+                  <div className="connector-capability-picker">
+                    <label className="checkbox-field"><input type="checkbox" checked={connectorHasRuntime} onChange={(event) => setConnectorHasRuntime(event.target.checked)} /><span>{t.cliRuntimeToggle}</span></label>
+                    {connectorAuthMode === 'null' ? <label className="checkbox-field"><input type="checkbox" checked={connectorHasCLIAuth} onChange={(event) => setConnectorHasCLIAuth(event.target.checked)} /><span>{t.cliAuthToggle}</span></label> : null}
+                  </div>
+                  <div className="publish-section-grid">
+                    <label className="full"><span className="required-field-label">{t.cliTargetSystem}</span><select name="cliTargetSystem" value={cliTargetSystem} onChange={(event) => setCLITargetSystem(event.target.value)}><option value="darwin">macOS (darwin)</option><option value="linux">Linux</option><option value="win32">Windows (win32)</option></select><small className="field-hint">{t.cliTargetSystemHint}</small></label>
+                    {connectorHasRuntime ? <><label><span className="required-field-label">runtime.type</span><input name="cliRuntimeType" required placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="cliRuntimeVersion" required placeholder=">=20" /></label></> : null}
+                    <label className="full"><span className="required-field-label">versionCheck.minVersion</span><input name="cliMinVersion" required defaultValue={updateMode ? nextPatchVersion(initialItem.version) : '1.0.0'} /></label>
+                    {Object.entries(cliSystemCommands).filter(([system]) => system !== cliTargetSystem).flatMap(([system, commands]) => {
+                      const suffix = system === 'darwin' ? 'Darwin' : system === 'linux' ? 'Linux' : 'Win32';
+                      return Object.entries(commands).filter(([field]) => connectorHasCLIAuth || !['auth', 'status', 'unAuth'].includes(field)).map(([field, value]) => <input key={`${system}-${field}`} type="hidden" name={`cli${field[0].toUpperCase()}${field.slice(1)}${suffix}`} value={value} />);
+                    })}
+                    <label><span>versionCheck</span><input name={`cliVersion${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].version} onChange={(event) => updateCLISystemCommand('version', event.target.value)} placeholder={cliTargetSystem === 'win32' ? 'office-cli.exe --version' : 'office-cli --version'} /></label>
+                    <label><span>versionPattern</span><input name="cliVersionPattern" placeholder="v?(\\d+\\.\\d+\\.\\d+)" /></label>
+                    <label><span>init</span><input name={`cliInit${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].init} onChange={(event) => updateCLISystemCommand('init', event.target.value)} /></label>
+                    {connectorHasCLIAuth ? <><label><span>auth</span><input name={`cliAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].auth} onChange={(event) => updateCLISystemCommand('auth', event.target.value)} /></label><label><span>status</span><input name={`cliStatus${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].status} onChange={(event) => updateCLISystemCommand('status', event.target.value)} /></label><label><span>unAuth</span><input name={`cliUnAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].unAuth} onChange={(event) => updateCLISystemCommand('unAuth', event.target.value)} /></label><label className="full"><span>statusMatch</span><input name="cliStatusMatch" /></label><label className="full"><span>statusMatchJson</span><textarea name="cliStatusMatchJSON" rows={2} placeholder={'{"authenticated":true}'} /></label><label><span>authUrlDomain</span><input name="cliAuthURLDomain" placeholder="accounts.example.com" /></label><label className="checkbox-field"><input name="cliAuthWaitForExit" type="checkbox" defaultChecked /><span>authWaitForExit</span></label><label className="checkbox-field"><input name="cliAuthSuppressBrowser" type="checkbox" /><span>authSuppressBrowser</span></label></> : null}
+                    <label><span>{t.staticEnvName}</span><input name="cliStaticEnvName" placeholder="REGION" /></label><label><span>{t.staticEnvValue}</span><input name="cliStaticEnvValue" placeholder="cn" /></label>
+                    <label className="full"><span>{t.cliArchive}</span><input name="connectorCLIArchive" type="file" accept="application/zip,.zip" /><small className="field-hint">{t.cliArchiveHint}</small></label>
+                  </div>
+                </div>
+              ) : null}
+
+              {connectorCapabilities.skill ? (
+                <div className="publish-field-card full">
+                  <h4>Skill</h4>
                   <label><span className="required-field-label">SKILL.md</span><input name="connectorSkill" type="file" accept=".md,text/markdown,text/plain" required /></label>
-                  <label><span className="required-field-label">{t.skillVersion}</span><input name="connectorSkillVersion" required defaultValue={updateMode ? initialItem.version : '1.0.0'} placeholder="1.0.0" /></label>
-                  <label className="full"><span className="required-field-label">{t.skillDescription}</span><textarea name="connectorSkillDescription" required rows={3} /></label>
                 </div>
-              </> : null}
+              ) : null}
               <small className="field-hint">{t.connectorPartUploadRequirement}</small>
             </div>
           ) : null}

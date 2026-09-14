@@ -12,10 +12,11 @@ npm run dev
 The website uses the backend catalog as its only market data source. If `/api/v1/catalog` is unavailable, the UI shows an error instead of falling back to built-in demo items. Artifact downloads go through the backend resolve/download APIs so the server can serve files from its persistent artifact storage and record download events.
 
 New MCP and CLI capabilities use one publishing entry: **Connector**. Publishers
-upload a ZIP with `connector.json` at its root and add `mcp.json`, `cli.json`, or
-`skills/` according to the declared capabilities. The legacy MCP and CLI publish
-options and routes have been removed. The backend permanently purges historical
-MCP and CLI records and their stored artifacts during startup.
+choose MCP, CLI, and optional Skill capabilities, then complete the authentication
+and runtime fields required by those choices. The backend assembles the standard
+`connector.json`, `mcp.json`, `cli.json`, `skills/`, and optional `bin/` layout,
+validates it, and stores the resulting ZIP immutably. The legacy MCP and CLI publish
+options and routes have been removed.
 
 Skills may upload an ADP `schema: "0.1"` manifest using the latest hook protocol. The website only collects the `adp.yaml`; the backend validates the manifest, rejects legacy hook syntax, and binds artifact URLs plus SHA-256 values.
 
