@@ -147,7 +147,7 @@ describe('publish access policy', () => {
 });
 
 describe('connector-only publishing', () => {
-  it('uploads standard connector parts separately and removes legacy MCP and CLI publish types', () => {
+  it('collects structured connector settings and removes legacy MCP and CLI publish types', () => {
     const { container } = render(
       <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
     );
@@ -159,10 +159,13 @@ describe('connector-only publishing', () => {
 
     fireEvent.click(screen.getByText('连接器'));
     expect(container.querySelector('[name="type"]')).toHaveValue('connector');
-    expect(container.querySelector('[name="connectorManifest"]')).toBeRequired();
-    expect(container.querySelector('[name="connectorMCP"]')).toBeInTheDocument();
-    expect(container.querySelector('[name="connectorCLI"]')).toBeInTheDocument();
-    expect(container.querySelector('[name="connectorSkill"]')).toBeInTheDocument();
+    expect(container.querySelector('[name="connectorManifest"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[name="connectorKind"]')).toHaveValue('mcp');
+    expect(container.querySelector('[name="mcpTransport"]')).toHaveValue('stdio');
+    expect(container.querySelector('[name="mcpAddress"]')).toBeRequired();
+    fireEvent.change(container.querySelector('[name="connectorKind"]'), { target: { value: 'skill' } });
+    expect(container.querySelector('[name="connectorSkill"]')).toBeRequired();
+    expect(container.querySelector('[name="connectorSkillVersion"]')).toBeRequired();
     expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeInTheDocument();
   });
 });

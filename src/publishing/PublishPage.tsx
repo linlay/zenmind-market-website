@@ -90,6 +90,9 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [websiteKind, setWebsiteKind] = useState(initialWebsiteKind);
   const [skillKind, setSkillKind] = useState(initialSkillKind);
   const [artifactSource, setArtifactSource] = useState('upload');
+  const [connectorKind, setConnectorKind] = useState('mcp');
+  const [mcpTransport, setMCPTransport] = useState('stdio');
+  const [cliUploadMode, setCLIUploadMode] = useState('config');
   const [showAdvanced, setShowAdvanced] = useState(updateMode);
 	const [platformVariants, setPlatformVariants] = useState(initialVariants);
   const [skillSearch, setSkillSearch] = useState('');
@@ -358,11 +361,30 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             <div className="connector-part-upload full">
               <p className="field-hint">{t.connectorPartUploadHint}</p>
               <div className="publish-section-grid">
-                <label><span className="required-field-label">connector.json</span><input name="connectorManifest" type="file" accept="application/json,.json" required /></label>
-                <label><span>mcp.json</span><input name="connectorMCP" type="file" accept="application/json,.json" /></label>
-                <label><span>cli.json</span><input name="connectorCLI" type="file" accept="application/json,.json" /></label>
-                <label><span>SKILL.md</span><input name="connectorSkill" type="file" accept=".md,text/markdown,text/plain" /></label>
+                <label><span className="required-field-label">{t.connectorKind}</span><select name="connectorKind" value={connectorKind} onChange={(event) => setConnectorKind(event.target.value)}><option value="mcp">MCP</option><option value="cli">CLI</option><option value="skill">Skill</option></select></label>
               </div>
+              {connectorKind === 'mcp' ? <>
+                <div className="publish-section-grid">
+                  <label><span className="required-field-label">{t.mcpTransport}</span><select name="mcpTransport" value={mcpTransport} onChange={(event) => setMCPTransport(event.target.value)}><option value="stdio">stdio</option><option value="streamableHttp">HTTP</option></select></label>
+                  <label><span className="required-field-label">{mcpTransport === 'stdio' ? t.mcpCommand : t.mcpURL}</span><input name="mcpAddress" type={mcpTransport === 'stdio' ? 'text' : 'url'} required placeholder={mcpTransport === 'stdio' ? 'node ./server.js' : 'https://example.com/mcp'} /></label>
+                  <label className="full"><span>{mcpTransport === 'stdio' ? t.connectorArgs : t.mcpHTTPParams}</span><input name="connectorArgs" type="text" placeholder={mcpTransport === 'stdio' ? '--port 3000 --verbose' : 'X-Tenant=demo X-Region=cn'} /></label>
+                </div>
+              </> : null}
+              {connectorKind === 'cli' ? <>
+                <div className="publish-section-grid">
+                  <label><span className="required-field-label">{t.cliUploadMode}</span><select name="cliUploadMode" value={cliUploadMode} onChange={(event) => setCLIUploadMode(event.target.value)}><option value="config">{t.cliNoArchive}</option><option value="zip">{t.cliWithArchive}</option></select></label>
+                  {cliUploadMode === 'zip' ? <label><span className="required-field-label">{t.cliArchive}</span><input name="connectorCLIArchive" type="file" accept="application/zip,.zip" required /></label> : null}
+                  <label><span className="required-field-label">{t.cliCommand}</span><input name="cliCommand" type="text" required placeholder="bin/my-cli" /></label>
+                  <label><span>{t.connectorArgs}</span><input name="connectorArgs" type="text" placeholder="--profile default" /></label>
+                </div>
+              </> : null}
+              {connectorKind === 'skill' ? <>
+                <div className="publish-section-grid">
+                  <label><span className="required-field-label">SKILL.md</span><input name="connectorSkill" type="file" accept=".md,text/markdown,text/plain" required /></label>
+                  <label><span className="required-field-label">{t.skillVersion}</span><input name="connectorSkillVersion" required defaultValue={updateMode ? initialItem.version : '1.0.0'} placeholder="1.0.0" /></label>
+                  <label className="full"><span className="required-field-label">{t.skillDescription}</span><textarea name="connectorSkillDescription" required rows={3} /></label>
+                </div>
+              </> : null}
               <small className="field-hint">{t.connectorPartUploadRequirement}</small>
             </div>
           ) : null}

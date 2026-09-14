@@ -871,11 +871,19 @@ export function App() {
       const hasSelectedImage = Boolean(image);
       const adpManifest = selectedFormFile(formElement, form, 'adpManifest');
       const hasSelectedADPManifest = Boolean(adpManifest);
-      const connectorManifest = selectedFormFile(formElement, form, 'connectorManifest');
-      const connectorMCP = selectedFormFile(formElement, form, 'connectorMCP');
-      const connectorCLI = selectedFormFile(formElement, form, 'connectorCLI');
       const connectorSkill = selectedFormFile(formElement, form, 'connectorSkill');
-      const hasConnectorParts = type === 'connector' && Boolean(connectorManifest) && Boolean(connectorMCP || connectorCLI);
+      const connectorCLIArchive = selectedFormFile(formElement, form, 'connectorCLIArchive');
+      const connectorKind = String(form.get('connectorKind') || 'mcp');
+      const connectorConfig = type === 'connector' ? {
+        kind: connectorKind,
+        transport: String(form.get('mcpTransport') || ''),
+        address: String(form.get('mcpAddress') || '').trim(),
+        command: String(form.get('cliCommand') || '').trim(),
+        args: String(form.get('connectorArgs') || '').trim().split(/\s+/).filter(Boolean),
+        skillVersion: String(form.get('connectorSkillVersion') || '').trim(),
+        skillDescription: String(form.get('connectorSkillDescription') || '').trim(),
+      } : null;
+      const hasConnectorParts = type === 'connector' && Boolean(connectorConfig) && (connectorKind !== 'skill' || Boolean(connectorSkill));
       const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';
       const skill = type === 'skill' ? {
         kind: skillKind,
@@ -1006,9 +1014,8 @@ export function App() {
         });
         if (hasSelectedImage) body.append('image', image);
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
-        if (connectorManifest) body.append('connectorManifest', connectorManifest);
-        if (connectorMCP) body.append('connectorMCP', connectorMCP);
-        if (connectorCLI) body.append('connectorCLI', connectorCLI);
+        if (connectorConfig) body.append('connectorConfig', JSON.stringify(connectorConfig));
+        if (connectorCLIArchive) body.append('connectorCLIArchive', connectorCLIArchive);
         if (connectorSkill) body.append('connectorSkill', connectorSkill);
         if (repositorySource) {
           body.append('artifactSource', 'repository');
