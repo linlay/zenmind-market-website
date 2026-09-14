@@ -14,8 +14,11 @@ The website uses the backend catalog as its only market data source. If `/api/v1
 New MCP and CLI capabilities use one publishing entry: **Connector**. Publishers
 choose MCP, CLI, and optional Skill capabilities, then complete the authentication
 and runtime fields required by those choices. The backend assembles the standard
-`connector.json`, `mcp.json`, `cli.json`, `skills/`, and optional `bin/` layout,
-validates it, and stores the resulting ZIP immutably. The legacy MCP and CLI publish
+`connector.json`, `mcp.json`, `cli.json`, `skills/`, and optional `bin/` layout.
+Connector Skills are uploaded as a ZIP containing either an outer `skills/`
+directory or one or more Skill directories at the archive root, so nested
+`references/` and other supporting files remain intact. The backend then
+validates it and stores the resulting ZIP immutably. The legacy MCP and CLI publish
 options and routes have been removed.
 
 Skills may upload an ADP `schema: "0.1"` manifest using the latest hook protocol. The website only collects the `adp.yaml`; the backend validates the manifest, rejects legacy hook syntax, and binds artifact URLs plus SHA-256 values.

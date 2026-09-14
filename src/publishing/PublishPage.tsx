@@ -498,7 +498,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               {connectorCapabilities.skill ? (
                 <div className="publish-field-card full">
                   <h4>Skill</h4>
-                  <label><span className="required-field-label">SKILL.md</span><input name="connectorSkill" type="file" accept=".md,text/markdown,text/plain" required /></label>
+                  <label className="full"><span className="required-field-label">{t.connectorSkillsArchive}</span><input name="connectorSkillsArchive" type="file" accept="application/zip,.zip" required /><small className="field-hint">{t.connectorSkillsArchiveHint}</small></label>
                 </div>
               ) : null}
               <small className="field-hint">{t.connectorPartUploadRequirement}</small>

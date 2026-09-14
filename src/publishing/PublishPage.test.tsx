@@ -175,7 +175,8 @@ describe('connector-only publishing', () => {
     expect(container.querySelector('[name="cliMinVersion"]')).toBeRequired();
     expect(container.querySelector('[name="cliTargetSystem"]')).toHaveValue('darwin');
     expect(container.querySelector('[name="connectorCLIArchive"]')).toHaveAttribute('accept', 'application/zip,.zip');
-    expect(container.querySelector('[name="connectorSkill"]')).toBeRequired();
+    expect(container.querySelector('[name="connectorSkillsArchive"]')).toBeRequired();
+    expect(container.querySelector('[name="connectorSkillsArchive"]')).toHaveAttribute('accept', 'application/zip,.zip');
     expect(screen.getByText(/提交时市场会生成标准目录/)).toBeInTheDocument();
   });
 

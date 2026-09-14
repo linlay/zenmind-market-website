@@ -871,7 +871,7 @@ export function App() {
       const hasSelectedImage = Boolean(image);
       const adpManifest = selectedFormFile(formElement, form, 'adpManifest');
       const hasSelectedADPManifest = Boolean(adpManifest);
-      const connectorSkill = selectedFormFile(formElement, form, 'connectorSkill');
+      const connectorSkillsArchive = selectedFormFile(formElement, form, 'connectorSkillsArchive');
       const connectorCLIArchive = selectedFormFile(formElement, form, 'connectorCLIArchive');
       const connectorHasMCP = form.get('connectorHasMCP') === 'on';
       const connectorHasCLI = form.get('connectorHasCLI') === 'on';
@@ -946,7 +946,7 @@ export function App() {
         } : null,
         hasSkill: connectorHasSkill,
       } : null;
-      const hasConnectorParts = type === 'connector' && Boolean(connectorConfig) && (connectorHasMCP || connectorHasCLI) && (!connectorHasSkill || Boolean(connectorSkill));
+      const hasConnectorParts = type === 'connector' && Boolean(connectorConfig) && (connectorHasMCP || connectorHasCLI) && (!connectorHasSkill || Boolean(connectorSkillsArchive));
       const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';
       const skill = type === 'skill' ? {
         kind: skillKind,
@@ -1079,7 +1079,7 @@ export function App() {
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
         if (connectorConfig) body.append('connectorConfig', JSON.stringify(connectorConfig));
         if (connectorCLIArchive) body.append('connectorCLIArchive', connectorCLIArchive);
-        if (connectorSkill) body.append('connectorSkill', connectorSkill);
+        if (connectorSkillsArchive) body.append('connectorSkillsArchive', connectorSkillsArchive);
         if (repositorySource) {
           body.append('artifactSource', 'repository');
           body.append('repositoryProvider', String(form.get('repositoryProvider') || 'gitlab'));
