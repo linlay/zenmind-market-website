@@ -873,17 +873,22 @@ export function App() {
       const hasSelectedADPManifest = Boolean(adpManifest);
       const connectorSkill = selectedFormFile(formElement, form, 'connectorSkill');
       const connectorCLIArchive = selectedFormFile(formElement, form, 'connectorCLIArchive');
-      const connectorKind = String(form.get('connectorKind') || 'mcp');
+      const connectorHasMCP = form.get('connectorHasMCP') === 'on';
+      const connectorHasCLI = form.get('connectorHasCLI') === 'on';
+      const connectorHasSkill = form.get('connectorHasSKILL') === 'on';
       const connectorConfig = type === 'connector' ? {
-        kind: connectorKind,
+        hasMCP: connectorHasMCP,
+        hasCLI: connectorHasCLI,
+        hasSkill: connectorHasSkill,
         transport: String(form.get('mcpTransport') || ''),
         address: String(form.get('mcpAddress') || '').trim(),
         command: String(form.get('cliCommand') || '').trim(),
-        args: String(form.get('connectorArgs') || '').trim().split(/\s+/).filter(Boolean),
+        mcpArgs: String(form.get('mcpArgs') || '').trim().split(/\s+/).filter(Boolean),
+        cliArgs: String(form.get('cliArgs') || '').trim().split(/\s+/).filter(Boolean),
         skillVersion: String(form.get('connectorSkillVersion') || '').trim(),
         skillDescription: String(form.get('connectorSkillDescription') || '').trim(),
       } : null;
-      const hasConnectorParts = type === 'connector' && Boolean(connectorConfig) && (connectorKind !== 'skill' || Boolean(connectorSkill));
+      const hasConnectorParts = type === 'connector' && Boolean(connectorConfig) && (connectorHasMCP || connectorHasCLI) && (!connectorHasSkill || Boolean(connectorSkill));
       const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';
       const skill = type === 'skill' ? {
         kind: skillKind,

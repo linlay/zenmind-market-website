@@ -160,10 +160,15 @@ describe('connector-only publishing', () => {
     fireEvent.click(screen.getByText('连接器'));
     expect(container.querySelector('[name="type"]')).toHaveValue('connector');
     expect(container.querySelector('[name="connectorManifest"]')).not.toBeInTheDocument();
-    expect(container.querySelector('[name="connectorKind"]')).toHaveValue('mcp');
+    expect(container.querySelector('[name="connectorHasMCP"]')).toBeChecked();
+    expect(container.querySelector('[name="connectorHasCLI"]')).not.toBeChecked();
     expect(container.querySelector('[name="mcpTransport"]')).toHaveValue('stdio');
     expect(container.querySelector('[name="mcpAddress"]')).toBeRequired();
-    fireEvent.change(container.querySelector('[name="connectorKind"]'), { target: { value: 'skill' } });
+    fireEvent.click(container.querySelector('[name="connectorHasCLI"]'));
+    fireEvent.click(container.querySelector('[name="connectorHasSKILL"]'));
+    expect(container.querySelector('[name="connectorHasMCP"]')).toBeChecked();
+    expect(container.querySelector('[name="connectorHasCLI"]')).toBeChecked();
+    expect(container.querySelector('[name="cliCommand"]')).toBeRequired();
     expect(container.querySelector('[name="connectorSkill"]')).toBeRequired();
     expect(container.querySelector('[name="connectorSkillVersion"]')).toBeRequired();
     expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeInTheDocument();
