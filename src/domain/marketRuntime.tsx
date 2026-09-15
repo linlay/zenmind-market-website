@@ -119,7 +119,7 @@ export function mergeCatalogItem(apiItem) {
     skillScenario: skill.scenario,
     skillLevel: skill.level,
     skillPackageMode: skill.packageMode,
-    skillFeatured: Boolean(skill.featured),
+    featured: Boolean(apiItem.featured),
     includedSkills: skill.includedSkills,
     connectorPrimaryType: apiItem.metadata?.connectorPrimaryType || '',
     connectorAuthMode: apiItem.metadata?.connectorAuthMode || '',
@@ -163,7 +163,7 @@ export function normalizeType(type) {
 
 export function normalizeSkillProfile(skill, type) {
   if (type !== 'skill') {
-    return { kind: '', category: '', scenario: '', level: '', packageMode: '', featured: false, includedSkills: [] };
+    return { kind: '', category: '', scenario: '', level: '', packageMode: '', includedSkills: [] };
   }
   const kind = skill?.kind === 'package' ? 'package' : 'single';
   const category = skillCategoryFilters.includes(skill?.category) && skill.category !== 'all' ? skill.category : 'other';
@@ -178,7 +178,7 @@ export function normalizeSkillProfile(skill, type) {
       sortOrder: Number(entry.sortOrder || 0),
     })).filter((entry) => entry.id)
     : [];
-  return { kind, category, scenario, level, packageMode, featured: Boolean(skill?.featured), includedSkills };
+  return { kind, category, scenario, level, packageMode, includedSkills };
 }
 
 export function normalizeReviewStatusForUI(status) {

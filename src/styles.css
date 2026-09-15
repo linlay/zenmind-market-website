@@ -2513,13 +2513,14 @@ img {
 .publish-form select,
 .publish-form input,
 .publish-form textarea {
-  min-height: 34px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, var(--bg));
   color: var(--text);
   outline: 0;
-  padding: 0 10px;
+  padding: 0 12px;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
 }
 
 .sort-control select:focus,
@@ -3275,6 +3276,23 @@ img {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
 }
+
+.official-featured-section {
+  padding: 24px max(30px, calc((100% - var(--content-max-width)) / 2)) 26px;
+  background: color-mix(in srgb, var(--surface) 88%, #f4bf4f 12%);
+  border-top: 1px solid color-mix(in srgb, var(--line) 75%, #d99e23 25%);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, #d99e23 25%);
+}
+
+.official-featured-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.official-featured-heading h2 { margin: 0; font-size: 22px; }
+.official-featured-heading small { color: var(--muted); }
 
 .skill-catalog-layout {
   display: grid;
@@ -5243,7 +5261,9 @@ img {
 .publish-page-head {
   flex: 0 0 auto;
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  background:
+    radial-gradient(620px 180px at 12% -100%, color-mix(in srgb, var(--brand-soft) 72%, transparent), transparent 74%),
+    color-mix(in srgb, var(--surface) 92%, transparent);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -5272,11 +5292,15 @@ img {
 .publish-steps {
   flex: 0 0 auto;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-muted);
+  background: color-mix(in srgb, var(--surface-muted) 86%, var(--surface));
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px 18px;
+}
+
+.publish-step-wrap {
+  display: contents;
 }
 
 .publish-steps span {
@@ -5308,6 +5332,7 @@ img {
   border-color: color-mix(in srgb, var(--brand) 36%, var(--line));
   background: var(--brand-soft);
   color: var(--brand);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-soft) 55%, transparent);
 }
 
 .publish-steps i {
@@ -5408,15 +5433,133 @@ img {
   overflow-y: auto;
   padding: 22px 30px 30px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 13px;
-  width: min(1040px, 100%);
+  width: min(1120px, 100%);
   margin: 0 auto;
 }
 
 .publish-form-guided {
-  gap: 14px;
+  gap: 16px;
 }
+
+.publish-phase-intro {
+  border: 1px solid color-mix(in srgb, var(--brand) 16%, var(--line));
+  border-radius: 14px;
+  background: linear-gradient(105deg, color-mix(in srgb, var(--brand-soft) 58%, var(--surface)), var(--surface));
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+}
+
+.publish-phase-intro > span {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  background: var(--brand);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.publish-phase-intro > div {
+  display: grid;
+  gap: 4px;
+}
+
+.publish-phase-intro h3,
+.publish-phase-intro p {
+  margin: 0;
+}
+
+.publish-phase-intro h3 {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.publish-phase-intro p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.publish-form-guided.is-artifact > .publish-section-basic,
+.publish-form-guided.is-artifact > .publish-section-access,
+.publish-form-guided.is-artifact > .publish-section-advanced,
+.publish-form-guided.is-artifact:not(.is-connector) > .publish-section-settings,
+.publish-form-guided.is-details > .publish-section-assets,
+.publish-form-guided.is-review > .publish-section {
+  display: none;
+}
+
+.publish-form-guided.is-artifact > .publish-section-assets,
+.publish-form-guided.is-artifact.is-connector > .publish-section-settings,
+.publish-form-guided.is-details > .publish-section,
+.publish-form-guided.is-artifact > .publish-review-panel,
+.publish-form-guided.is-details > .publish-review-panel,
+.publish-form-guided.is-review > .publish-review-panel {
+  grid-row: auto;
+}
+
+.publish-form-guided.is-artifact > .publish-section-assets,
+.publish-form-guided.is-artifact.is-connector > .publish-section-settings,
+.publish-form-guided.is-details > .publish-section { grid-column: 1 / span 8; order: 2; }
+
+.publish-form-guided.is-artifact > .publish-review-panel,
+.publish-form-guided.is-details > .publish-review-panel { display: block; grid-column: 9 / -1; grid-row: 3 / span 5; order: 2; }
+
+.publish-form-guided.is-review > .publish-review-panel {
+  position: static;
+  width: min(680px, 100%);
+  justify-self: center;
+}
+
+.publish-form-guided.is-review .publish-review-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.publish-form-guided.is-review .publish-review-list > span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.publish-form-guided.is-review .publish-review-list > span::after {
+  display: none;
+}
+
+.publish-wizard-actions {
+  position: static;
+  border-top: 1px solid var(--line) !important;
+  background: var(--bg);
+  padding: 18px 0 2px !important;
+  display: flex;
+  justify-content: space-between;
+}
+
+.publish-form-guided > .publish-selected,
+.publish-form-guided > .modal-actions {
+  grid-column: 1 / -1;
+}
+
+.publish-form-guided > .publish-section {
+  grid-column: 1 / span 8;
+}
+
+.publish-form-guided > .publish-selected { grid-row: 1; order: 0; }
+.publish-form-guided > .publish-phase-intro { grid-column: 1 / -1; grid-row: 2; order: 1; }
+.publish-section-assets { grid-row: 3; order: 2; }
+.publish-section-basic { grid-row: 3; order: 2; }
+.publish-section-settings { grid-row: 4; order: 3; }
+.publish-section-access { grid-row: 5; order: 4; }
+.publish-section-advanced { grid-row: 6; order: 5; }
+.publish-form-guided > .publish-wizard-actions { grid-column: 1 / span 8; grid-row: 8; order: 8; }
 
 .publish-selected {
   border: 1px solid var(--line);
@@ -5469,29 +5612,76 @@ img {
 }
 
 .publish-section {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-muted);
-  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--line) 90%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 96%, var(--bg)), var(--surface-muted));
+  padding: 18px;
   display: grid;
-  gap: 12px;
+  gap: 16px;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 4%) inset;
 }
 
 .publish-section h3 {
   margin: 0;
   color: var(--text);
-  font-size: 14px;
+  font-size: 15px;
+}
+
+.publish-section-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.publish-section-heading > div { display: grid; gap: 5px; }
+.publish-section-heading p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+
+.publish-section-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.publish-section-title-row > div {
+  display: grid;
+  gap: 5px;
+}
+
+.publish-section-title-row p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.publish-section-kicker {
+  color: var(--brand);
+  font-size: 10px;
+  font-weight: 780;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.publish-section-badge {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, var(--line));
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  padding: 5px 9px;
+  font-size: 10px;
+  font-weight: 740;
 }
 
 .publish-section-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 13px;
+  gap: 16px;
 }
 
 .publish-form label {
   display: grid;
-  gap: 7px;
+  gap: 8px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 650;
@@ -5527,17 +5717,231 @@ img {
 }
 
 .publish-field-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-muted);
-  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 76%, var(--surface-muted));
+  padding: 14px;
 }
+
+.publish-image-input { position: relative; }
+.publish-image-input > input { position: absolute; inset: 22px 0 0; width: 100%; height: calc(100% - 22px); opacity: 0; cursor: pointer; }
+.publish-image-control {
+  min-height: 40px;
+  border: 1px dashed color-mix(in srgb, var(--brand) 40%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--brand-soft) 27%, var(--surface));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 9px;
+  color: var(--brand);
+}
+.publish-image-input:hover .publish-image-control,
+.publish-image-input:focus-within .publish-image-control { border-style: solid; background: color-mix(in srgb, var(--brand-soft) 52%, var(--surface)); }
+.publish-image-control > span:nth-child(2) { min-width: 0; display: grid; gap: 1px; }
+.publish-image-control strong { color: var(--text); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.publish-image-control small { color: var(--faint); font-size: 10px; font-weight: 520; }
+.publish-image-placeholder { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; background: var(--surface); }
 
 .platform-variant-card {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: end;
   gap: 12px;
+}
+
+.artifact-dropzone {
+  position: relative;
+  min-height: 112px;
+  border: 1px dashed color-mix(in srgb, var(--brand) 42%, var(--line)) !important;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--brand-soft) 22%, var(--surface)) !important;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px !important;
+  text-align: center;
+  padding: 22px !important;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.artifact-dropzone:hover,
+.artifact-dropzone:focus-within {
+  border-color: var(--brand) !important;
+  background: color-mix(in srgb, var(--brand-soft) 50%, var(--surface)) !important;
+}
+
+.artifact-dropzone.has-file {
+  border-style: solid !important;
+  border-color: color-mix(in srgb, #16a34a 45%, var(--line)) !important;
+  background: color-mix(in srgb, #dcfce7 30%, var(--surface)) !important;
+}
+
+.artifact-dropzone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.artifact-drop-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--brand);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+}
+
+.artifact-dropzone > small {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 520;
+}
+
+.publish-review-panel {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  grid-column: 9 / -1;
+  grid-row: 2 / span 5;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 96%, var(--bg));
+  box-shadow: 0 14px 36px rgb(15 23 42 / 9%);
+  overflow: hidden;
+}
+
+.publish-review-head {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.publish-review-head strong {
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.publish-readiness { height: 3px; background: var(--surface-muted); overflow: hidden; }
+.publish-readiness span { display: block; height: 100%; background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 55%, #22c55e)); transition: width 180ms ease; }
+
+.publish-review-product {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+}
+
+.publish-review-product > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.publish-preview-icon { width: 36px; height: 36px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 10px; background: var(--brand-soft); color: var(--brand); }
+.publish-preview-eyebrow { color: var(--faint); font-size: 9px; font-weight: 760; letter-spacing: .06em; text-transform: uppercase; }
+.publish-review-product strong { color: var(--text); font-size: 13px; }
+.publish-review-product small { color: var(--muted); font-size: 11px; line-height: 1.45; }
+.publish-review-product em { color: var(--brand); font-size: 10px; font-style: normal; font-weight: 700; }
+
+.publish-review-list {
+  display: grid;
+  gap: 0;
+  padding: 7px 14px;
+}
+
+.publish-review-list > span {
+  position: relative;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 11px 0;
+  color: var(--faint);
+}
+
+.publish-review-list > span:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 31px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--line);
+}
+
+.publish-review-list > span.is-done > svg { color: #16a34a; }
+.publish-review-list > span > span { display: grid; gap: 3px; }
+.publish-review-list strong { color: var(--text); font-size: 11px; }
+.publish-review-list small { color: var(--muted); font-size: 10px; line-height: 1.4; }
+
+.publish-review-tip {
+  margin: 0 14px 14px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.publish-review-tip svg { flex: 0 0 auto; color: var(--brand); }
+
+/* On large canvases, make status a real left column. Keeping it in the grid
+   (rather than fixed to the viewport) prevents it from covering the step bar
+   or the phase guidance while the publishing form scrolls. */
+@media (min-width: 1600px) {
+  .publish-form-guided {
+    width: min(1440px, 100%);
+    grid-template-columns: repeat(14, minmax(0, 1fr));
+  }
+
+  .publish-form-guided > .publish-selected,
+  .publish-form-guided > .publish-phase-intro {
+    grid-column: 3 / -1;
+  }
+
+  .publish-form-guided > .publish-section,
+  .publish-form-guided.is-artifact > .publish-section-assets,
+  .publish-form-guided.is-artifact.is-connector > .publish-section-settings,
+  .publish-form-guided.is-details > .publish-section {
+    grid-column: 3 / span 8;
+  }
+
+  .publish-form-guided.is-artifact > .publish-review-panel,
+  .publish-form-guided.is-details > .publish-review-panel {
+    position: sticky;
+    top: 18px;
+    left: auto;
+    width: auto;
+    grid-column: 1 / span 2;
+    grid-row: 3 / span 5;
+    align-self: start;
+    z-index: 1;
+  }
+
+  .publish-form-guided > .publish-wizard-actions { grid-column: 3 / span 8; }
 }
 
 .platform-variant-card > .secondary-action {
@@ -5837,7 +6241,7 @@ img {
 
 .publish-form textarea {
   min-height: 94px;
-  padding: 10px;
+  padding: 11px 12px;
   resize: vertical;
 }
 
@@ -5850,7 +6254,7 @@ img {
 .advanced-toggle {
   min-height: 38px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface);
   color: var(--text);
   display: flex;
@@ -6341,6 +6745,23 @@ img {
 
   .publish-form {
     grid-template-columns: 1fr;
+  }
+
+  .publish-form-guided > .publish-section,
+  .publish-form-guided > .publish-selected,
+  .publish-form-guided > .modal-actions,
+  .publish-review-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .publish-review-panel {
+    position: static;
+    order: 20;
+  }
+
+  .publish-form-guided > .modal-actions {
+    order: 30;
   }
 
   .publish-type-grid,

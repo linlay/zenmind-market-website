@@ -137,7 +137,7 @@ export function App() {
   const [editSource, setEditSource] = useState(null);
   const [isPublishing, setPublishing] = useState(false);
   const [isSavingMetadata, setSavingMetadata] = useState(false);
-  const [authSession, setAuthSession] = useState(null);
+  const [authSession, setAuthSession] = useState(isScreenshotDemo ? { user: { id: 'demo-creator', name: '演示开发者', role: 'creator' } } : null);
   const [authStatus, setAuthStatus] = useState('loading');
   const [creatorItems, setCreatorItems] = useState([]);
   const [creatorItemsStatus, setCreatorItemsStatus] = useState('idle');
@@ -149,6 +149,7 @@ export function App() {
   const [moderatingCommentID, setModeratingCommentID] = useState(0);
   const [reviewingKey, setReviewingKey] = useState('');
   const [unpublishingKey, setUnpublishingKey] = useState('');
+  const [featuringKey, setFeaturingKey] = useState('');
   const [deletingKey, setDeletingKey] = useState('');
   const [downloadingKey, setDownloadingKey] = useState('');
   const [favoritingKey, setFavoritingKey] = useState('');
@@ -323,11 +324,11 @@ export function App() {
         if (data?.user?.id) setAuthSession({ user: data.user });
       })
       .catch((reason) => {
-        if (reason?.name !== 'AbortError') setAuthSession(null);
+        if (reason?.name !== 'AbortError' && !isScreenshotDemo) setAuthSession(null);
       })
       .finally(() => setAuthStatus('ready'));
     return () => controller.abort();
-  }, []);
+  }, [isScreenshotDemo]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -469,6 +470,9 @@ export function App() {
   }, [activeCategory, activeSkillCategory, catalog, catalogOrderOverride, favoritesOnly, locale, marketOrderSignature, query, sortMode]);
 
   const currentCategoryName = activeCategory === 'all' ? t.all : t.categories[activeCategory];
+  const officialFeatured = useMemo(() => [...catalog]
+    .filter((item) => item.featured)
+    .sort((a, b) => (parseCount(b.downloads) - parseCount(a.downloads)) || localized(a.name, locale).localeCompare(localized(b.name, locale))), [catalog, locale]);
   const emptyCopy = catalog.length === 0
     ? { title: t.emptyCatalogTitle, body: t.emptyCatalogBody }
     : { title: t.emptyTitle, body: t.emptyBody };
@@ -793,6 +797,25 @@ export function App() {
     }
   }
 
+  async function handleSetFeatured(item) {
+    if (!item || featuringKey || authSession?.user?.role !== 'admin') return;
+    const key = `${item.type}:${item.id}`;
+    setFeaturingKey(key);
+    try {
+      await requestJSON(`${apiBase}/admin/items/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}/featured`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ featured: !item.featured }),
+      });
+      await loadCatalog();
+      notify(item.featured ? t.adminRemoveFeaturedSuccess : t.adminSetFeaturedSuccess, 'success');
+    } catch (reason) {
+      notify(t.adminFeaturedFailed(errorMessage(reason)), 'error');
+    } finally {
+      setFeaturingKey('');
+    }
+  }
+
   async function handleDeleteItem(item) {
     if (!item || deletingKey) return;
     if (!authSession?.user?.id) {
@@ -862,6 +885,7 @@ export function App() {
       }
       const description = String(form.get('description') || '').trim();
       const variantIndexes = form.getAll('variantIndex').map((value) => String(value));
+      const connectorTargetIndexes = form.getAll('connectorTargetIndex').map((value) => String(value));
       const variantFiles = variantIndexes.map((index) => selectedFormFile(formElement, form, `variantArtifact.${index}`));
       const artifact = selectedFormFile(formElement, form, 'artifact');
       const repositorySource = String(form.get('artifactSource') || 'upload') === 'repository';
@@ -872,7 +896,6 @@ export function App() {
       const adpManifest = selectedFormFile(formElement, form, 'adpManifest');
       const hasSelectedADPManifest = Boolean(adpManifest);
       const connectorSkillsArchive = selectedFormFile(formElement, form, 'connectorSkillsArchive');
-      const connectorCLIArchive = selectedFormFile(formElement, form, 'connectorCLIArchive');
       const connectorHasMCP = form.get('connectorHasMCP') === 'on';
       const connectorHasCLI = form.get('connectorHasCLI') === 'on';
       const connectorHasSkill = form.get('connectorHasSKILL') === 'on';
@@ -954,7 +977,6 @@ export function App() {
         scenario: String(form.get('skillScenario') || 'productivity').trim(),
         level: String(form.get('skillLevel') || 'beginner').trim(),
         packageMode: skillKind === 'package' ? 'collection' : '',
-        featured: form.get('skillFeatured') === 'on',
         includedSkills: parseIncludedSkills(form.getAll('includedSkills')),
       } : null;
       if (skill?.kind === 'package' && !skill.includedSkills.length) {
@@ -1003,7 +1025,7 @@ export function App() {
       if (install) platform.install = install;
       if (uninstall) platform.uninstall = uninstall;
       if (detect) platform.detect = detect;
-      const variants = variantIndexes.map((index) => {
+      const uploadVariants = variantIndexes.map((index) => {
         const os = String(form.get(`variantOS.${index}`) || '').trim();
         const arch = String(form.get(`variantArch.${index}`) || '').trim();
         const key = platformKeyFromSelection(os, arch);
@@ -1015,6 +1037,18 @@ export function App() {
           fileField: `artifact.${key}`,
         };
       });
+      const connectorVariants = connectorHasCLI ? connectorTargetIndexes.map((index) => {
+        const os = String(form.get(`connectorTargetOS.${index}`) || '').trim();
+        const arch = String(form.get(`connectorTargetArch.${index}`) || '').trim();
+        const key = platformKeyFromSelection(os, arch);
+        return {
+          platform: { ...platform, key, os, arch },
+          archiveType: 'zip',
+          assetRole: 'primary',
+          fileField: `artifact.${key}`,
+        };
+      }) : [];
+      const variants = type === 'connector' && connectorHasCLI ? connectorVariants : uploadVariants;
       if (new Set(variants.map((variant) => variant.platform.key)).size !== variants.length) {
         notify(t.publishFailed(t.duplicatePlatformVariant), 'error');
         return;
@@ -1078,7 +1112,10 @@ export function App() {
         if (hasSelectedImage) body.append('image', image);
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
         if (connectorConfig) body.append('connectorConfig', JSON.stringify(connectorConfig));
-        if (connectorCLIArchive) body.append('connectorCLIArchive', connectorCLIArchive);
+        if (type === 'connector') connectorVariants.forEach((variant) => {
+          const cliArchive = selectedFormFile(formElement, form, `connectorCLIArchive.${variant.platform.key}`);
+          if (cliArchive) body.append(`connectorCLIArchive.${variant.platform.key}`, cliArchive);
+        });
         if (connectorSkillsArchive) body.append('connectorSkillsArchive', connectorSkillsArchive);
         if (repositorySource) {
           body.append('artifactSource', 'repository');
@@ -1240,6 +1277,8 @@ export function App() {
             reviewingKey={reviewingKey}
             onUnpublishLatest={handleUnpublishLatest}
             unpublishingKey={unpublishingKey}
+            onSetFeatured={handleSetFeatured}
+            featuringKey={featuringKey}
             onDeleteItem={handleDeleteItem}
             deletingKey={deletingKey}
             onLoadAdminReviews={handleLoadAdminReviews}
@@ -1298,6 +1337,7 @@ export function App() {
           currentCategoryName={currentCategoryName}
           emptyCopy={emptyCopy}
           filtered={filtered}
+          officialFeatured={officialFeatured}
           isAuthenticated={isAuthenticated}
           locale={locale}
           skillCategories={skillCategoryFilters}
@@ -1332,6 +1372,25 @@ export function App() {
               {filtered.map((item) => (
                 <MarketCard
                   key={`${item.type}:${item.id}`}
+                  item={item}
+                  isAuthenticated={isAuthenticated}
+                  locale={locale}
+                  t={t}
+                  onDetails={() => openDetailsForSurface(item)}
+                  onInstall={() => handleInstall(item)}
+                  onDownload={() => handleDownload(item)}
+                  onFavorite={() => handleFavorite(item)}
+                  isDownloading={downloadingKey === downloadKeyForItem(item)}
+                  isFavoriting={favoritingKey === `${item.type}:${item.id}`}
+                />
+              ))}
+            </div>
+          )}
+          renderOfficialFeatured={() => (
+            <div className="catalog-grid official-featured-grid">
+              {officialFeatured.map((item) => (
+                <MarketCard
+                  key={`featured:${item.type}:${item.id}`}
                   item={item}
                   isAuthenticated={isAuthenticated}
                   locale={locale}

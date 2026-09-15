@@ -174,7 +174,9 @@ describe('connector-only publishing', () => {
     fireEvent.click(container.querySelector('[name="connectorHasSKILL"]'));
     expect(container.querySelector('[name="cliMinVersion"]')).toBeRequired();
     expect(container.querySelector('[name="cliTargetSystem"]')).toHaveValue('darwin');
-    expect(container.querySelector('[name="connectorCLIArchive"]')).toHaveAttribute('accept', 'application/zip,.zip');
+    expect(container.querySelector('[name="connectorTargetOS.0"]')).toHaveValue('darwin');
+    expect(container.querySelector('[name="connectorTargetArch.0"]')).toHaveValue('arm64');
+    expect(container.querySelector('[name="connectorCLIArchive.darwin-arm64"]')).toHaveAttribute('accept', 'application/zip,.zip');
     expect(container.querySelector('[name="connectorSkillsArchive"]')).toBeRequired();
     expect(container.querySelector('[name="connectorSkillsArchive"]')).toHaveAttribute('accept', 'application/zip,.zip');
     expect(screen.getByText(/提交时市场会生成标准目录/)).toBeInTheDocument();
@@ -201,6 +203,19 @@ describe('connector-only publishing', () => {
     expect(container.querySelector('[name="cliVersionLinux"]')).toHaveValue('tool-linux --version');
   });
 
+  it('collects separate OS and architecture targets for connector artifacts', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+    fireEvent.click(screen.getByText('连接器'));
+    fireEvent.click(container.querySelector('[name="connectorHasCLI"]'));
+
+    fireEvent.click(screen.getByText('添加平台制品'));
+    expect(container.querySelector('[name="connectorTargetOS.1"]')).toHaveValue('linux');
+    expect(container.querySelector('[name="connectorTargetArch.1"]')).toHaveValue('amd64');
+    expect(container.querySelector('[name="connectorCLIArchive.linux-amd64"]')).toBeInTheDocument();
+  });
+
   it('shows authentication-specific fields and locks MCP OAuth to HTTP MCP', () => {
     const { container } = render(
       <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
@@ -216,5 +231,23 @@ describe('connector-only publishing', () => {
     expect(container.querySelector('[name="connectorHasMCP"][type="checkbox"]')).toBeDisabled();
     expect(container.querySelector('[name="mcpTransport"]')).toHaveValue('streamableHttp');
     expect(container.querySelector('[name="mcpTransport"]')).toBeDisabled();
+  });
+});
+
+describe('guided publish workflow', () => {
+  it('requires the artifact step before moving to market details', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+
+    fireEvent.click(screen.getByText('智能体'));
+    const form = container.querySelector('form');
+    expect(form).toHaveClass('is-artifact');
+
+    const artifact = container.querySelector('[name="variantArtifact.0"]');
+    fireEvent.change(artifact, { target: { files: [new File(['demo'], 'agent.zip', { type: 'application/zip' })] } });
+    artifact.removeAttribute('required');
+    fireEvent.click(screen.getByText('下一步：填写发布信息'));
+    expect(form).toHaveClass('is-details');
   });
 });

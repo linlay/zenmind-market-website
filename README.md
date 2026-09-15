@@ -21,6 +21,11 @@ directory or one or more Skill directories at the archive root, so nested
 validates it and stores the resulting ZIP immutably. The legacy MCP and CLI publish
 options and routes have been removed.
 
+CLI connectors declare one or more OS/architecture targets. Market generates a
+separate connector ZIP for each target, includes only that OS command mapping and
+optional platform-specific CLI archive, and resolves downloads against the user's
+detected platform. Shared Skills are included in every generated target package.
+
 Skills may upload an ADP `schema: "0.1"` manifest using the latest hook protocol. The website only collects the `adp.yaml`; the backend validates the manifest, rejects legacy hook syntax, and binds artifact URLs plus SHA-256 values.
 
 ## Environment

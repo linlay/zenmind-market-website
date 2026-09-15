@@ -15,6 +15,7 @@ type MarketPageProps = {
   currentCategoryName: string;
   emptyCopy: { title: string; body: string };
   filtered: unknown[];
+  officialFeatured?: unknown[];
   isAuthenticated: boolean;
   locale: string;
   skillCategories: string[];
@@ -31,6 +32,7 @@ type MarketPageProps = {
   onSortModeChange: (mode: string) => void;
   onSidebarCollapsedChange: (collapsed: boolean) => void;
   renderCatalog: () => ReactNode;
+  renderOfficialFeatured?: () => ReactNode;
 };
 
 export function MarketPage({
@@ -41,6 +43,7 @@ export function MarketPage({
   currentCategoryName,
   emptyCopy,
   filtered,
+  officialFeatured = [],
   isAuthenticated,
   skillCategories,
   skillCounts,
@@ -56,6 +59,7 @@ export function MarketPage({
   onSortModeChange,
   onSidebarCollapsedChange,
   renderCatalog,
+  renderOfficialFeatured = () => null,
 }: MarketPageProps) {
   return (
     <div className={isSidebarCollapsed ? 'workspace is-sidebar-collapsed' : 'workspace'}>
@@ -148,6 +152,16 @@ export function MarketPage({
                 </button>
               ))}
             </div>
+          </section>
+        ) : null}
+
+        {activeCategory === 'all' && officialFeatured.length ? (
+          <section className="official-featured-section" aria-label={t.officialFeatured}>
+            <div className="official-featured-heading">
+              <h2>{t.officialFeatured}</h2>
+              <small>{t.count(officialFeatured.length)}</small>
+            </div>
+            {renderOfficialFeatured()}
           </section>
         ) : null}
 

@@ -285,7 +285,7 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
                 {item.type === 'skill' ? <span>{skillCategoryLabel(item.skillCategory, t)}</span> : null}
                 {item.type === 'skill' && item.skillScenario ? <span>{t.skillScenarios[item.skillScenario] || item.skillScenario}</span> : null}
                 {item.type === 'skill' && item.skillLevel ? <span>{t.skillLevels[item.skillLevel] || item.skillLevel}</span> : null}
-                {item.type === 'skill' && item.skillFeatured ? <span>{t.skillFeatured}</span> : null}
+                {item.featured ? <span>{t.officialFeatured}</span> : null}
                 {(item.tags || []).map((tag) => <span key={tag}>#{tag}</span>)}
                 {specificPlatformKeys.map((platform) => <span key={platform}><Box size={13} />{platform}</span>)}
               </div>

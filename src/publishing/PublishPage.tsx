@@ -83,7 +83,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
 	    return { id: index + 1, os: spec.os || (key === 'universal' ? 'universal' : key.split('-')[0]), arch: spec.arch || key.split('-')[1] || '', archiveType: initialItem.assetMap?.[key]?.archiveType || defaultArchiveTypeFor(initialType, { sandboxKind: initialSandboxKind, websiteKind: initialWebsiteKind }) };
 	  })
 	  : [{ id: 1, os: initialPlatformOS, arch: initialPlatformArch, archiveType: initialAsset?.archiveType || defaultArchiveTypeFor(initialType, { sandboxKind: initialSandboxKind, websiteKind: initialWebsiteKind }) }];
-  const [step, setStep] = useState(updateMode ? 'details' : 'type');
+  const [step, setStep] = useState(updateMode ? 'artifact' : 'type');
   const [type, setType] = useState(initialType);
   const [archiveType, setArchiveType] = useState(initialAsset?.archiveType || defaultArchiveTypeFor(initialType, { sandboxKind: initialSandboxKind, websiteKind: initialWebsiteKind }));
   const [sandboxKind, setSandboxKind] = useState(initialSandboxKind);
@@ -103,8 +103,10 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     linux: { version: '', init: '', auth: '', status: '', unAuth: '' },
     win32: { version: '', init: '', auth: '', status: '', unAuth: '' },
   });
+  const [connectorTargets, setConnectorTargets] = useState([{ id: 1, os: 'darwin', arch: 'arm64' }]);
   const [showAdvanced, setShowAdvanced] = useState(updateMode);
 	const [platformVariants, setPlatformVariants] = useState(initialVariants);
+  const [artifactFiles, setArtifactFiles] = useState({});
   const [skillSearch, setSkillSearch] = useState('');
   const [selectedSkillIDs, setSelectedSkillIDs] = useState(updateMode ? (initialItem.includedSkills || []).map((skill) => skill.id) : []);
   const initialAccessPolicy = initialItem?.accessPolicy || { mode: 'all', departmentIds: [], userIds: [] };
@@ -123,6 +125,13 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [directoryQuery, setDirectoryQuery] = useState('');
   const [directoryResults, setDirectoryResults] = useState([]);
   const [directoryStatus, setDirectoryStatus] = useState('idle');
+  const [marketPreview, setMarketPreview] = useState({
+    id: updateMode ? initialItem.id : '',
+    name: updateMode ? localized(initialItem.name, locale) : '',
+    version: updateMode ? nextPatchVersion(initialItem.version) : '1.0.0',
+    description: updateMode ? localized(initialItem.description, locale) : '',
+    imageName: '',
+  });
 
   const publishTypes = publishTypeOptions();
   const visiblePublishTypes = updateMode
@@ -135,6 +144,14 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const supportsADP = supportsADPFor(type, { skill: { kind: skillKind } });
   const showAssetSection = !(type === 'skill' && skillKind === 'package') || supportsADP;
   const filteredSkills = filterPublishSkills(availableSkills, skillSearch, locale);
+  const artifactReady = type === 'connector' || artifactSource === 'repository' || Object.values(artifactFiles).some(Boolean);
+  const basicReady = Boolean(marketPreview.id.trim() && marketPreview.name.trim() && marketPreview.version.trim() && marketPreview.description.trim());
+  const readiness = [true, artifactReady, basicReady].filter(Boolean).length;
+  const readinessPercent = Math.round((readiness / 3) * 100);
+
+  function updateMarketPreview(field, value) {
+    setMarketPreview((current) => ({ ...current, [field]: value }));
+  }
 
   function applyPublishType(option) {
     const nextType = normalizeType(option.type);
@@ -151,7 +168,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
 	setPlatformVariants([{ id: Date.now(), os: 'universal', arch: '', archiveType: defaultArchiveTypeFor(nextType, { sandboxKind: nextSandboxKind, websiteKind: nextWebsiteKind }) }]);
     setSkillSearch('');
     setSelectedSkillIDs([]);
-    setStep('details');
+    setStep('artifact');
   }
 
 	function updatePlatformVariant(id, patch) {
@@ -167,9 +184,53 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     if (source === 'repository') setPlatformVariants((current) => current.slice(0, 1));
   }
 
-	function removePlatformVariant(id) {
+  function removePlatformVariant(id) {
 	  setPlatformVariants((current) => current.length > 1 ? current.filter((variant) => variant.id !== id) : current);
+	  setArtifactFiles((current) => {
+	    const next = { ...current };
+	    delete next[id];
+	    return next;
+	  });
 	}
+
+  function selectArtifactFile(variantID, file) {
+    setArtifactFiles((current) => ({ ...current, [variantID]: file || null }));
+  }
+
+  function formatBytes(size) {
+    if (!size) return '';
+    if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
+    return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  function invalidControlIn(root) {
+    return Array.from(root?.querySelectorAll('input, select, textarea') || []).find((control) => !control.checkValidity());
+  }
+
+  function advanceWizard(event, nextStep) {
+    const form = event.currentTarget.form;
+    const selector = step === 'artifact'
+      ? (type === 'connector' ? '.publish-section-settings' : '.publish-section-assets')
+      : '.publish-section-basic, .publish-section-settings, .publish-section-access, .publish-section-advanced';
+    const invalid = invalidControlIn(form?.querySelector(selector));
+    if (invalid) {
+      invalid.reportValidity();
+      return;
+    }
+    setStep(nextStep);
+  }
+
+  function submitWizard(event) {
+    const form = event.currentTarget.form;
+    const invalid = invalidControlIn(form);
+    if (invalid) {
+      const artifactInvalid = invalid.closest('.publish-section-assets') || (type === 'connector' && invalid.closest('.publish-section-settings'));
+      setStep(artifactInvalid ? 'artifact' : 'details');
+      window.setTimeout(() => invalid.reportValidity(), 0);
+      return;
+    }
+    form.requestSubmit();
+  }
 
   function toggleIncludedSkill(skillID) {
     setSelectedSkillIDs((current) => (
@@ -199,6 +260,18 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
       ...current,
       [cliTargetSystem]: { ...current[cliTargetSystem], [field]: value },
     }));
+  }
+
+  function updateConnectorTarget(id, patch) {
+    setConnectorTargets((current) => current.map((target) => target.id === id ? { ...target, ...patch } : target));
+  }
+
+  function addConnectorTarget() {
+    setConnectorTargets((current) => [...current, { id: Date.now(), os: 'linux', arch: 'amd64' }]);
+  }
+
+  function removeConnectorTarget(id) {
+    setConnectorTargets((current) => current.length > 1 ? current.filter((target) => target.id !== id) : current);
   }
 
   function toggleDepartment(departmentID) {
@@ -238,11 +311,17 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   }
 
   function renderStepIndicator() {
+    const labels = locale === 'zh-CN'
+      ? ['选择类型', '上传产物', '发布信息', '确认提交']
+      : ['Type', 'Artifact', 'Details', 'Review'];
+    const order = ['type', 'artifact', 'details', 'review'];
+    const activeIndex = order.indexOf(step);
     return (
       <div className="publish-steps" aria-label={t.publishTitle}>
-        <span className="is-active"><strong>1</strong>{t.publishStepType}</span>
-        <i />
-        <span className={step === 'details' ? 'is-active' : ''}><strong>2</strong>{t.publishStepDetails}</span>
+        {labels.map((label, index) => <div className="publish-step-wrap" key={label}>
+          <span className={index <= activeIndex ? 'is-active' : ''}><strong>{index < activeIndex ? <CheckCircle2 size={13} /> : index + 1}</strong>{label}</span>
+          {index < labels.length - 1 ? <i /> : null}
+        </div>)}
       </div>
     );
   }
@@ -281,8 +360,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
         </div>
         {!updateMode ? renderStepIndicator() : null}
         {step === 'type' ? renderTypePicker() : null}
-        {step === 'details' ? (
-        <form className="publish-form publish-form-guided" onSubmit={onSubmit} key={`${type}:${skillKind}`}>
+        {step !== 'type' ? (
+        <form className={`publish-form publish-form-guided is-${step} is-${type}`} onSubmit={onSubmit} key={`${type}:${skillKind}`}>
           <div className="publish-selected full">
             {!updateMode ? <button className="secondary-action" type="button" onClick={() => setStep('type')} disabled={isPublishing}>
               <ArrowRight size={14} />
@@ -294,39 +373,53 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               <small>{t.publishTypeRequirementsMap[selectedType.id]}</small>
             </span>
           </div>
+          <div className="publish-phase-intro full">
+            <span>{step === 'artifact' ? '01' : step === 'details' ? '02' : '03'}</span>
+            <div>
+              <h3>{step === 'artifact' ? (type === 'connector' ? '配置并组装连接器' : '上传并配置发布产物') : step === 'details' ? '填写市场展示信息' : '确认本次发布'}</h3>
+              <p>{step === 'artifact' ? (type === 'connector' ? '填写能力、认证和运行配置；市场会生成规范包并在入库前完成校验。' : '选择目标平台并添加对应文件，上传后将自动执行结构和安全检查。') : step === 'details' ? '这些内容会展示在市场详情页中，高级技术参数可以稍后补充。' : '检查发布类型、产物和访问范围，确认无误后提交审核。'}</p>
+            </div>
+          </div>
           <input name="type" type="hidden" value={type} />
           <input name="archiveType" type="hidden" value={archiveType} />
           {updateMode ? <input name="existingMetadata" type="hidden" value={JSON.stringify(initialItem.metadata || {})} /> : null}
           {type === 'skill' ? <input name="skillKind" type="hidden" value={skillKind} /> : null}
-          <section className="publish-section full">
-            <h3>{t.publishBasicInfo}</h3>
+          <section className="publish-section publish-section-basic full">
+            <div className="publish-section-heading">
+              <span className="publish-section-kicker">02 · MARKET LISTING</span>
+              <div><h3>{t.publishBasicInfo}</h3><p>这些信息会出现在市场卡片和详情页中。先让用户一眼知道它能解决什么问题。</p></div>
+            </div>
             <div className="publish-section-grid">
               <label>
                 <span className="required-field-label">{t.componentId}</span>
-                <input name="id" required readOnly={updateMode} defaultValue={updateMode ? initialItem.id : ''} placeholder="my-agent" pattern="[a-z0-9._-]+" />
-                {updateMode ? <small className="field-hint">{t.publishVersionLocked}</small> : null}
+                <input name="id" required readOnly={updateMode} defaultValue={updateMode ? initialItem.id : ''} onChange={(event) => updateMarketPreview('id', event.target.value)} placeholder="例如：pdf-extractor" pattern="[a-z0-9._-]+" />
+                <small className="field-hint">{updateMode ? t.publishVersionLocked : '仅支持小写字母、数字、连字符、下划线和英文句点；发布后不可修改。'}</small>
               </label>
               <label>
                 <span className="required-field-label">{t.name}</span>
-                <input name="name" required defaultValue={updateMode ? localized(initialItem.name, locale) : ''} placeholder="My Agent" />
+                <input name="name" required defaultValue={updateMode ? localized(initialItem.name, locale) : ''} onChange={(event) => updateMarketPreview('name', event.target.value)} placeholder="例如：PDF 智能提取助手" />
+                <small className="field-hint">使用动词或结果描述，避免只写内部项目代号。</small>
               </label>
               <label>
                 <span className="required-field-label">{t.version}</span>
-                <input name="version" required defaultValue={updateMode ? nextPatchVersion(initialItem.version) : '1.0.0'} />
+                <input name="version" required defaultValue={updateMode ? nextPatchVersion(initialItem.version) : '1.0.0'} onChange={(event) => updateMarketPreview('version', event.target.value)} placeholder="1.0.0" />
+                <small className="field-hint">建议使用语义化版本，例如 1.0.0。</small>
               </label>
-              <label>
+              <label className="publish-image-input">
                 <span>{t.image}</span>
-                <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+                <span className="publish-image-control"><span className="publish-image-placeholder"><LayoutGrid size={18} /></span><span><strong>{marketPreview.imageName || '添加封面图'}</strong><small>PNG、JPG、WebP 或 GIF</small></span><Upload size={15} /></span>
+                <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => updateMarketPreview('imageName', event.target.files?.[0]?.name || '')} />
               </label>
               <label className="full">
                 <span className="required-field-label">{t.description}</span>
-                <textarea name="description" rows="4" required defaultValue={updateMode ? localized(initialItem.description, locale) : ''} />
+                <textarea name="description" rows="4" required defaultValue={updateMode ? localized(initialItem.description, locale) : ''} onChange={(event) => updateMarketPreview('description', event.target.value)} placeholder="例如：从 PDF、扫描件或图片中提取表格和关键信息，并输出为结构化数据。" />
+                <small className="field-hint">推荐 40–100 字：说明适用对象、输入内容和交付结果。</small>
               </label>
             </div>
           </section>
 
           {(type === 'connector' || type === 'skill' || type === 'sandbox-image' || type === 'website-app' || type === 'software-package') ? (
-            <section className="publish-section full">
+            <section className="publish-section publish-section-settings full">
               <h3>{t.publishTypeSettings}</h3>
               <div className="publish-section-grid">
           {type === 'skill' ? (
@@ -385,10 +478,6 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   <small className="field-hint">{availableSkills.length ? t.includedSkillsHint : t.noAvailableSkills}</small>
                 </div>
               ) : null}
-              <label className="checkbox-field">
-                <input name="skillFeatured" type="checkbox" defaultChecked={updateMode && initialItem.skillFeatured} />
-                <span>{t.skillFeatured}</span>
-              </label>
             </>
           ) : null}
           {type === 'connector' ? (
@@ -490,7 +579,23 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                     <label><span>init</span><input name={`cliInit${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].init} onChange={(event) => updateCLISystemCommand('init', event.target.value)} /></label>
                     {connectorHasCLIAuth ? <><label><span>auth</span><input name={`cliAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].auth} onChange={(event) => updateCLISystemCommand('auth', event.target.value)} /></label><label><span>status</span><input name={`cliStatus${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].status} onChange={(event) => updateCLISystemCommand('status', event.target.value)} /></label><label><span>unAuth</span><input name={`cliUnAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].unAuth} onChange={(event) => updateCLISystemCommand('unAuth', event.target.value)} /></label><label className="full"><span>statusMatch</span><input name="cliStatusMatch" /></label><label className="full"><span>statusMatchJson</span><textarea name="cliStatusMatchJSON" rows={2} placeholder={'{"authenticated":true}'} /></label><label><span>authUrlDomain</span><input name="cliAuthURLDomain" placeholder="accounts.example.com" /></label><label className="checkbox-field"><input name="cliAuthWaitForExit" type="checkbox" defaultChecked /><span>authWaitForExit</span></label><label className="checkbox-field"><input name="cliAuthSuppressBrowser" type="checkbox" /><span>authSuppressBrowser</span></label></> : null}
                     <label><span>{t.staticEnvName}</span><input name="cliStaticEnvName" placeholder="REGION" /></label><label><span>{t.staticEnvValue}</span><input name="cliStaticEnvValue" placeholder="cn" /></label>
-                    <label className="full"><span>{t.cliArchive}</span><input name="connectorCLIArchive" type="file" accept="application/zip,.zip" /><small className="field-hint">{t.cliArchiveHint}</small></label>
+                    <div className="publish-field-card full">
+                      <h4>{t.connectorPlatformTargets}</h4>
+                      <small className="field-hint">{t.connectorPlatformTargetsHint}</small>
+                      <div className="publish-section-grid platform-variant-list">
+                        {connectorTargets.map((target, index) => {
+                          const key = `${target.os}-${target.arch}`;
+                          return <div className="publish-field-card platform-variant-card full" key={target.id}>
+                            <input name="connectorTargetIndex" type="hidden" value={index} />
+                            <label><span className="required-field-label">{t.os}</span><select name={`connectorTargetOS.${index}`} value={target.os} onChange={(event) => updateConnectorTarget(target.id, { os: event.target.value })}><option value="darwin">macOS</option><option value="linux">Linux</option><option value="windows">Windows</option></select></label>
+                            <label><span className="required-field-label">{t.arch}</span><select name={`connectorTargetArch.${index}`} value={target.arch} onChange={(event) => updateConnectorTarget(target.id, { arch: event.target.value })}><option value="arm64">arm64</option><option value="amd64">amd64 / x64</option></select></label>
+                            <label className="full"><span>{t.cliArchive} · {key}</span><input name={`connectorCLIArchive.${key}`} type="file" accept="application/zip,.zip" /><small className="field-hint">{t.cliPlatformArchiveHint}</small></label>
+                            <button className="secondary-action" type="button" disabled={connectorTargets.length === 1} onClick={() => removeConnectorTarget(target.id)}><Trash2 size={14} /><span>{t.removePlatformVariant}</span></button>
+                          </div>;
+                        })}
+                        <button className="secondary-action" type="button" onClick={addConnectorTarget}><Plus size={14} /><span>{t.addPlatformVariant}</span></button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -541,8 +646,15 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           ) : null}
 
           {showAssetSection && type !== 'connector' ? (
-            <section className="publish-section full">
-              <h3>{t.publishRequiredAssets}</h3>
+            <section className="publish-section publish-section-assets full">
+              <div className="publish-section-title-row">
+                <div>
+                  <span className="publish-section-kicker">01 · {t.publishStepDetails}</span>
+                  <h3>{t.publishRequiredAssets}</h3>
+                  <p>先上传发布包，我们会自动识别格式并检查平台信息。</p>
+                </div>
+                <span className="publish-section-badge">{platformVariants.length} 个目标</span>
+              </div>
               <div className="publish-section-grid platform-variant-list">
                 {!(type === 'skill' && skillKind === 'package') ? (
                   <>
@@ -607,9 +719,11 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                             {archiveOptionsFor(type, { sandboxKind }).map((option) => <option value={option} key={option}>{option}</option>)}
                           </select>
                         </label>
-                        <label className={artifactSource === 'repository' && type === 'skill' && skillKind === 'single' ? 'repository-upload-hidden' : ''}>
-                          <span className={artifactRequired ? 'required-field-label' : ''}>{t.artifact}</span>
-                          <input name={`variantArtifact.${index}`} type="file" required={artifactRequired && !(artifactSource === 'repository' && type === 'skill' && skillKind === 'single')} />
+                        <label className={`${artifactSource === 'repository' && type === 'skill' && skillKind === 'single' ? 'repository-upload-hidden' : ''} artifact-dropzone ${artifactFiles[variant.id] ? 'has-file' : ''}`}>
+                          <span className="artifact-drop-icon"><Upload size={20} /></span>
+                          <span className={artifactRequired ? 'required-field-label' : ''}>{artifactFiles[variant.id] ? artifactFiles[variant.id].name : '拖拽发布包到这里，或点击选择文件'}</span>
+                          <small>{artifactFiles[variant.id] ? `${formatBytes(artifactFiles[variant.id].size)} · 已准备上传` : type === 'connector' ? t.connectorPackageHint : `${t.artifact} · ZIP / TAR.GZ / DMG`}</small>
+                          <input name={`variantArtifact.${index}`} type="file" accept={type === 'connector' ? 'application/zip,.zip' : undefined} required={artifactRequired && !(artifactSource === 'repository' && type === 'skill' && skillKind === 'single')} onChange={(event) => selectArtifactFile(variant.id, event.target.files?.[0])} />
                         </label>
                         <button className="secondary-action" type="button" disabled={platformVariants.length === 1 || artifactSource === 'repository'} onClick={() => removePlatformVariant(variant.id)}><Trash2 size={14} /><span>{t.removePlatformVariant}</span></button>
                       </div>
@@ -630,8 +744,11 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             </section>
           ) : null}
 
-          <section className="publish-section full">
-            <h3>{t.accessScope}</h3>
+          <section className="publish-section publish-section-access full">
+            <div className="publish-section-heading">
+              <span className="publish-section-kicker">03 · DISTRIBUTION</span>
+              <div><h3>{t.accessScope}</h3><p>审核通过后，按此范围将组件展示给组织成员。</p></div>
+            </div>
             <div className="publish-section-grid">
               <label className="checkbox-field">
                 <input name="accessMode" type="radio" value="all" checked={accessMode === 'all'} onChange={() => setAccessMode('all')} />
@@ -678,9 +795,9 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             </div>
           </section>
 
-          <section className="publish-section full">
+          <section className="publish-section publish-section-advanced full">
             <button className="advanced-toggle" type="button" onClick={() => setShowAdvanced((value) => !value)}>
-              <span>{showAdvanced ? t.publishHideAdvanced : t.publishShowAdvanced}</span>
+              <span><strong>{showAdvanced ? t.publishHideAdvanced : t.publishShowAdvanced}</strong><small>兼容性、标签、使用提示和技术元数据</small></span>
               <ArrowRight size={14} />
             </button>
             {showAdvanced ? (
@@ -719,12 +836,32 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               </div>
             ) : null}
           </section>
-          <footer className="modal-actions">
-            <button className="secondary-action" type="button" onClick={onClose} disabled={isPublishing}>{t.cancel}</button>
-            <button className="primary-action" type="submit" disabled={isPublishing}>
+          <aside className="publish-review-panel">
+            <div className="publish-review-head">
+              <span>发布准备度</span>
+              <strong>{readinessPercent}%</strong>
+            </div>
+            <div className="publish-readiness"><span style={{ width: `${readinessPercent}%` }} /></div>
+            <div className="publish-review-product">
+              <span className="publish-preview-icon"><SelectedIcon size={20} /></span>
+              <div><span className="publish-preview-eyebrow">市场卡片预览</span><strong>{marketPreview.name || '组件名称'}</strong><small>{marketPreview.description || '填写一句清晰的说明，让用户知道它能完成什么。'}</small><em>{selectedType.label(t)} · v{marketPreview.version || '1.0.0'}</em></div>
+            </div>
+            <div className="publish-review-list">
+              <span className="is-done"><CheckCircle2 size={16} /><span><strong>发布类型</strong><small>已选择 {selectedType.label(t)}</small></span></span>
+              <span className={artifactReady ? 'is-done' : ''}><CheckCircle2 size={16} /><span><strong>发布产物</strong><small>{Object.values(artifactFiles).filter(Boolean).length ? `已添加 ${Object.values(artifactFiles).filter(Boolean).length} 个文件` : artifactSource === 'repository' ? '将从代码仓库获取' : type === 'connector' ? '由连接器配置自动生成' : '等待上传文件'}</small></span></span>
+              <span className={basicReady ? 'is-done' : ''}><CheckCircle2 size={16} /><span><strong>基础信息</strong><small>{basicReady ? '名称、标识、版本和说明已填写' : '还需要名称、标识、版本或说明'}</small></span></span>
+              <span><ShieldCheck size={16} /><span><strong>安全扫描</strong><small>上传后执行依赖与内容检查</small></span></span>
+            </div>
+            <div className="publish-review-tip"><Info size={15} /><span>发布前可以保存草稿，审核通过后再对组织成员开放。</span></div>
+          </aside>
+          <footer className="modal-actions publish-wizard-actions">
+            <button className="secondary-action" type="button" onClick={step === 'artifact' ? onClose : () => setStep(step === 'review' ? 'details' : 'artifact')} disabled={isPublishing}>{step === 'artifact' ? t.cancel : '上一步'}</button>
+            {step === 'artifact' ? <button className="primary-action" type="button" onClick={(event) => advanceWizard(event, 'details')}><ArrowRight size={15} /><span>下一步：填写发布信息</span></button> : null}
+            {step === 'details' ? <button className="primary-action" type="button" onClick={(event) => advanceWizard(event, 'review')}><ArrowRight size={15} /><span>下一步：确认发布</span></button> : null}
+            {step === 'review' ? <button className="primary-action" type="button" onClick={submitWizard} disabled={isPublishing}>
               <Upload size={15} />
               <span>{isPublishing ? t.publishing : updateMode ? t.publishVersionSubmit : t.publishSubmit}</span>
-            </button>
+            </button> : null}
           </footer>
         </form>
         ) : null}
