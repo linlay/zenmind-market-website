@@ -470,9 +470,6 @@ export function App() {
   }, [activeCategory, activeSkillCategory, catalog, catalogOrderOverride, favoritesOnly, locale, marketOrderSignature, query, sortMode]);
 
   const currentCategoryName = activeCategory === 'all' ? t.all : t.categories[activeCategory];
-  const officialFeatured = useMemo(() => [...catalog]
-    .filter((item) => item.featured)
-    .sort((a, b) => (parseCount(b.downloads) - parseCount(a.downloads)) || localized(a.name, locale).localeCompare(localized(b.name, locale))), [catalog, locale]);
   const emptyCopy = catalog.length === 0
     ? { title: t.emptyCatalogTitle, body: t.emptyCatalogBody }
     : { title: t.emptyTitle, body: t.emptyBody };
@@ -1348,7 +1345,6 @@ export function App() {
           currentCategoryName={currentCategoryName}
           emptyCopy={emptyCopy}
           filtered={filtered}
-          officialFeatured={officialFeatured}
           isAuthenticated={isAuthenticated}
           locale={locale}
           skillCategories={skillCategoryFilters}
@@ -1383,25 +1379,6 @@ export function App() {
               {filtered.map((item) => (
                 <MarketCard
                   key={`${item.type}:${item.id}`}
-                  item={item}
-                  isAuthenticated={isAuthenticated}
-                  locale={locale}
-                  t={t}
-                  onDetails={() => openDetailsForSurface(item)}
-                  onInstall={() => handleInstall(item)}
-                  onDownload={() => handleDownload(item)}
-                  onFavorite={() => handleFavorite(item)}
-                  isDownloading={downloadingKey === downloadKeyForItem(item)}
-                  isFavoriting={favoritingKey === `${item.type}:${item.id}`}
-                />
-              ))}
-            </div>
-          )}
-          renderOfficialFeatured={() => (
-            <div className="catalog-grid official-featured-grid">
-              {officialFeatured.map((item) => (
-                <MarketCard
-                  key={`featured:${item.type}:${item.id}`}
                   item={item}
                   isAuthenticated={isAuthenticated}
                   locale={locale}

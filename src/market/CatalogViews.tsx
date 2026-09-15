@@ -133,6 +133,9 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
   const isSkillPackageCard = item.type === 'skill' && item.skillKind === 'package';
   const Icon = isSkillPackageCard ? PackageOpen : category?.icon || PackageOpen;
   const cardTypeLabel = isSkillPackageCard ? skillKindLabel(item.skillKind, t) : displayType(item.type, t);
+  const featuredTypeLabel = String(locale).toLowerCase().startsWith('zh')
+    ? `精选${displayType(item.type, t)}`
+    : `Featured ${displayType(item.type, t)}`;
   const platform = preferredPlatformKey(item);
   const canDownload = hasArtifact(item, platform) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
@@ -145,7 +148,7 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
   const cardRef = useRef(null);
   const [usageHintVisible, setUsageHintVisible] = useState(false);
   const [activeUsageHint, setActiveUsageHint] = useState(0);
-  const cardClassName = ['market-card', variant ? `is-${variant}` : ''].filter(Boolean).join(' ');
+  const cardClassName = ['market-card', item.featured ? 'is-featured' : '', variant ? `is-${variant}` : ''].filter(Boolean).join(' ');
   const itemName = localized(item.name, locale);
   useEffect(() => {
     if (!usageHints.length) {
@@ -190,8 +193,8 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
         }
       }}
     >
-      <span className="card-type-badge" aria-label={`${t.typeLabel || '类型'}: ${cardTypeLabel}`}>
-        {cardTypeLabel}
+      <span className={item.featured ? 'card-type-badge is-featured' : 'card-type-badge'} aria-label={`${t.typeLabel || '类型'}: ${item.featured ? featuredTypeLabel : cardTypeLabel}`}>
+        {item.featured ? featuredTypeLabel : cardTypeLabel}
       </span>
       <div className="card-body">
         <div className="card-title-row">
