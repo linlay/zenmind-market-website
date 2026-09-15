@@ -905,7 +905,20 @@ export function App() {
         ['win32', String(form.get(`${prefix}Win32`) || '').trim()],
       ].filter(([, command]) => command));
       const connectorAuthMode = String(form.get('connectorAuthMode') || 'null');
-      const connectorTokenKey = String(form.get('connectorTokenKey') || '').trim();
+      const connectorTokenRows = form.getAll('connectorTokenKey').map((value, index) => ({
+        key: String(value || '').trim(),
+        label: String(form.getAll('connectorTokenLabel')[index] || '').trim(),
+        type: String(form.getAll('connectorTokenType')[index] || 'password'),
+        env: String(form.getAll('connectorTokenEnvName')[index] || '').trim(),
+      }));
+      const connectorTokenFields = connectorTokenRows.map(({ key, label, type }) => ({
+        key,
+        label,
+        type,
+        required: true,
+      })).filter((field) => field.key && field.label);
+      const connectorCredentialEnv = Object.fromEntries(connectorTokenRows.map(({ env, key }) => [env, key]).filter(([name, key]) => name && key));
+      const mcpStaticEnv = Object.fromEntries(form.getAll('mcpStaticEnvName').map((value, index) => [String(value || '').trim(), String(form.getAll('mcpStaticEnvValue')[index] || '').trim()]).filter(([name, value]) => name && value));
       const connectorMCPTransport = String(form.get('mcpTransport') || 'streamableHttp');
       const hostedCredentialVariable = connectorAuthMode === 'oneid-token' ? 'ONEID_TOKEN' : connectorAuthMode === 'oauth' ? 'OAUTH_ACCESS_TOKEN' : '';
       const connectorMCPAuthTarget = String(form.get('connectorMCPAuthHeader') || '').trim()
@@ -918,12 +931,7 @@ export function App() {
         tokenSchema: connectorAuthMode === 'token' ? {
           title: String(form.get('connectorTokenTitle') || '').trim(),
           docUrl: String(form.get('connectorTokenDocURL') || '').trim(),
-          fields: [{
-            key: connectorTokenKey,
-            label: String(form.get('connectorTokenLabel') || '').trim(),
-            type: String(form.get('connectorTokenType') || 'password'),
-            required: true,
-          }],
+          fields: connectorTokenFields,
         } : null,
         oauth: connectorAuthMode === 'oauth' ? {
           issuer: String(form.get('connectorOAuthIssuer') || '').trim(),
@@ -947,6 +955,8 @@ export function App() {
           runtimeVersion: String(form.get('mcpRuntimeVersion') || '').trim(),
           staticEnvName: String(form.get('mcpStaticEnvName') || '').trim(),
           staticEnvValue: String(form.get('mcpStaticEnvValue') || '').trim(),
+          staticEnv: mcpStaticEnv,
+          credentialEnv: connectorCredentialEnv,
         } : null,
         cli: connectorHasCLI ? {
           runtimeType: String(form.get('cliRuntimeType') || '').trim(),
@@ -1037,7 +1047,8 @@ export function App() {
           fileField: `artifact.${key}`,
         };
       });
-      const connectorVariants = connectorHasCLI ? connectorTargetIndexes.map((index) => {
+      const connectorCanBundleExecutable = connectorHasCLI || (connectorHasMCP && connectorMCPTransport === 'stdio');
+      const connectorVariants = connectorCanBundleExecutable ? connectorTargetIndexes.map((index) => {
         const os = String(form.get(`connectorTargetOS.${index}`) || '').trim();
         const arch = String(form.get(`connectorTargetArch.${index}`) || '').trim();
         const key = platformKeyFromSelection(os, arch);
@@ -1048,7 +1059,7 @@ export function App() {
           fileField: `artifact.${key}`,
         };
       }) : [];
-      const variants = type === 'connector' && connectorHasCLI ? connectorVariants : uploadVariants;
+      const variants = type === 'connector' && connectorCanBundleExecutable ? connectorVariants : uploadVariants;
       if (new Set(variants.map((variant) => variant.platform.key)).size !== variants.length) {
         notify(t.publishFailed(t.duplicatePlatformVariant), 'error');
         return;

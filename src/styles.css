@@ -2513,7 +2513,7 @@ img {
 .publish-form select,
 .publish-form input,
 .publish-form textarea {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
   background: color-mix(in srgb, var(--surface) 92%, var(--bg));
@@ -5505,6 +5505,12 @@ img {
   grid-row: auto;
 }
 
+/* Connector capability/runtime fields belong to the artifact step. Do not
+   repeat them when the wizard advances to market listing details. */
+.publish-form-guided.is-details.is-connector > .publish-section-settings {
+  display: none;
+}
+
 .publish-form-guided.is-artifact > .publish-section-assets,
 .publish-form-guided.is-artifact.is-connector > .publish-section-settings,
 .publish-form-guided.is-details > .publish-section { grid-column: 1 / span 8; order: 2; }
@@ -5635,6 +5641,26 @@ img {
 .publish-section-heading > div { display: grid; gap: 5px; }
 .publish-section-heading p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
 
+.publish-default-card {
+  border: 1px solid color-mix(in srgb, #22c55e 28%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, #22c55e 6%, var(--surface));
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.publish-default-card > span { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.publish-default-card > span > svg { flex: 0 0 auto; color: #16a34a; }
+.publish-default-card > span > span { display: grid; gap: 2px; }
+.publish-default-card strong { color: var(--text); font-size: 12px; }
+.publish-default-card small { color: var(--muted); font-size: 11px; line-height: 1.45; }
+.text-action { border: 0; background: transparent; color: var(--brand); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px; white-space: nowrap; }
+.text-action:hover { text-decoration: underline; }
+.publish-inline-actions { display: flex; justify-content: flex-end; }
+
 .publish-section-title-row {
   display: flex;
   align-items: flex-start;
@@ -5681,11 +5707,15 @@ img {
 
 .publish-form label {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 680;
 }
+
+.publish-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.publish-label-row > small { color: var(--faint); font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.publish-code-input { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important; letter-spacing: .01em; }
 
 .metadata-image-field {
   display: flex;
@@ -5726,7 +5756,7 @@ img {
 .publish-image-input { position: relative; }
 .publish-image-input > input { position: absolute; inset: 22px 0 0; width: 100%; height: calc(100% - 22px); opacity: 0; cursor: pointer; }
 .publish-image-control {
-  min-height: 40px;
+  min-height: 52px;
   border: 1px dashed color-mix(in srgb, var(--brand) 40%, var(--line));
   border-radius: 10px;
   background: color-mix(in srgb, var(--brand-soft) 27%, var(--surface));
@@ -5908,6 +5938,30 @@ img {
 
 .publish-review-tip svg { flex: 0 0 auto; color: var(--brand); }
 
+/* Keep the form comfortable in split panes and tablet-sized windows. */
+@media (max-width: 1100px) {
+  .publish-form-guided > .publish-section,
+  .publish-form-guided.is-artifact > .publish-section-assets,
+  .publish-form-guided.is-artifact.is-connector > .publish-section-settings,
+  .publish-form-guided.is-details > .publish-section,
+  .publish-form-guided.is-artifact > .publish-review-panel,
+  .publish-form-guided.is-details > .publish-review-panel,
+  .publish-form-guided > .publish-wizard-actions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .publish-form-guided.is-artifact > .publish-review-panel,
+  .publish-form-guided.is-details > .publish-review-panel {
+    position: static;
+    order: 7;
+  }
+
+  .publish-form-guided > .publish-wizard-actions { order: 8; }
+  .publish-review-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .publish-review-list > span::after { display: none; }
+}
+
 /* On large canvases, make status a real left column. Keeping it in the grid
    (rather than fixed to the viewport) prevents it from covering the step bar
    or the phase guidance while the publishing form scrolls. */
@@ -5983,6 +6037,101 @@ img {
   height: 14px;
   min-height: 0;
   padding: 0;
+}
+
+.connector-capability-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.publish-form .connector-capability-picker .checkbox-field {
+  width: auto;
+  min-height: 28px;
+  padding: 0 4px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.publish-form .connector-capability-picker .checkbox-field:has(input:checked) {
+  color: var(--brand);
+}
+
+.connector-capability-picker.is-invalid {
+  outline: 2px solid color-mix(in srgb, #dc2626 58%, transparent);
+  outline-offset: 5px;
+  border-radius: 4px;
+}
+
+.connector-capability-error {
+  margin: 4px 0 0;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* The outer type-settings section already groups connector configuration.
+   Keep only fields themselves boxed; avoid nested decorative cards. */
+.publish-field-card.connector-runtime-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 6px 0 0;
+}
+
+.connector-runtime-panel > h4 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.connector-advanced-toggle {
+  min-height: 32px;
+  justify-content: flex-start;
+  gap: 8px;
+  width: max-content;
+  max-width: 100%;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.connector-advanced-toggle > span { display: inline-flex; align-items: baseline; gap: 8px; }
+.connector-advanced-toggle > span small { color: var(--muted); font-size: 11px; font-weight: 520; }
+.connector-advanced-toggle > svg { color: var(--brand); }
+
+/* Connector publishing has one task: configure a runtime. Do not wrap that
+   compact form in another decorative card. */
+.publish-form-guided.is-connector > .publish-section-settings {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.publish-form .connector-advanced-toggle {
+  min-height: 30px;
+  width: max-content;
+  max-width: 100%;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.publish-form .connector-advanced-toggle:hover,
+.publish-form .connector-advanced-toggle:focus-visible {
+  border: 0;
+  background: transparent;
+  color: var(--brand);
 }
 
 .skill-picker {
@@ -6243,6 +6392,29 @@ img {
   min-height: 94px;
   padding: 11px 12px;
   resize: vertical;
+}
+
+.publish-form input::placeholder,
+.publish-form textarea::placeholder { color: color-mix(in srgb, var(--faint) 76%, transparent); font-weight: 480; }
+
+.publish-form input:hover:not(:disabled):not(:read-only),
+.publish-form select:hover:not(:disabled),
+.publish-form textarea:hover:not(:disabled):not(:read-only) {
+  border-color: color-mix(in srgb, var(--brand) 32%, var(--line));
+  background: var(--surface);
+}
+
+.publish-form input:user-invalid,
+.publish-form select:user-invalid,
+.publish-form textarea:user-invalid {
+  border-color: color-mix(in srgb, #dc2626 72%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, #dc2626 10%, transparent);
+}
+
+.publish-form input:read-only {
+  color: var(--muted);
+  background: var(--surface-muted);
+  cursor: default;
 }
 
 .publish-form .modal-actions {

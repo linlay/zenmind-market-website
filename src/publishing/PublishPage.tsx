@@ -97,14 +97,20 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [mcpHasRuntime, setMCPHasRuntime] = useState(false);
   const [connectorHasCLIAuth, setConnectorHasCLIAuth] = useState(false);
   const [connectorHasRuntime, setConnectorHasRuntime] = useState(false);
+  const [connectorTokenFields, setConnectorTokenFields] = useState([{ id: 1, key: 'API_KEY', label: 'API Key', type: 'password', env: 'API_KEY' }]);
+  const [mcpStaticEnv, setMCPStaticEnv] = useState([{ id: 1, name: '', value: '' }]);
+  const [showConnectorAdvanced, setShowConnectorAdvanced] = useState(false);
+  const [connectorCapabilityError, setConnectorCapabilityError] = useState(false);
   const [cliTargetSystem, setCLITargetSystem] = useState('darwin');
   const [cliSystemCommands, setCLISystemCommands] = useState({
     darwin: { version: '', init: '', auth: '', status: '', unAuth: '' },
     linux: { version: '', init: '', auth: '', status: '', unAuth: '' },
     win32: { version: '', init: '', auth: '', status: '', unAuth: '' },
   });
-  const [connectorTargets, setConnectorTargets] = useState([{ id: 1, os: 'darwin', arch: 'arm64' }]);
+  const [connectorTargets, setConnectorTargets] = useState([]);
   const [showAdvanced, setShowAdvanced] = useState(updateMode);
+	const [showDiscovery, setShowDiscovery] = useState(updateMode);
+	const [showAccess, setShowAccess] = useState(updateMode && initialItem?.accessPolicy?.mode !== 'all');
 	const [platformVariants, setPlatformVariants] = useState(initialVariants);
   const [artifactFiles, setArtifactFiles] = useState({});
   const [skillSearch, setSkillSearch] = useState('');
@@ -125,6 +131,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [directoryQuery, setDirectoryQuery] = useState('');
   const [directoryResults, setDirectoryResults] = useState([]);
   const [directoryStatus, setDirectoryStatus] = useState('idle');
+  const [descriptionLength, setDescriptionLength] = useState(updateMode ? localized(initialItem.description, locale).length : 0);
   const [marketPreview, setMarketPreview] = useState({
     id: updateMode ? initialItem.id : '',
     name: updateMode ? localized(initialItem.name, locale) : '',
@@ -148,6 +155,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const basicReady = Boolean(marketPreview.id.trim() && marketPreview.name.trim() && marketPreview.version.trim() && marketPreview.description.trim());
   const readiness = [true, artifactReady, basicReady].filter(Boolean).length;
   const readinessPercent = Math.round((readiness / 3) * 100);
+  const enabledPrimaryCapabilities = ['mcp', 'cli'].filter((capability) => connectorCapabilities[capability]);
 
   function updateMarketPreview(field, value) {
     setMarketPreview((current) => ({ ...current, [field]: value }));
@@ -208,6 +216,10 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   }
 
   function advanceWizard(event, nextStep) {
+    if (type === 'connector' && !connectorCapabilities.mcp && !connectorCapabilities.cli) {
+      setConnectorCapabilityError(true);
+      return;
+    }
     const form = event.currentTarget.form;
     const selector = step === 'artifact'
       ? (type === 'connector' ? '.publish-section-settings' : '.publish-section-assets')
@@ -221,6 +233,11 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   }
 
   function submitWizard(event) {
+    if (type === 'connector' && !connectorCapabilities.mcp && !connectorCapabilities.cli) {
+      setConnectorCapabilityError(true);
+      setStep('artifact');
+      return;
+    }
     const form = event.currentTarget.form;
     const invalid = invalidControlIn(form);
     if (invalid) {
@@ -243,6 +260,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     if (capability === 'mcp' && !enabled && connectorPrimaryType === 'mcp') setConnectorPrimaryType('cli');
     if (capability === 'cli' && !enabled && connectorPrimaryType === 'cli') setConnectorPrimaryType('mcp');
     setConnectorCapabilities((current) => ({ ...current, [capability]: enabled }));
+    if (enabled && (capability === 'mcp' || capability === 'cli')) setConnectorCapabilityError(false);
   }
 
   function changeConnectorAuthMode(mode) {
@@ -262,16 +280,38 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     }));
   }
 
+  function updateConnectorTokenField(id, patch) {
+    setConnectorTokenFields((current) => current.map((field) => field.id === id ? { ...field, ...patch } : field));
+  }
+
+  function updateMCPStaticEnv(id, patch) {
+    setMCPStaticEnv((current) => current.map((entry) => entry.id === id ? { ...entry, ...patch } : entry));
+  }
+
   function updateConnectorTarget(id, patch) {
     setConnectorTargets((current) => current.map((target) => target.id === id ? { ...target, ...patch } : target));
   }
 
   function addConnectorTarget() {
-    setConnectorTargets((current) => [...current, { id: Date.now(), os: 'linux', arch: 'amd64' }]);
+	  const preferredOS = cliTargetSystem === 'win32' ? 'windows' : cliTargetSystem;
+	  const preferredArch = preferredOS === 'darwin' ? 'arm64' : 'amd64';
+	  const candidates = [
+		{ os: preferredOS, arch: preferredArch },
+		{ os: 'darwin', arch: 'arm64' },
+		{ os: 'darwin', arch: 'amd64' },
+		{ os: 'linux', arch: 'amd64' },
+		{ os: 'linux', arch: 'arm64' },
+		{ os: 'windows', arch: 'amd64' },
+		{ os: 'windows', arch: 'arm64' },
+	  ];
+	  setConnectorTargets((current) => {
+		const target = candidates.find((candidate) => !current.some((item) => item.os === candidate.os && item.arch === candidate.arch));
+		return target ? [...current, { id: Date.now(), ...target }] : current;
+	  });
   }
 
   function removeConnectorTarget(id) {
-    setConnectorTargets((current) => current.length > 1 ? current.filter((target) => target.id !== id) : current);
+    setConnectorTargets((current) => current.filter((target) => target.id !== id));
   }
 
   function toggleDepartment(departmentID) {
@@ -389,41 +429,48 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               <span className="publish-section-kicker">02 · MARKET LISTING</span>
               <div><h3>{t.publishBasicInfo}</h3><p>这些信息会出现在市场卡片和详情页中。先让用户一眼知道它能解决什么问题。</p></div>
             </div>
-            <div className="publish-section-grid">
+            <div className="publish-section-grid publish-basic-grid">
               <label>
                 <span className="required-field-label">{t.componentId}</span>
-                <input name="id" required readOnly={updateMode} defaultValue={updateMode ? initialItem.id : ''} onChange={(event) => updateMarketPreview('id', event.target.value)} placeholder="例如：pdf-extractor" pattern="[a-z0-9._-]+" />
+                <input className="publish-code-input" name="id" required readOnly={updateMode} defaultValue={updateMode ? initialItem.id : ''} onChange={(event) => updateMarketPreview('id', event.target.value)} placeholder="例如：pdf-extractor" pattern="[a-z0-9._-]+" maxLength="80" autoCapitalize="none" autoCorrect="off" spellCheck="false" />
                 <small className="field-hint">{updateMode ? t.publishVersionLocked : '仅支持小写字母、数字、连字符、下划线和英文句点；发布后不可修改。'}</small>
               </label>
               <label>
                 <span className="required-field-label">{t.name}</span>
-                <input name="name" required defaultValue={updateMode ? localized(initialItem.name, locale) : ''} onChange={(event) => updateMarketPreview('name', event.target.value)} placeholder="例如：PDF 智能提取助手" />
+                <input name="name" required maxLength="60" defaultValue={updateMode ? localized(initialItem.name, locale) : ''} onChange={(event) => updateMarketPreview('name', event.target.value)} placeholder="例如：PDF 智能提取助手" />
                 <small className="field-hint">使用动词或结果描述，避免只写内部项目代号。</small>
               </label>
-              <label>
+              {updateMode ? <label>
                 <span className="required-field-label">{t.version}</span>
-                <input name="version" required defaultValue={updateMode ? nextPatchVersion(initialItem.version) : '1.0.0'} onChange={(event) => updateMarketPreview('version', event.target.value)} placeholder="1.0.0" />
-                <small className="field-hint">建议使用语义化版本，例如 1.0.0。</small>
-              </label>
-              <label className="publish-image-input">
+                <input name="version" required defaultValue={nextPatchVersion(initialItem.version)} onChange={(event) => updateMarketPreview('version', event.target.value)} placeholder="1.0.0" />
+                <small className="field-hint">已自动递增补丁版本，可按语义化版本规则调整。</small>
+              </label> : <input name="version" type="hidden" value="1.0.0" />}
+              <label className="publish-image-input full">
                 <span>{t.image}</span>
                 <span className="publish-image-control"><span className="publish-image-placeholder"><LayoutGrid size={18} /></span><span><strong>{marketPreview.imageName || '添加封面图'}</strong><small>PNG、JPG、WebP 或 GIF</small></span><Upload size={15} /></span>
                 <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => updateMarketPreview('imageName', event.target.files?.[0]?.name || '')} />
               </label>
               <label className="full">
-                <span className="required-field-label">{t.description}</span>
-                <textarea name="description" rows="4" required defaultValue={updateMode ? localized(initialItem.description, locale) : ''} onChange={(event) => updateMarketPreview('description', event.target.value)} placeholder="例如：从 PDF、扫描件或图片中提取表格和关键信息，并输出为结构化数据。" />
+                <span className="publish-label-row"><span className="required-field-label">{t.description}</span><small>{descriptionLength}/200</small></span>
+                <textarea name="description" rows="4" required maxLength="200" defaultValue={updateMode ? localized(initialItem.description, locale) : ''} onChange={(event) => { updateMarketPreview('description', event.target.value); setDescriptionLength(event.target.value.length); }} placeholder="例如：从 PDF、扫描件或图片中提取表格和关键信息，并输出为结构化数据。" />
                 <small className="field-hint">推荐 40–100 字：说明适用对象、输入内容和交付结果。</small>
               </label>
             </div>
           </section>
 
           {(type === 'connector' || type === 'skill' || type === 'sandbox-image' || type === 'website-app' || type === 'software-package') ? (
-            <section className="publish-section publish-section-settings full">
+            <section className="publish-section publish-section-settings full" hidden={step === 'details' && type === 'connector'}>
               <h3>{t.publishTypeSettings}</h3>
               <div className="publish-section-grid">
           {type === 'skill' ? (
             <>
+              {!showDiscovery ? <div className="publish-default-card full">
+                <span><CheckCircle2 size={16} /><span><strong>已应用推荐分类</strong><small>{t.skillCategories.other} · {t.skillScenarios.productivity} · {t.skillLevels.beginner}</small></span></span>
+                <button type="button" className="text-action" onClick={() => setShowDiscovery(true)}>调整</button>
+                <input type="hidden" name="skillCategory" value={updateMode ? initialItem.skillCategory || 'other' : 'other'} />
+                <input type="hidden" name="skillScenario" value={updateMode ? initialItem.skillScenario || 'productivity' : 'productivity'} />
+                <input type="hidden" name="skillLevel" value={updateMode ? initialItem.skillLevel || 'beginner' : 'beginner'} />
+              </div> : <>
               <label>
                 <span className="required-field-label">{t.skillCategoryTitle}</span>
                 <select name="skillCategory" required defaultValue={updateMode ? initialItem.skillCategory || 'other' : 'other'}>
@@ -442,6 +489,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   {skillLevelOptions.map((level) => <option value={level} key={level}>{t.skillLevels[level]}</option>)}
                 </select>
               </label>
+              <div className="full publish-inline-actions"><button type="button" className="text-action" onClick={() => setShowDiscovery(false)}>使用推荐值并收起</button></div>
+              </>}
               {skillKind === 'package' ? (
                 <div className="skill-picker full">
                   <div className="skill-picker-head">
@@ -483,7 +532,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           {type === 'connector' ? (
             <div className="connector-part-upload full">
               <p className="field-hint">{t.connectorPartUploadHint}</p>
-              <div className="connector-capability-picker">
+              <div className={connectorCapabilityError ? 'connector-capability-picker is-invalid' : 'connector-capability-picker'} aria-describedby={connectorCapabilityError ? 'connector-capability-error' : undefined}>
                 {connectorAuthMode === 'mcp' ? <input name="connectorHasMCP" type="hidden" value="on" /> : null}
                 {['mcp', 'cli', 'skill'].map((capability) => (
                   <label className="checkbox-field" key={capability}>
@@ -492,14 +541,15 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   </label>
                 ))}
               </div>
+              {connectorCapabilityError ? <p className="connector-capability-error" id="connector-capability-error" role="alert">请至少选择 MCP 或 CLI；Skill 只能作为附加能力。</p> : null}
               <div className="publish-section-grid">
-                <label>
+                {enabledPrimaryCapabilities.length > 1 ? <label>
                   <span className="required-field-label">{t.connectorPrimaryTypeField}</span>
                   <select name="connectorPrimaryType" value={connectorPrimaryType} onChange={(event) => setConnectorPrimaryType(event.target.value)} required>
                     {connectorCapabilities.mcp ? <option value="mcp">MCP</option> : null}
                     {connectorCapabilities.cli ? <option value="cli">CLI</option> : null}
                   </select>
-                </label>
+                </label> : <input name="connectorPrimaryType" type="hidden" value={enabledPrimaryCapabilities[0] || connectorPrimaryType} />}
                 <label>
                   <span className="required-field-label">{t.connectorAuthModeField}</span>
                   <select name="connectorAuthMode" value={connectorAuthMode} onChange={(event) => changeConnectorAuthMode(event.target.value)} required>
@@ -513,75 +563,66 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               </div>
 
               {connectorAuthMode === 'token' ? (
-                <div className="publish-field-card full">
+                <div className="publish-field-card connector-runtime-panel full">
                   <h4>{t.connectorTokenTitle}</h4>
-                  <div className="publish-section-grid">
-                    <label><span>{t.connectorTokenFormTitle}</span><input name="connectorTokenTitle" placeholder="服务凭据" /></label>
-                    <label><span className="required-field-label">{t.connectorTokenKey}</span><input name="connectorTokenKey" required defaultValue="API_KEY" pattern="[A-Z][A-Z0-9_]*" /></label>
-                    <label><span className="required-field-label">{t.connectorTokenLabel}</span><input name="connectorTokenLabel" required defaultValue="API Key" /></label>
-                    <label><span>{t.connectorTokenInputType}</span><select name="connectorTokenType" defaultValue="password"><option value="password">password</option><option value="text">text</option></select></label>
+                  {!showConnectorAdvanced ? <div className="publish-default-card">
+                    <span><CheckCircle2 size={16} /><span><strong>使用标准 API Key 凭据</strong><small>API_KEY · 密码输入框 · 自动安全注入</small></span></span>
+                    <button type="button" className="text-action" onClick={() => setShowConnectorAdvanced(true)}>调整</button>
+                    <input name="connectorTokenKey" type="hidden" value="API_KEY" />
+                    <input name="connectorTokenLabel" type="hidden" value="API Key" />
+                    <input name="connectorTokenType" type="hidden" value="password" />
+                    {connectorCapabilities.mcp ? <input name="connectorMCPAuthHeader" type="hidden" value={mcpTransport === 'stdio' ? 'API_KEY' : 'X-API-Key'} /> : null}
+                    {connectorCapabilities.cli ? <input name="connectorCLIAuthEnv" type="hidden" value="API_KEY" /> : null}
+                  </div> : <div className="publish-section-grid">
+                    <label className="full"><span>{t.connectorTokenFormTitle}</span><input name="connectorTokenTitle" placeholder="服务凭据" /></label>
+                    {connectorTokenFields.map((field, index) => <div className="connector-env-row full" key={field.id}>
+                      <label><span className="required-field-label">凭据变量名</span><input name="connectorTokenKey" required value={field.key} onChange={(event) => updateConnectorTokenField(field.id, { key: event.target.value })} pattern="[A-Z][A-Z0-9_]*" /></label>
+                      <label><span className="required-field-label">显示名称</span><input name="connectorTokenLabel" required value={field.label} onChange={(event) => updateConnectorTokenField(field.id, { label: event.target.value })} /></label>
+                      <label><span>输入类型</span><select name="connectorTokenType" value={field.type} onChange={(event) => updateConnectorTokenField(field.id, { type: event.target.value })}><option value="password">password</option><option value="text">text</option></select></label>
+                      <label><span>注入环境变量</span><input name="connectorTokenEnvName" required={connectorCapabilities.mcp && mcpTransport === 'stdio'} value={field.env} onChange={(event) => updateConnectorTokenField(field.id, { env: event.target.value })} pattern="[A-Z][A-Z0-9_]*" /></label>
+                      {index ? <button className="secondary-action" type="button" onClick={() => setConnectorTokenFields((current) => current.filter((entry) => entry.id !== field.id))}><Trash2 size={14} /><span>移除凭据</span></button> : null}
+                    </div>)}
+                    <button className="secondary-action" type="button" onClick={() => setConnectorTokenFields((current) => [...current, { id: Date.now(), key: '', label: '', type: 'password', env: '' }])}><Plus size={14} /><span>添加凭据字段</span></button>
                     <label><span>{t.connectorTokenDocURL}</span><input name="connectorTokenDocURL" type="url" placeholder="https://docs.example.com/api-keys" /></label>
                     {connectorCapabilities.mcp ? <label key={mcpTransport}><span>{mcpTransport === 'stdio' ? t.connectorMCPAuthEnv : t.connectorMCPAuthHeader}</span><input name="connectorMCPAuthHeader" defaultValue={mcpTransport === 'stdio' ? 'API_KEY' : 'X-API-Key'} /></label> : null}
                     {connectorCapabilities.mcp && mcpTransport === 'streamableHttp' ? <label><span>{t.connectorMCPAuthPrefix}</span><input name="connectorMCPAuthPrefix" placeholder="Bearer " /></label> : null}
                     {connectorCapabilities.cli ? <label><span>{t.connectorCLIAuthEnv}</span><input name="connectorCLIAuthEnv" defaultValue="API_KEY" pattern="[A-Z_][A-Z0-9_]*" /></label> : null}
-                  </div>
+                  </div>}
                 </div>
               ) : null}
 
               {connectorAuthMode === 'oauth' ? (
-                <div className="publish-field-card full">
+                <div className="publish-field-card connector-runtime-panel full">
                   <h4>{t.connectorOAuthTitle}</h4>
                   <div className="publish-section-grid">
                     <label><span className="required-field-label">issuer</span><input name="connectorOAuthIssuer" type="url" required placeholder="https://accounts.example.com" /></label>
                     <label><span className="required-field-label">resource</span><input name="connectorOAuthResource" type="url" required placeholder="https://api.example.com/mcp" /></label>
-                    <label className="full"><span>{t.connectorOAuthScopes}</span><input name="connectorOAuthScopes" placeholder="documents.read documents.write" /></label>
+                    {showConnectorAdvanced ? <><label className="full"><span>{t.connectorOAuthScopes}</span><input name="connectorOAuthScopes" placeholder="documents.read documents.write" /></label>
                     <label><span>authorization_endpoint</span><input name="connectorOAuthAuthorizationEndpoint" type="url" /></label>
                     <label><span>token_endpoint</span><input name="connectorOAuthTokenEndpoint" type="url" /></label>
-                    <label><span>revocation_endpoint</span><input name="connectorOAuthRevocationEndpoint" type="url" /></label>
+                    <label><span>revocation_endpoint</span><input name="connectorOAuthRevocationEndpoint" type="url" /></label></> : null}
                   </div>
                 </div>
               ) : null}
 
               {connectorCapabilities.mcp ? (
-                <div className="publish-field-card full">
+                <div className="publish-field-card connector-runtime-panel full">
                   <h4>MCP</h4>
-                  {mcpTransport === 'stdio' ? <div className="connector-capability-picker"><label className="checkbox-field"><input type="checkbox" checked={mcpHasRuntime} onChange={(event) => setMCPHasRuntime(event.target.checked)} /><span>{t.cliRuntimeToggle}</span></label></div> : null}
+                  {mcpTransport === 'stdio' && showConnectorAdvanced ? <div className="connector-capability-picker"><label className="checkbox-field"><input type="checkbox" checked={mcpHasRuntime} onChange={(event) => setMCPHasRuntime(event.target.checked)} /><span>{t.cliRuntimeToggle}</span></label></div> : null}
                   <div className="publish-section-grid">
-                    <label><span className="required-field-label">{t.mcpServerName}</span><input name="mcpServerName" required defaultValue="main" /></label>
+                    {showConnectorAdvanced ? <label><span>{t.mcpServerName}</span><input name="mcpServerName" defaultValue="main" /></label> : <input name="mcpServerName" type="hidden" value="main" />}
                     <label><span className="required-field-label">{t.mcpTransport}</span><select name="mcpTransport" value={mcpTransport} onChange={(event) => setMCPTransport(event.target.value)} disabled={connectorAuthMode === 'mcp'}><option value="streamableHttp">HTTP / streamableHttp</option><option value="stdio">stdio</option></select></label>
                     <label className="full"><span className="required-field-label">{mcpTransport === 'stdio' ? t.mcpCommand : t.mcpURL}</span><input name="mcpAddress" type={mcpTransport === 'stdio' ? 'text' : 'url'} required placeholder={mcpTransport === 'stdio' ? 'office-cli' : 'https://example.com/mcp'} /></label>
                     {mcpTransport === 'stdio' ? <label className="full"><span>{t.connectorArgs}</span><textarea name="mcpArgs" rows={3} placeholder={'mcp\nserve'} /><small className="field-hint">{t.connectorArgsHint}</small></label> : null}
-                    {mcpTransport === 'stdio' && mcpHasRuntime ? <><label><span className="required-field-label">runtime.type</span><input name="mcpRuntimeType" required placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="mcpRuntimeVersion" required placeholder=">=20" /></label></> : null}
-                    <label><span>{t.mcpTimeout}</span><input name="mcpTimeout" type="number" min="1" defaultValue="30000" /></label>
+                    {mcpTransport === 'stdio' && mcpHasRuntime && showConnectorAdvanced ? <><label><span className="required-field-label">runtime.type</span><input name="mcpRuntimeType" required placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="mcpRuntimeVersion" required placeholder=">=20" /></label></> : null}
+                    {showConnectorAdvanced ? <><label><span>{t.mcpTimeout}</span><input name="mcpTimeout" type="number" min="1" defaultValue="30000" /></label>
                     {mcpTransport === 'streamableHttp' ? <><label><span>{t.mcpStaticHeaderName}</span><input name="mcpStaticHeaderName" placeholder="X-Client" /></label><label><span>{t.mcpStaticHeaderValue}</span><input name="mcpStaticHeaderValue" placeholder="AgentHost" /></label></> : null}
-                    {mcpTransport === 'stdio' ? <><label><span>{t.staticEnvName}</span><input name="mcpStaticEnvName" placeholder="REGION" /></label><label><span>{t.staticEnvValue}</span><input name="mcpStaticEnvValue" placeholder="cn" /></label></> : null}
+                    {mcpTransport === 'stdio' ? <div className="full connector-env-list"><span>公开环境变量</span>{mcpStaticEnv.map((entry, index) => <div className="connector-env-row" key={entry.id}><label><span>{t.staticEnvName}</span><input name="mcpStaticEnvName" value={entry.name} onChange={(event) => updateMCPStaticEnv(entry.id, { name: event.target.value })} placeholder="JIRA_URL" /></label><label><span>{t.staticEnvValue}</span><input name="mcpStaticEnvValue" value={entry.value} onChange={(event) => updateMCPStaticEnv(entry.id, { value: event.target.value })} placeholder="https://company.atlassian.net" /></label>{index ? <button className="secondary-action" type="button" onClick={() => setMCPStaticEnv((current) => current.filter((item) => item.id !== entry.id))}><Trash2 size={14} /><span>移除</span></button> : null}</div>)}<button className="secondary-action" type="button" onClick={() => setMCPStaticEnv((current) => [...current, { id: Date.now(), name: '', value: '' }])}><Plus size={14} /><span>添加环境变量</span></button></div> : null}</> : <input name="mcpTimeout" type="hidden" value="30000" />}
                   </div>
-                </div>
-              ) : null}
-
-              {connectorCapabilities.cli ? (
-                <div className="publish-field-card full">
-                  <h4>CLI</h4>
-                  <div className="connector-capability-picker">
-                    <label className="checkbox-field"><input type="checkbox" checked={connectorHasRuntime} onChange={(event) => setConnectorHasRuntime(event.target.checked)} /><span>{t.cliRuntimeToggle}</span></label>
-                    {connectorAuthMode === 'null' ? <label className="checkbox-field"><input type="checkbox" checked={connectorHasCLIAuth} onChange={(event) => setConnectorHasCLIAuth(event.target.checked)} /><span>{t.cliAuthToggle}</span></label> : null}
-                  </div>
-                  <div className="publish-section-grid">
-                    <label className="full"><span className="required-field-label">{t.cliTargetSystem}</span><select name="cliTargetSystem" value={cliTargetSystem} onChange={(event) => setCLITargetSystem(event.target.value)}><option value="darwin">macOS (darwin)</option><option value="linux">Linux</option><option value="win32">Windows (win32)</option></select><small className="field-hint">{t.cliTargetSystemHint}</small></label>
-                    {connectorHasRuntime ? <><label><span className="required-field-label">runtime.type</span><input name="cliRuntimeType" required placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="cliRuntimeVersion" required placeholder=">=20" /></label></> : null}
-                    <label className="full"><span className="required-field-label">versionCheck.minVersion</span><input name="cliMinVersion" required defaultValue={updateMode ? nextPatchVersion(initialItem.version) : '1.0.0'} /></label>
-                    {Object.entries(cliSystemCommands).filter(([system]) => system !== cliTargetSystem).flatMap(([system, commands]) => {
-                      const suffix = system === 'darwin' ? 'Darwin' : system === 'linux' ? 'Linux' : 'Win32';
-                      return Object.entries(commands).filter(([field]) => connectorHasCLIAuth || !['auth', 'status', 'unAuth'].includes(field)).map(([field, value]) => <input key={`${system}-${field}`} type="hidden" name={`cli${field[0].toUpperCase()}${field.slice(1)}${suffix}`} value={value} />);
-                    })}
-                    <label><span>versionCheck</span><input name={`cliVersion${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].version} onChange={(event) => updateCLISystemCommand('version', event.target.value)} placeholder={cliTargetSystem === 'win32' ? 'office-cli.exe --version' : 'office-cli --version'} /></label>
-                    <label><span>versionPattern</span><input name="cliVersionPattern" placeholder="v?(\\d+\\.\\d+\\.\\d+)" /></label>
-                    <label><span>init</span><input name={`cliInit${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].init} onChange={(event) => updateCLISystemCommand('init', event.target.value)} /></label>
-                    {connectorHasCLIAuth ? <><label><span>auth</span><input name={`cliAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].auth} onChange={(event) => updateCLISystemCommand('auth', event.target.value)} /></label><label><span>status</span><input name={`cliStatus${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].status} onChange={(event) => updateCLISystemCommand('status', event.target.value)} /></label><label><span>unAuth</span><input name={`cliUnAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].unAuth} onChange={(event) => updateCLISystemCommand('unAuth', event.target.value)} /></label><label className="full"><span>statusMatch</span><input name="cliStatusMatch" /></label><label className="full"><span>statusMatchJson</span><textarea name="cliStatusMatchJSON" rows={2} placeholder={'{"authenticated":true}'} /></label><label><span>authUrlDomain</span><input name="cliAuthURLDomain" placeholder="accounts.example.com" /></label><label className="checkbox-field"><input name="cliAuthWaitForExit" type="checkbox" defaultChecked /><span>authWaitForExit</span></label><label className="checkbox-field"><input name="cliAuthSuppressBrowser" type="checkbox" /><span>authSuppressBrowser</span></label></> : null}
-                    <label><span>{t.staticEnvName}</span><input name="cliStaticEnvName" placeholder="REGION" /></label><label><span>{t.staticEnvValue}</span><input name="cliStaticEnvValue" placeholder="cn" /></label>
-                    <div className="publish-field-card full">
-                      <h4>{t.connectorPlatformTargets}</h4>
-                      <small className="field-hint">{t.connectorPlatformTargetsHint}</small>
+                  {mcpTransport === 'stdio' && !connectorCapabilities.cli ? <div className="publish-section-grid">
+                    {connectorTargets.length ? <div className="publish-field-card full">
+                      <h4>随包 stdio 可执行文件</h4>
+                      <small className="field-hint">为每个目标平台上传 ZIP；ZIP 中的文件会被放入连接器包的 bin/ 目录。运行时会将 bin/ 加入受控 PATH，因此命令可直接填写文件名，例如 uvx 或 uvx.exe。</small>
                       <div className="publish-section-grid platform-variant-list">
                         {connectorTargets.map((target, index) => {
                           const key = `${target.os}-${target.arch}`;
@@ -589,13 +630,54 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                             <input name="connectorTargetIndex" type="hidden" value={index} />
                             <label><span className="required-field-label">{t.os}</span><select name={`connectorTargetOS.${index}`} value={target.os} onChange={(event) => updateConnectorTarget(target.id, { os: event.target.value })}><option value="darwin">macOS</option><option value="linux">Linux</option><option value="windows">Windows</option></select></label>
                             <label><span className="required-field-label">{t.arch}</span><select name={`connectorTargetArch.${index}`} value={target.arch} onChange={(event) => updateConnectorTarget(target.id, { arch: event.target.value })}><option value="arm64">arm64</option><option value="amd64">amd64 / x64</option></select></label>
-                            <label className="full"><span>{t.cliArchive} · {key}</span><input name={`connectorCLIArchive.${key}`} type="file" accept="application/zip,.zip" /><small className="field-hint">{t.cliPlatformArchiveHint}</small></label>
-                            <button className="secondary-action" type="button" disabled={connectorTargets.length === 1} onClick={() => removeConnectorTarget(target.id)}><Trash2 size={14} /><span>{t.removePlatformVariant}</span></button>
+                            <label className="full"><span>可执行文件 ZIP · {key}</span><input name={`connectorCLIArchive.${key}`} type="file" accept="application/zip,.zip" /><small className="field-hint">ZIP 内直接放可执行文件；发布后会自动归档到 bin/。</small></label>
+                            <button className="secondary-action" type="button" onClick={() => removeConnectorTarget(target.id)}><Trash2 size={14} /><span>{t.removePlatformVariant}</span></button>
                           </div>;
                         })}
-                        <button className="secondary-action" type="button" onClick={addConnectorTarget}><Plus size={14} /><span>{t.addPlatformVariant}</span></button>
                       </div>
-                    </div>
+                    </div> : null}
+                    <button className="secondary-action connector-add-artifact" type="button" onClick={addConnectorTarget}><Plus size={14} /><span>添加随包 stdio 可执行文件（可选）</span></button>
+                  </div> : null}
+                </div>
+              ) : null}
+
+              {connectorCapabilities.cli ? (
+                <div className="publish-field-card connector-runtime-panel full">
+                  <h4>CLI</h4>
+                  <div className="connector-capability-picker">
+                    {showConnectorAdvanced ? <label className="checkbox-field"><input type="checkbox" checked={connectorHasRuntime} onChange={(event) => setConnectorHasRuntime(event.target.checked)} /><span>{t.cliRuntimeToggle}</span></label> : null}
+                    {connectorAuthMode === 'null' ? <label className="checkbox-field"><input type="checkbox" checked={connectorHasCLIAuth} onChange={(event) => setConnectorHasCLIAuth(event.target.checked)} /><span>{t.cliAuthToggle}</span></label> : null}
+                  </div>
+                  <div className="publish-section-grid">
+                    <label className="full"><span className="required-field-label">{t.cliTargetSystem}</span><select name="cliTargetSystem" value={cliTargetSystem} onChange={(event) => setCLITargetSystem(event.target.value)}><option value="darwin">macOS (darwin)</option><option value="linux">Linux</option><option value="win32">Windows (win32)</option></select><small className="field-hint">{t.cliTargetSystemHint}</small></label>
+                    {connectorHasRuntime ? <><label><span className="required-field-label">runtime.type</span><input name="cliRuntimeType" required placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="cliRuntimeVersion" required placeholder=">=20" /></label></> : null}
+                    <input name="cliMinVersion" type="hidden" value={marketPreview.version || '1.0.0'} />
+                    {Object.entries(cliSystemCommands).filter(([system]) => system !== cliTargetSystem).flatMap(([system, commands]) => {
+                      const suffix = system === 'darwin' ? 'Darwin' : system === 'linux' ? 'Linux' : 'Win32';
+                      return Object.entries(commands).filter(([field]) => connectorHasCLIAuth || !['auth', 'status', 'unAuth'].includes(field)).map(([field, value]) => <input key={`${system}-${field}`} type="hidden" name={`cli${field[0].toUpperCase()}${field.slice(1)}${suffix}`} value={value} />);
+                    })}
+                    <label className="full"><span className="required-field-label">版本检查命令</span><input required name={`cliVersion${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].version} onChange={(event) => updateCLISystemCommand('version', event.target.value)} placeholder={cliTargetSystem === 'win32' ? 'office-cli.exe --version' : 'office-cli --version'} /><small className="field-hint">用于确认 CLI 已安装且版本符合要求；最低版本自动跟随本次发布版本。</small></label>
+                    {showConnectorAdvanced ? <><label><span>versionPattern</span><input name="cliVersionPattern" placeholder="v?(\\d+\\.\\d+\\.\\d+)" /></label>
+                    <label><span>init</span><input name={`cliInit${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].init} onChange={(event) => updateCLISystemCommand('init', event.target.value)} /></label></> : null}
+                    {connectorHasCLIAuth ? <><label><span>auth</span><input name={`cliAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].auth} onChange={(event) => updateCLISystemCommand('auth', event.target.value)} /></label><label><span>status</span><input name={`cliStatus${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].status} onChange={(event) => updateCLISystemCommand('status', event.target.value)} /></label><label><span>unAuth</span><input name={`cliUnAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].unAuth} onChange={(event) => updateCLISystemCommand('unAuth', event.target.value)} /></label><label className="full"><span>statusMatch</span><input name="cliStatusMatch" /></label><label className="full"><span>statusMatchJson</span><textarea name="cliStatusMatchJSON" rows={2} placeholder={'{"authenticated":true}'} /></label><label><span>authUrlDomain</span><input name="cliAuthURLDomain" placeholder="accounts.example.com" /></label><label className="checkbox-field"><input name="cliAuthWaitForExit" type="checkbox" defaultChecked /><span>authWaitForExit</span></label><label className="checkbox-field"><input name="cliAuthSuppressBrowser" type="checkbox" /><span>authSuppressBrowser</span></label></> : null}
+                    {showConnectorAdvanced ? <><label><span>{t.staticEnvName}</span><input name="cliStaticEnvName" placeholder="REGION" /></label><label><span>{t.staticEnvValue}</span><input name="cliStaticEnvValue" placeholder="cn" /></label></> : null}
+                    {connectorTargets.length ? <div className="publish-field-card full">
+                      <h4>{t.connectorPlatformTargets}</h4>
+                      <small className="field-hint">仅在随包提供可执行文件时指定目标平台；ZIP 中的文件会被放入 bin/，由运行时加入受控 PATH。</small>
+                      <div className="publish-section-grid platform-variant-list">
+                        {connectorTargets.map((target, index) => {
+                          const key = `${target.os}-${target.arch}`;
+                          return <div className="publish-field-card platform-variant-card full" key={target.id}>
+                            <input name="connectorTargetIndex" type="hidden" value={index} />
+                            <label><span className="required-field-label">{t.os}</span><select name={`connectorTargetOS.${index}`} value={target.os} onChange={(event) => updateConnectorTarget(target.id, { os: event.target.value })}><option value="darwin">macOS</option><option value="linux">Linux</option><option value="windows">Windows</option></select></label>
+                            <label><span className="required-field-label">{t.arch}</span><select name={`connectorTargetArch.${index}`} value={target.arch} onChange={(event) => updateConnectorTarget(target.id, { arch: event.target.value })}><option value="arm64">arm64</option><option value="amd64">amd64 / x64</option></select></label>
+                            <label className="full"><span>随包可执行文件 ZIP · {key}</span><input name={`connectorCLIArchive.${key}`} type="file" accept="application/zip,.zip" /><small className="field-hint">ZIP 内文件会被放入 bin/；运行时会以受控 PATH 调用。</small></label>
+                            <button className="secondary-action" type="button" onClick={() => removeConnectorTarget(target.id)}><Trash2 size={14} /><span>{t.removePlatformVariant}</span></button>
+                          </div>;
+                        })}
+                      </div>
+                    </div> : null}
+                    <button className="secondary-action connector-add-artifact" type="button" onClick={addConnectorTarget}><Plus size={14} /><span>添加随包可执行文件（可选）</span></button>
                   </div>
                 </div>
               ) : null}
@@ -606,6 +688,10 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   <label className="full"><span className="required-field-label">{t.connectorSkillsArchive}</span><input name="connectorSkillsArchive" type="file" accept="application/zip,.zip" required /><small className="field-hint">{t.connectorSkillsArchiveHint}</small></label>
                 </div>
               ) : null}
+              <button className="advanced-toggle connector-advanced-toggle full" type="button" onClick={() => setShowConnectorAdvanced((value) => !value)}>
+                <span><strong>{showConnectorAdvanced ? '收起连接器高级配置' : '连接器高级配置'}</strong><small>运行时、固定 Header / 环境变量、OAuth 端点和版本解析</small></span>
+                <ArrowRight size={14} />
+              </button>
               <small className="field-hint">{t.connectorPartUploadRequirement}</small>
             </div>
           ) : null}
@@ -749,7 +835,11 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
               <span className="publish-section-kicker">03 · DISTRIBUTION</span>
               <div><h3>{t.accessScope}</h3><p>审核通过后，按此范围将组件展示给组织成员。</p></div>
             </div>
-            <div className="publish-section-grid">
+            {!showAccess && accessMode === 'all' ? <div className="publish-default-card">
+              <span><CheckCircle2 size={16} /><span><strong>{t.accessAll}</strong><small>{t.accessAllHint}</small></span></span>
+              <button type="button" className="text-action" onClick={() => setShowAccess(true)}>调整范围</button>
+              <input name="accessMode" type="hidden" value="all" />
+            </div> : <div className="publish-section-grid">
               <label className="checkbox-field">
                 <input name="accessMode" type="radio" value="all" checked={accessMode === 'all'} onChange={() => setAccessMode('all')} />
                 <span>{t.accessAll}</span>
@@ -792,7 +882,8 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   {directoryStatus === 'error' ? <small className="field-hint">{t.accessDirectoryError}</small> : null}
                 </div>
               ) : null}
-            </div>
+              <div className="full publish-inline-actions"><button type="button" className="text-action" onClick={() => { setAccessMode('all'); setShowAccess(false); }}>恢复全员可见并收起</button></div>
+            </div>}
           </section>
 
           <section className="publish-section publish-section-advanced full">

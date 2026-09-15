@@ -167,19 +167,40 @@ describe('connector-only publishing', () => {
     expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeInTheDocument();
 
     fireEvent.change(container.querySelector('[name="connectorAuthMode"]'), { target: { value: 'token' } });
-    expect(container.querySelector('[name="connectorTokenKey"]')).toBeRequired();
-    expect(container.querySelector('[name="connectorTokenLabel"]')).toBeRequired();
+    expect(container.querySelector('[name="connectorTokenKey"]')).toHaveAttribute('type', 'hidden');
+    expect(container.querySelector('[name="connectorTokenKey"]')).toHaveValue('API_KEY');
+    expect(container.querySelector('[name="connectorTokenLabel"]')).toHaveValue('API Key');
 
     fireEvent.click(container.querySelector('[name="connectorHasCLI"]'));
     fireEvent.click(container.querySelector('[name="connectorHasSKILL"]'));
-    expect(container.querySelector('[name="cliMinVersion"]')).toBeRequired();
+    expect(container.querySelector('[name="cliMinVersion"]')).toHaveAttribute('type', 'hidden');
+    expect(container.querySelector('[name="cliMinVersion"]')).toHaveValue('1.0.0');
     expect(container.querySelector('[name="cliTargetSystem"]')).toHaveValue('darwin');
+    expect(container.querySelector('[name="connectorTargetOS.0"]')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('添加随包可执行文件（可选）'));
     expect(container.querySelector('[name="connectorTargetOS.0"]')).toHaveValue('darwin');
     expect(container.querySelector('[name="connectorTargetArch.0"]')).toHaveValue('arm64');
     expect(container.querySelector('[name="connectorCLIArchive.darwin-arm64"]')).toHaveAttribute('accept', 'application/zip,.zip');
     expect(container.querySelector('[name="connectorSkillsArchive"]')).toBeRequired();
     expect(container.querySelector('[name="connectorSkillsArchive"]')).toHaveAttribute('accept', 'application/zip,.zip');
     expect(screen.getByText(/提交时市场会生成标准目录/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('连接器高级配置'));
+    expect(container.querySelector('[name="connectorTokenKey"]')).toBeRequired();
+    expect(container.querySelector('[name="mcpServerName"]')).toHaveValue('main');
+    expect(container.querySelector('[name="mcpTimeout"]')).toHaveValue(30000);
+  });
+
+  it('infers the primary type unless both MCP and CLI are enabled', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+    fireEvent.click(screen.getByText('连接器'));
+
+    expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveAttribute('type', 'hidden');
+    expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveValue('mcp');
+    fireEvent.click(container.querySelector('[name="connectorHasCLI"]'));
+    expect(container.querySelector('[name="connectorPrimaryType"]')).not.toHaveAttribute('type', 'hidden');
   });
 
   it('edits one CLI operating system at a time and preserves commands while switching', () => {
@@ -210,10 +231,35 @@ describe('connector-only publishing', () => {
     fireEvent.click(screen.getByText('连接器'));
     fireEvent.click(container.querySelector('[name="connectorHasCLI"]'));
 
-    fireEvent.click(screen.getByText('添加平台制品'));
+    fireEvent.click(screen.getByText('添加随包可执行文件（可选）'));
+    expect(container.querySelector('[name="connectorTargetOS.0"]')).toHaveValue('darwin');
+    expect(container.querySelector('[name="connectorTargetArch.0"]')).toHaveValue('arm64');
+    expect(container.querySelector('[name="connectorCLIArchive.darwin-arm64"]')).toBeInTheDocument();
+
+    fireEvent.change(container.querySelector('[name="cliTargetSystem"]'), { target: { value: 'linux' } });
+    fireEvent.click(screen.getByText('添加随包可执行文件（可选）'));
     expect(container.querySelector('[name="connectorTargetOS.1"]')).toHaveValue('linux');
     expect(container.querySelector('[name="connectorTargetArch.1"]')).toHaveValue('amd64');
     expect(container.querySelector('[name="connectorCLIArchive.linux-amd64"]')).toBeInTheDocument();
+  });
+
+  it('allows stdio MCP packages to carry a binary and avoids duplicate default targets', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+    fireEvent.click(screen.getByText('连接器'));
+    fireEvent.change(container.querySelector('[name="mcpTransport"]'), { target: { value: 'stdio' } });
+
+    fireEvent.click(screen.getByText('添加随包 stdio 可执行文件（可选）'));
+    fireEvent.click(screen.getByText('添加随包 stdio 可执行文件（可选）'));
+    expect(container.querySelector('[name="connectorTargetOS.0"]')).toHaveValue('darwin');
+    expect(container.querySelector('[name="connectorTargetArch.0"]')).toHaveValue('arm64');
+    expect(container.querySelector('[name="connectorTargetOS.1"]')).toHaveValue('darwin');
+    expect(container.querySelector('[name="connectorTargetArch.1"]')).toHaveValue('amd64');
+
+    fireEvent.change(container.querySelector('[name="connectorAuthMode"]'), { target: { value: 'token' } });
+    fireEvent.click(screen.getByText('连接器高级配置'));
+    expect(container.querySelector('[name="connectorTokenEnvName"]')).toBeRequired();
   });
 
   it('shows authentication-specific fields and locks MCP OAuth to HTTP MCP', () => {
@@ -235,6 +281,57 @@ describe('connector-only publishing', () => {
 });
 
 describe('guided publish workflow', () => {
+  it('requires MCP or CLI before advancing a connector release', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+
+    fireEvent.click(screen.getByText('连接器'));
+    fireEvent.click(container.querySelector('[name="connectorHasMCP"]'));
+    fireEvent.click(screen.getByText('下一步：填写发布信息'));
+
+    expect(container.querySelector('form')).toHaveClass('is-artifact');
+    expect(screen.getByRole('alert')).toHaveTextContent('请至少选择 MCP 或 CLI；Skill 只能作为附加能力。');
+  });
+
+  it('does not repeat connector type settings in the market details step', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+
+    fireEvent.click(screen.getByText('连接器'));
+    fireEvent.change(container.querySelector('[name="mcpAddress"]'), { target: { value: 'https://example.com/mcp' } });
+    fireEvent.click(screen.getByText('下一步：填写发布信息'));
+
+    expect(container.querySelector('form')).toHaveClass('is-details');
+    expect(container.querySelector('.publish-section-settings')).toHaveAttribute('hidden');
+    expect(container.querySelector('.publish-section-basic')).toBeVisible();
+  });
+
+  it('applies first-release and distribution defaults without asking the developer to fill them', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+
+    fireEvent.click(screen.getByText('智能体'));
+    expect(container.querySelector('[name="version"]')).toHaveAttribute('type', 'hidden');
+    expect(container.querySelector('[name="version"]')).toHaveValue('1.0.0');
+    expect(container.querySelector('[name="accessMode"]')).toHaveAttribute('type', 'hidden');
+    expect(screen.getByText('调整范围')).toBeInTheDocument();
+  });
+
+  it('keeps skill discovery defaults compact until the developer chooses to adjust them', () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+
+    fireEvent.click(screen.getByText('单个技能'));
+    expect(screen.getByText('已应用推荐分类')).toBeInTheDocument();
+    expect(container.querySelector('[name="skillCategory"]')).toHaveAttribute('type', 'hidden');
+    fireEvent.click(screen.getByText('调整'));
+    expect(screen.getByLabelText('技能分类')).toBeVisible();
+  });
+
   it('requires the artifact step before moving to market details', () => {
     const { container } = render(
       <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
