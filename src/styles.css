@@ -4741,6 +4741,140 @@ img {
   gap: 12px;
 }
 
+.connector-components {
+  display: grid;
+  gap: 16px;
+}
+
+.connector-components-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.connector-components-heading h3,
+.connector-component-group h4 {
+  margin: 0;
+}
+
+.connector-components-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.connector-component-group {
+  display: grid;
+  gap: 8px;
+}
+
+.connector-component-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.connector-component-group-heading h4 {
+  font-size: 14px;
+}
+
+.connector-component-group-heading span {
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.connector-component-list {
+  display: grid;
+  gap: 8px;
+}
+
+.connector-component-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.connector-component-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, var(--line));
+  border-radius: 10px;
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.connector-component-icon.is-mcp { color: var(--muted); background: var(--surface); border-color: var(--line); }
+.connector-component-icon.is-cli { color: var(--text); background: var(--surface); border-color: var(--line); }
+
+.connector-component-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.connector-component-copy > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.connector-component-copy strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.connector-component-copy span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 10px;
+}
+
+.connector-component-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.connector-components-toggle {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--faint);
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.connector-components-toggle:hover,
+.connector-components-toggle:focus-visible {
+  color: var(--brand);
+  outline: 0;
+}
+
+.connector-components-toggle svg {
+  transition: transform 160ms ease;
+}
+
+.connector-components-toggle.is-expanded svg {
+  transform: rotate(180deg);
+}
+
 .included-skill-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

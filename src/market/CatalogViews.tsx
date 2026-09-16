@@ -17,6 +17,7 @@ import {
   Info,
   Languages,
   LayoutGrid,
+  LibraryBig,
   LogIn,
   LogOut,
   Moon,
@@ -30,6 +31,7 @@ import {
   ShieldCheck,
   Sun,
   Terminal,
+  Unplug,
   Trash2,
   Upload,
   User,
@@ -330,25 +332,10 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
             {isSkillPackage(item) && Array.isArray(item.includedSkills) && item.includedSkills.length ? (
               <IncludedSkillsSection item={item} locale={locale} t={t} />
             ) : null}
+            {item.type === 'connector' ? <ConnectorComponentsSection item={item} t={t} /> : null}
           </section>
 
           <section className="detail-side">
-            {item.type === 'connector' ? (
-              <section className="side-section">
-                <h3>{t.connectorProfile}</h3>
-                <div className="mcp-detail-facts">
-                  <span><strong>{t.connectorPrimaryType}</strong><code>{item.connectorPrimaryType || '-'}</code></span>
-                  <span><strong>{t.connectorAuthMode}</strong><code>{item.connectorAuthMode || '-'}</code></span>
-                  <span><strong>{t.connectorSpecVersion}</strong><code>{item.connectorSpecVersion || '-'}</code></span>
-                </div>
-                {item.connectorCapabilities?.length ? (
-                  <div className="skill-facts">
-                    {item.connectorCapabilities.map((capability) => <span key={capability}>{capability}</span>)}
-                  </div>
-                ) : null}
-              </section>
-            ) : null}
-
             {usageHints.length ? (
               <section className="side-section usage-hint-section">
                 <h3>{t.usageHintTitle}</h3>
@@ -395,6 +382,91 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
         ) : null}
       </aside>
     </div>
+  );
+}
+
+export function ConnectorComponentsSection({ item, t }) {
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const capabilities = new Set((item.connectorCapabilities || []).map((capability) => String(capability).toLowerCase()));
+  const config = item.connectorConfig || {};
+  const skills = Array.isArray(item.connectorSkillNames) ? item.connectorSkillNames.filter(Boolean) : [];
+  const mcp = config.mcp || {};
+  const cli = config.cli || {};
+  const mcpTransports = (item.connectorMCPTransports || []).filter(Boolean);
+  const cliPlatforms = Object.entries(cli.versionCommand || {})
+    .filter(([, command]) => Boolean(command))
+    .map(([platform]) => platform);
+  const sections = [
+    capabilities.has('skill') ? {
+      id: 'skill',
+      title: t.connectorSkillsTitle,
+      Icon: LibraryBig,
+      items: skills.length ? skills.map((name) => ({
+        name,
+        description: t.connectorSkillDescription(name),
+      })) : [{ name: t.connectorSkillFallbackName, description: t.connectorSkillFallbackDescription }],
+    } : null,
+    capabilities.has('mcp') ? {
+      id: 'mcp',
+      title: 'MCP',
+      Icon: Unplug,
+      items: [{
+        name: mcp.serverName || t.connectorMCPFallbackName,
+        badge: mcpTransports.length ? t.connectorToolCount(mcpTransports.length) : '',
+        description: mcpTransports.length
+          ? t.connectorMCPDescription(mcpTransports.join(' · '))
+          : t.connectorMCPFallbackDescription,
+      }],
+    } : null,
+    capabilities.has('cli') ? {
+      id: 'cli',
+      title: 'CLI',
+      Icon: Terminal,
+      items: [{
+        name: t.connectorCLIName,
+        badge: cliPlatforms.length ? t.connectorPlatformCount(cliPlatforms.length) : '',
+        description: cliPlatforms.length
+          ? t.connectorCLIDescription(cliPlatforms.join(' · '))
+          : t.connectorCLIFallbackDescription,
+      }],
+    } : null,
+  ].filter(Boolean);
+
+  if (!sections.length) return null;
+  return (
+    <section className="connector-components" aria-label={t.connectorComponentsTitle}>
+      <div className="connector-components-heading">
+        <h3>{t.connectorComponentsTitle}</h3>
+        <p>{t.connectorComponentsDescription}</p>
+      </div>
+      {sections.map(({ id, title, Icon, items }) => {
+        const expanded = Boolean(expandedGroups[id]);
+        const visibleItems = expanded ? items : items.slice(0, 3);
+        const hiddenCount = Math.max(0, items.length - 3);
+        return <section className="connector-component-group" key={id}>
+          <div className="connector-component-group-heading"><h4>{title}</h4><span>{t.connectorComponentCount(items.length)}</span></div>
+          <div className="connector-component-list">
+            {visibleItems.map((component) => (
+              <article className="connector-component-card" key={`${id}:${component.name}`}>
+                <span className={`connector-component-icon is-${id}`} aria-hidden="true"><Icon size={20} /></span>
+                <div className="connector-component-copy">
+                  <div><strong>{component.name}</strong>{component.badge ? <span>{component.badge}</span> : null}</div>
+                  <p>{component.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+          {hiddenCount ? <button
+            className={expanded ? 'connector-components-toggle is-expanded' : 'connector-components-toggle'}
+            type="button"
+            onClick={() => setExpandedGroups((current) => ({ ...current, [id]: !expanded }))}
+          >
+            <span>{expanded ? t.connectorCollapseComponents : t.connectorExpandComponents(hiddenCount)}</span>
+            <ChevronDown size={14} />
+          </button> : null}
+        </section>;
+      })}
+    </section>
   );
 }
 

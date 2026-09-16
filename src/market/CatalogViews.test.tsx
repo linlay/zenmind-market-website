@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { IncludedSkillsSection, stripMarkdownFrontMatter } from './CatalogViews';
+import { ConnectorComponentsSection, IncludedSkillsSection, stripMarkdownFrontMatter } from './CatalogViews';
 
 const sectionCopy = {
   skillIncludedCount: (count: number) => `Included skills (${count})`,
@@ -95,5 +95,67 @@ describe('IncludedSkillsSection', () => {
     );
 
     await waitFor(() => expect(screen.getByText('skill-a')).toBeTruthy());
+  });
+});
+
+describe('ConnectorComponentsSection', () => {
+  it('shows bundled skills, MCP transport, and CLI platforms with descriptions', () => {
+    const t = {
+      connectorComponentsTitle: 'Connector components',
+      connectorComponentsDescription: 'Installed capabilities.',
+      connectorSkillsTitle: 'Skills',
+      connectorSkillDescription: (name) => `${name} workflow`,
+      connectorSkillFallbackName: 'Built-in skill',
+      connectorSkillFallbackDescription: 'Built-in workflow',
+      connectorMCPFallbackName: 'MCP service',
+      connectorMCPDescription: (transport) => `MCP via ${transport}`,
+      connectorMCPFallbackDescription: 'MCP tools',
+      connectorCLIName: 'Command-line tool',
+      connectorCLIDescription: (platforms) => `CLI for ${platforms}`,
+      connectorCLIFallbackDescription: 'CLI tools',
+      connectorToolCount: (count) => `${count} transport`,
+      connectorPlatformCount: (count) => `${count} platforms`,
+      connectorComponentCount: (count) => `${count} items`,
+      connectorExpandComponents: (count) => `Show ${count} more`,
+      connectorCollapseComponents: 'Show less',
+    };
+    render(<ConnectorComponentsSection item={{
+      connectorCapabilities: ['skill', 'mcp', 'cli'],
+      connectorSkillNames: ['document-reader'],
+      connectorMCPTransports: ['streamableHttp'],
+      connectorConfig: {
+        mcp: { serverName: 'workspace' },
+        cli: { versionCommand: { darwin: 'tool --version', linux: 'tool --version' } },
+      },
+    }} t={t} />);
+
+    expect(screen.getByText('document-reader')).toBeTruthy();
+    expect(screen.getByText('MCP via streamableHttp')).toBeTruthy();
+    expect(screen.getByText('CLI for darwin · linux')).toBeTruthy();
+    expect(screen.getByText('2 platforms')).toBeTruthy();
+  });
+
+  it('shows three components per group before expanding', () => {
+    const t = {
+      connectorComponentsTitle: 'Connector components', connectorComponentsDescription: 'Installed capabilities.',
+      connectorSkillsTitle: 'Skills', connectorSkillDescription: (name) => `${name} workflow`,
+      connectorSkillFallbackName: 'Built-in skill', connectorSkillFallbackDescription: 'Built-in workflow',
+      connectorMCPFallbackName: 'MCP service', connectorMCPDescription: (value) => value,
+      connectorMCPFallbackDescription: 'MCP tools', connectorCLIName: 'Command-line tool',
+      connectorCLIDescription: (value) => value, connectorCLIFallbackDescription: 'CLI tools',
+      connectorToolCount: (count) => String(count), connectorPlatformCount: (count) => String(count),
+      connectorComponentCount: (count) => `${count} items`, connectorExpandComponents: (count) => `Show ${count} more`,
+      connectorCollapseComponents: 'Show less',
+    };
+    render(<ConnectorComponentsSection item={{
+      connectorCapabilities: ['skill'],
+      connectorSkillNames: ['skill-1', 'skill-2', 'skill-3', 'skill-4'],
+    }} t={t} />);
+
+    expect(screen.queryByText('skill-4')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show 1 more' }));
+    expect(screen.getByText('skill-4')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Show less' }));
+    expect(screen.queryByText('skill-4')).toBeNull();
   });
 });

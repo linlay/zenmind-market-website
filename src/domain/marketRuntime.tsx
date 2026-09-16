@@ -101,6 +101,12 @@ export function mergeCatalogItem(apiItem) {
     id: dep.id || dep.serviceId || dep.command || dep.runtime || dep.capability || dep.kind,
     name: dep.displayName || dep.id || dep.serviceId || dep.command || dep.runtime || dep.capability || dep.kind,
   })) : [];
+  let connectorConfig = {};
+  try {
+    connectorConfig = JSON.parse(apiItem.metadata?.connectorPublishConfig || '{}');
+  } catch {
+    connectorConfig = {};
+  }
   return {
     ...apiItem,
     type,
@@ -127,6 +133,7 @@ export function mergeCatalogItem(apiItem) {
     connectorMCPTransports: parseStringArray(apiItem.metadata?.connectorMCPTransports),
     connectorSkillNames: parseStringArray(apiItem.metadata?.connectorSkillNames),
     connectorSpecVersion: apiItem.metadata?.connectorSpecVersion || '',
+    connectorConfig,
     // Icons and screenshots serve different places in the UI.  In particular,
     // do not reuse an icon as the detail-page media: it would be enlarged into
     // a 16:9 panel for website apps that have no screenshot.
