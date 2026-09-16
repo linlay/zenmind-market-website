@@ -67,6 +67,14 @@ import { platformForKey, preferredPlatformKey } from '../domain/platform';
 
 export function PublishPage({ t, locale, availableSkills = [], initialItem = null, currentUser = null, onClose, onSubmit, isPublishing }) {
   const updateMode = Boolean(initialItem);
+  let initialConnectorConfig = null;
+  try {
+    initialConnectorConfig = updateMode && initialItem.metadata?.connectorPublishConfig
+      ? JSON.parse(initialItem.metadata.connectorPublishConfig)
+      : null;
+  } catch {
+    initialConnectorConfig = null;
+  }
   const initialType = updateMode ? normalizeType(initialItem.type) : 'agent';
   const initialSkillKind = updateMode && initialType === 'skill' ? initialItem.skillKind || 'single' : 'single';
   const initialSandboxKind = updateMode ? initialItem.sandboxKind || 'environment-template' : 'environment-template';
@@ -90,22 +98,26 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [websiteKind, setWebsiteKind] = useState(initialWebsiteKind);
   const [skillKind, setSkillKind] = useState(initialSkillKind);
   const [artifactSource, setArtifactSource] = useState('upload');
-  const [connectorCapabilities, setConnectorCapabilities] = useState({ mcp: true, cli: false, skill: false });
-  const [connectorPrimaryType, setConnectorPrimaryType] = useState('mcp');
-  const [connectorAuthMode, setConnectorAuthMode] = useState('null');
-  const [mcpTransport, setMCPTransport] = useState('streamableHttp');
-  const [mcpHasRuntime, setMCPHasRuntime] = useState(false);
-  const [connectorHasCLIAuth, setConnectorHasCLIAuth] = useState(false);
-  const [connectorHasRuntime, setConnectorHasRuntime] = useState(false);
-  const [connectorTokenFields, setConnectorTokenFields] = useState([{ id: 1, key: 'API_KEY', label: 'API Key', type: 'password', env: 'API_KEY' }]);
-  const [mcpStaticEnv, setMCPStaticEnv] = useState([{ id: 1, name: '', value: '' }]);
-  const [showConnectorAdvanced, setShowConnectorAdvanced] = useState(false);
+  const [connectorCapabilities, setConnectorCapabilities] = useState({ mcp: Boolean(initialConnectorConfig?.mcp ?? true), cli: Boolean(initialConnectorConfig?.cli), skill: Boolean(initialConnectorConfig?.hasSkill) });
+  const [connectorPrimaryType, setConnectorPrimaryType] = useState(initialConnectorConfig?.primaryType || 'mcp');
+  const [connectorAuthMode, setConnectorAuthMode] = useState(initialConnectorConfig?.authMode || 'null');
+  const [mcpTransport, setMCPTransport] = useState(initialConnectorConfig?.mcp?.transport || 'streamableHttp');
+  const [mcpHasRuntime, setMCPHasRuntime] = useState(Boolean(initialConnectorConfig?.mcp?.runtimeType));
+  const [connectorHasCLIAuth, setConnectorHasCLIAuth] = useState(Boolean(initialConnectorConfig?.cli && Object.keys(initialConnectorConfig.cli.auth || {}).length));
+  const [connectorHasRuntime, setConnectorHasRuntime] = useState(Boolean(initialConnectorConfig?.cli?.runtimeType));
+  const [connectorTokenFields, setConnectorTokenFields] = useState(initialConnectorConfig?.tokenSchema?.fields?.length
+    ? initialConnectorConfig.tokenSchema.fields.map((field, index) => ({ ...field, id: index + 1, env: Object.entries(initialConnectorConfig.mcp?.credentialEnv || {}).find(([, key]) => key === field.key)?.[0] || field.key }))
+    : [{ id: 1, key: 'API_KEY', label: 'API Key', type: 'password', env: 'API_KEY' }]);
+  const [mcpStaticEnv, setMCPStaticEnv] = useState(Object.keys(initialConnectorConfig?.mcp?.staticEnv || {}).length
+    ? Object.entries(initialConnectorConfig.mcp.staticEnv).map(([name, value], index) => ({ id: index + 1, name, value }))
+    : [{ id: 1, name: '', value: '' }]);
+  const [showConnectorAdvanced, setShowConnectorAdvanced] = useState(Boolean(initialConnectorConfig));
   const [connectorCapabilityError, setConnectorCapabilityError] = useState(false);
-  const [cliTargetSystem, setCLITargetSystem] = useState('darwin');
+  const [cliTargetSystem, setCLITargetSystem] = useState(Object.keys(initialConnectorConfig?.cli?.versionCommand || {})[0] || 'darwin');
   const [cliSystemCommands, setCLISystemCommands] = useState({
-    darwin: { version: '', init: '', auth: '', status: '', unAuth: '' },
-    linux: { version: '', init: '', auth: '', status: '', unAuth: '' },
-    win32: { version: '', init: '', auth: '', status: '', unAuth: '' },
+    darwin: { version: initialConnectorConfig?.cli?.versionCommand?.darwin || '', init: initialConnectorConfig?.cli?.init?.darwin || '', auth: initialConnectorConfig?.cli?.auth?.darwin || '', status: initialConnectorConfig?.cli?.status?.darwin || '', unAuth: initialConnectorConfig?.cli?.unAuth?.darwin || '' },
+    linux: { version: initialConnectorConfig?.cli?.versionCommand?.linux || '', init: initialConnectorConfig?.cli?.init?.linux || '', auth: initialConnectorConfig?.cli?.auth?.linux || '', status: initialConnectorConfig?.cli?.status?.linux || '', unAuth: initialConnectorConfig?.cli?.unAuth?.linux || '' },
+    win32: { version: initialConnectorConfig?.cli?.versionCommand?.win32 || '', init: initialConnectorConfig?.cli?.init?.win32 || '', auth: initialConnectorConfig?.cli?.auth?.win32 || '', status: initialConnectorConfig?.cli?.status?.win32 || '', unAuth: initialConnectorConfig?.cli?.unAuth?.win32 || '' },
   });
   const [connectorTargets, setConnectorTargets] = useState([]);
   const [showAdvanced, setShowAdvanced] = useState(updateMode);
@@ -574,7 +586,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                     {connectorCapabilities.mcp ? <input name="connectorMCPAuthHeader" type="hidden" value={mcpTransport === 'stdio' ? 'API_KEY' : 'X-API-Key'} /> : null}
                     {connectorCapabilities.cli ? <input name="connectorCLIAuthEnv" type="hidden" value="API_KEY" /> : null}
                   </div> : <div className="publish-section-grid">
-                    <label className="full"><span>{t.connectorTokenFormTitle}</span><input name="connectorTokenTitle" placeholder="服务凭据" /></label>
+                    <label className="full"><span>{t.connectorTokenFormTitle}</span><input name="connectorTokenTitle" defaultValue={initialConnectorConfig?.tokenSchema?.title || ''} placeholder="服务凭据" /></label>
                     {connectorTokenFields.map((field, index) => <div className="connector-env-row full" key={field.id}>
                       <label><span className="required-field-label">凭据变量名</span><input name="connectorTokenKey" required value={field.key} onChange={(event) => updateConnectorTokenField(field.id, { key: event.target.value })} pattern="[A-Z][A-Z0-9_]*" /></label>
                       <label><span className="required-field-label">显示名称</span><input name="connectorTokenLabel" required value={field.label} onChange={(event) => updateConnectorTokenField(field.id, { label: event.target.value })} /></label>
@@ -583,10 +595,10 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                       {index ? <button className="secondary-action" type="button" onClick={() => setConnectorTokenFields((current) => current.filter((entry) => entry.id !== field.id))}><Trash2 size={14} /><span>移除凭据</span></button> : null}
                     </div>)}
                     <button className="secondary-action" type="button" onClick={() => setConnectorTokenFields((current) => [...current, { id: Date.now(), key: '', label: '', type: 'password', env: '' }])}><Plus size={14} /><span>添加凭据字段</span></button>
-                    <label><span>{t.connectorTokenDocURL}</span><input name="connectorTokenDocURL" type="url" placeholder="https://docs.example.com/api-keys" /></label>
-                    {connectorCapabilities.mcp ? <label key={mcpTransport}><span>{mcpTransport === 'stdio' ? t.connectorMCPAuthEnv : t.connectorMCPAuthHeader}</span><input name="connectorMCPAuthHeader" defaultValue={mcpTransport === 'stdio' ? 'API_KEY' : 'X-API-Key'} /></label> : null}
-                    {connectorCapabilities.mcp && mcpTransport === 'streamableHttp' ? <label><span>{t.connectorMCPAuthPrefix}</span><input name="connectorMCPAuthPrefix" placeholder="Bearer " /></label> : null}
-                    {connectorCapabilities.cli ? <label><span>{t.connectorCLIAuthEnv}</span><input name="connectorCLIAuthEnv" defaultValue="API_KEY" pattern="[A-Z_][A-Z0-9_]*" /></label> : null}
+                    <label><span>{t.connectorTokenDocURL}</span><input name="connectorTokenDocURL" type="url" defaultValue={initialConnectorConfig?.tokenSchema?.docUrl || ''} placeholder="https://docs.example.com/api-keys" /></label>
+                    {connectorCapabilities.mcp ? <label key={mcpTransport}><span>{mcpTransport === 'stdio' ? t.connectorMCPAuthEnv : t.connectorMCPAuthHeader}</span><input name="connectorMCPAuthHeader" defaultValue={initialConnectorConfig?.mcp?.authHeader || (mcpTransport === 'stdio' ? 'API_KEY' : 'X-API-Key')} /></label> : null}
+                    {connectorCapabilities.mcp && mcpTransport === 'streamableHttp' ? <label><span>{t.connectorMCPAuthPrefix}</span><input name="connectorMCPAuthPrefix" defaultValue={initialConnectorConfig?.mcp?.authPrefix || ''} placeholder="Bearer " /></label> : null}
+                    {connectorCapabilities.cli ? <label><span>{t.connectorCLIAuthEnv}</span><input name="connectorCLIAuthEnv" defaultValue={initialConnectorConfig?.cli?.authEnv || 'API_KEY'} pattern="[A-Z_][A-Z0-9_]*" /></label> : null}
                   </div>}
                 </div>
               ) : null}
@@ -595,12 +607,12 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                 <div className="publish-field-card connector-runtime-panel full">
                   <h4>{t.connectorOAuthTitle}</h4>
                   <div className="publish-section-grid">
-                    <label><span className="required-field-label">issuer</span><input name="connectorOAuthIssuer" type="url" required placeholder="https://accounts.example.com" /></label>
-                    <label><span className="required-field-label">resource</span><input name="connectorOAuthResource" type="url" required placeholder="https://api.example.com/mcp" /></label>
-                    {showConnectorAdvanced ? <><label className="full"><span>{t.connectorOAuthScopes}</span><input name="connectorOAuthScopes" placeholder="documents.read documents.write" /></label>
-                    <label><span>authorization_endpoint</span><input name="connectorOAuthAuthorizationEndpoint" type="url" /></label>
-                    <label><span>token_endpoint</span><input name="connectorOAuthTokenEndpoint" type="url" /></label>
-                    <label><span>revocation_endpoint</span><input name="connectorOAuthRevocationEndpoint" type="url" /></label></> : null}
+                    <label><span className="required-field-label">issuer</span><input name="connectorOAuthIssuer" type="url" required defaultValue={initialConnectorConfig?.oauth?.issuer || ''} placeholder="https://accounts.example.com" /></label>
+                    <label><span className="required-field-label">resource</span><input name="connectorOAuthResource" type="url" required defaultValue={initialConnectorConfig?.oauth?.resource || ''} placeholder="https://api.example.com/mcp" /></label>
+                    {showConnectorAdvanced ? <><label className="full"><span>{t.connectorOAuthScopes}</span><input name="connectorOAuthScopes" defaultValue={(initialConnectorConfig?.oauth?.scopes || []).join(' ')} placeholder="documents.read documents.write" /></label>
+                    <label><span>authorization_endpoint</span><input name="connectorOAuthAuthorizationEndpoint" type="url" defaultValue={initialConnectorConfig?.oauth?.authorizationEndpoint || ''} /></label>
+                    <label><span>token_endpoint</span><input name="connectorOAuthTokenEndpoint" type="url" defaultValue={initialConnectorConfig?.oauth?.tokenEndpoint || ''} /></label>
+                    <label><span>revocation_endpoint</span><input name="connectorOAuthRevocationEndpoint" type="url" defaultValue={initialConnectorConfig?.oauth?.revocationEndpoint || ''} /></label></> : null}
                   </div>
                 </div>
               ) : null}
@@ -610,13 +622,13 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   <h4>MCP</h4>
                   {mcpTransport === 'stdio' && showConnectorAdvanced ? <div className="connector-capability-picker"><label className="checkbox-field"><input type="checkbox" checked={mcpHasRuntime} onChange={(event) => setMCPHasRuntime(event.target.checked)} /><span>{t.cliRuntimeToggle}</span></label></div> : null}
                   <div className="publish-section-grid">
-                    {showConnectorAdvanced ? <label><span>{t.mcpServerName}</span><input name="mcpServerName" defaultValue="main" /></label> : <input name="mcpServerName" type="hidden" value="main" />}
+                    {showConnectorAdvanced ? <label><span>{t.mcpServerName}</span><input name="mcpServerName" defaultValue={initialConnectorConfig?.mcp?.serverName || 'main'} /></label> : <input name="mcpServerName" type="hidden" value={initialConnectorConfig?.mcp?.serverName || 'main'} />}
                     <label><span className="required-field-label">{t.mcpTransport}</span><select name="mcpTransport" value={mcpTransport} onChange={(event) => setMCPTransport(event.target.value)} disabled={connectorAuthMode === 'mcp'}><option value="streamableHttp">HTTP / streamableHttp</option><option value="stdio">stdio</option></select></label>
-                    <label className="full"><span className="required-field-label">{mcpTransport === 'stdio' ? t.mcpCommand : t.mcpURL}</span><input name="mcpAddress" type={mcpTransport === 'stdio' ? 'text' : 'url'} required placeholder={mcpTransport === 'stdio' ? 'office-cli' : 'https://example.com/mcp'} /></label>
-                    {mcpTransport === 'stdio' ? <label className="full"><span>{t.connectorArgs}</span><textarea name="mcpArgs" rows={3} placeholder={'mcp\nserve'} /><small className="field-hint">{t.connectorArgsHint}</small></label> : null}
-                    {mcpTransport === 'stdio' && mcpHasRuntime && showConnectorAdvanced ? <><label><span className="required-field-label">runtime.type</span><input name="mcpRuntimeType" required placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="mcpRuntimeVersion" required placeholder=">=20" /></label></> : null}
-                    {showConnectorAdvanced ? <><label><span>{t.mcpTimeout}</span><input name="mcpTimeout" type="number" min="1" defaultValue="30000" /></label>
-                    {mcpTransport === 'streamableHttp' ? <><label><span>{t.mcpStaticHeaderName}</span><input name="mcpStaticHeaderName" placeholder="X-Client" /></label><label><span>{t.mcpStaticHeaderValue}</span><input name="mcpStaticHeaderValue" placeholder="AgentHost" /></label></> : null}
+                    <label className="full"><span className="required-field-label">{mcpTransport === 'stdio' ? t.mcpCommand : t.mcpURL}</span><input name="mcpAddress" type={mcpTransport === 'stdio' ? 'text' : 'url'} required defaultValue={initialConnectorConfig?.mcp?.address || ''} placeholder={mcpTransport === 'stdio' ? 'office-cli' : 'https://example.com/mcp'} /></label>
+                    {mcpTransport === 'stdio' ? <label className="full"><span>{t.connectorArgs}</span><textarea name="mcpArgs" rows={3} defaultValue={(initialConnectorConfig?.mcp?.args || []).join('\n')} placeholder={'mcp\nserve'} /><small className="field-hint">{t.connectorArgsHint}</small></label> : null}
+                    {mcpTransport === 'stdio' && mcpHasRuntime && showConnectorAdvanced ? <><label><span className="required-field-label">runtime.type</span><input name="mcpRuntimeType" required defaultValue={initialConnectorConfig?.mcp?.runtimeType || ''} placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="mcpRuntimeVersion" required defaultValue={initialConnectorConfig?.mcp?.runtimeVersion || ''} placeholder=">=20" /></label></> : null}
+                    {showConnectorAdvanced ? <><label><span>{t.mcpTimeout}</span><input name="mcpTimeout" type="number" min="1" defaultValue={initialConnectorConfig?.mcp?.timeout || 30000} /></label>
+                    {mcpTransport === 'streamableHttp' ? <><label><span>{t.mcpStaticHeaderName}</span><input name="mcpStaticHeaderName" defaultValue={initialConnectorConfig?.mcp?.staticHeaderName || ''} placeholder="X-Client" /></label><label><span>{t.mcpStaticHeaderValue}</span><input name="mcpStaticHeaderValue" defaultValue={initialConnectorConfig?.mcp?.staticHeaderValue || ''} placeholder="AgentHost" /></label></> : null}
                     {mcpTransport === 'stdio' ? <div className="full connector-env-list"><span>公开环境变量</span>{mcpStaticEnv.map((entry, index) => <div className="connector-env-row" key={entry.id}><label><span>{t.staticEnvName}</span><input name="mcpStaticEnvName" value={entry.name} onChange={(event) => updateMCPStaticEnv(entry.id, { name: event.target.value })} placeholder="JIRA_URL" /></label><label><span>{t.staticEnvValue}</span><input name="mcpStaticEnvValue" value={entry.value} onChange={(event) => updateMCPStaticEnv(entry.id, { value: event.target.value })} placeholder="https://company.atlassian.net" /></label>{index ? <button className="secondary-action" type="button" onClick={() => setMCPStaticEnv((current) => current.filter((item) => item.id !== entry.id))}><Trash2 size={14} /><span>移除</span></button> : null}</div>)}<button className="secondary-action" type="button" onClick={() => setMCPStaticEnv((current) => [...current, { id: Date.now(), name: '', value: '' }])}><Plus size={14} /><span>添加环境变量</span></button></div> : null}</> : <input name="mcpTimeout" type="hidden" value="30000" />}
                   </div>
                   {mcpTransport === 'stdio' && !connectorCapabilities.cli ? <div className="publish-section-grid">
@@ -650,17 +662,17 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   </div>
                   <div className="publish-section-grid">
                     <label className="full"><span className="required-field-label">{t.cliTargetSystem}</span><select name="cliTargetSystem" value={cliTargetSystem} onChange={(event) => setCLITargetSystem(event.target.value)}><option value="darwin">macOS (darwin)</option><option value="linux">Linux</option><option value="win32">Windows (win32)</option></select><small className="field-hint">{t.cliTargetSystemHint}</small></label>
-                    {connectorHasRuntime ? <><label><span className="required-field-label">runtime.type</span><input name="cliRuntimeType" required placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="cliRuntimeVersion" required placeholder=">=20" /></label></> : null}
+                    {connectorHasRuntime ? <><label><span className="required-field-label">runtime.type</span><input name="cliRuntimeType" required defaultValue={initialConnectorConfig?.cli?.runtimeType || ''} placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="cliRuntimeVersion" required defaultValue={initialConnectorConfig?.cli?.runtimeVersion || ''} placeholder=">=20" /></label></> : null}
                     <input name="cliMinVersion" type="hidden" value={marketPreview.version || '1.0.0'} />
                     {Object.entries(cliSystemCommands).filter(([system]) => system !== cliTargetSystem).flatMap(([system, commands]) => {
                       const suffix = system === 'darwin' ? 'Darwin' : system === 'linux' ? 'Linux' : 'Win32';
                       return Object.entries(commands).filter(([field]) => connectorHasCLIAuth || !['auth', 'status', 'unAuth'].includes(field)).map(([field, value]) => <input key={`${system}-${field}`} type="hidden" name={`cli${field[0].toUpperCase()}${field.slice(1)}${suffix}`} value={value} />);
                     })}
                     <label className="full"><span className="required-field-label">版本检查命令</span><input required name={`cliVersion${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].version} onChange={(event) => updateCLISystemCommand('version', event.target.value)} placeholder={cliTargetSystem === 'win32' ? 'office-cli.exe --version' : 'office-cli --version'} /><small className="field-hint">用于确认 CLI 已安装且版本符合要求；最低版本自动跟随本次发布版本。</small></label>
-                    {showConnectorAdvanced ? <><label><span>versionPattern</span><input name="cliVersionPattern" placeholder="v?(\\d+\\.\\d+\\.\\d+)" /></label>
+                    {showConnectorAdvanced ? <><label><span>versionPattern</span><input name="cliVersionPattern" defaultValue={initialConnectorConfig?.cli?.versionPattern || ''} placeholder="v?(\\d+\\.\\d+\\.\\d+)" /></label>
                     <label><span>init</span><input name={`cliInit${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].init} onChange={(event) => updateCLISystemCommand('init', event.target.value)} /></label></> : null}
-                    {connectorHasCLIAuth ? <><label><span>auth</span><input name={`cliAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].auth} onChange={(event) => updateCLISystemCommand('auth', event.target.value)} /></label><label><span>status</span><input name={`cliStatus${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].status} onChange={(event) => updateCLISystemCommand('status', event.target.value)} /></label><label><span>unAuth</span><input name={`cliUnAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].unAuth} onChange={(event) => updateCLISystemCommand('unAuth', event.target.value)} /></label><label className="full"><span>statusMatch</span><input name="cliStatusMatch" /></label><label className="full"><span>statusMatchJson</span><textarea name="cliStatusMatchJSON" rows={2} placeholder={'{"authenticated":true}'} /></label><label><span>authUrlDomain</span><input name="cliAuthURLDomain" placeholder="accounts.example.com" /></label><label className="checkbox-field"><input name="cliAuthWaitForExit" type="checkbox" defaultChecked /><span>authWaitForExit</span></label><label className="checkbox-field"><input name="cliAuthSuppressBrowser" type="checkbox" /><span>authSuppressBrowser</span></label></> : null}
-                    {showConnectorAdvanced ? <><label><span>{t.staticEnvName}</span><input name="cliStaticEnvName" placeholder="REGION" /></label><label><span>{t.staticEnvValue}</span><input name="cliStaticEnvValue" placeholder="cn" /></label></> : null}
+                    {connectorHasCLIAuth ? <><label><span>auth</span><input name={`cliAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].auth} onChange={(event) => updateCLISystemCommand('auth', event.target.value)} /></label><label><span>status</span><input name={`cliStatus${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].status} onChange={(event) => updateCLISystemCommand('status', event.target.value)} /></label><label><span>unAuth</span><input name={`cliUnAuth${cliTargetSystem === 'darwin' ? 'Darwin' : cliTargetSystem === 'linux' ? 'Linux' : 'Win32'}`} value={cliSystemCommands[cliTargetSystem].unAuth} onChange={(event) => updateCLISystemCommand('unAuth', event.target.value)} /></label><label className="full"><span>statusMatch</span><input name="cliStatusMatch" defaultValue={initialConnectorConfig?.cli?.statusMatch || ''} /></label><label className="full"><span>statusMatchJson</span><textarea name="cliStatusMatchJSON" rows={2} defaultValue={initialConnectorConfig?.cli?.statusMatchJSON || ''} placeholder={'{"authenticated":true}'} /></label><label><span>authUrlDomain</span><input name="cliAuthURLDomain" defaultValue={initialConnectorConfig?.cli?.authURLDomain || ''} placeholder="accounts.example.com" /></label><label className="checkbox-field"><input name="cliAuthWaitForExit" type="checkbox" defaultChecked={initialConnectorConfig?.cli?.authWaitForExit ?? true} /><span>authWaitForExit</span></label><label className="checkbox-field"><input name="cliAuthSuppressBrowser" type="checkbox" defaultChecked={Boolean(initialConnectorConfig?.cli?.authSuppressBrowser)} /><span>authSuppressBrowser</span></label></> : null}
+                    {showConnectorAdvanced ? <><label><span>{t.staticEnvName}</span><input name="cliStaticEnvName" defaultValue={initialConnectorConfig?.cli?.staticEnvName || ''} placeholder="REGION" /></label><label><span>{t.staticEnvValue}</span><input name="cliStaticEnvValue" defaultValue={initialConnectorConfig?.cli?.staticEnvValue || ''} placeholder="cn" /></label></> : null}
                     {connectorTargets.length ? <div className="publish-field-card full">
                       <h4>{t.connectorPlatformTargets}</h4>
                       <small className="field-hint">仅在随包提供可执行文件时指定目标平台；ZIP 中的文件会被放入 bin/，由运行时加入受控 PATH。</small>

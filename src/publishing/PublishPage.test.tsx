@@ -147,6 +147,34 @@ describe('publish access policy', () => {
 });
 
 describe('connector-only publishing', () => {
+  it('prefills a new version from the previous connector configuration', () => {
+    const connectorConfig = {
+      primaryType: 'mcp',
+      authMode: 'oauth',
+      hasSkill: false,
+      oauth: { issuer: 'https://accounts.example.com', resource: 'https://api.example.com', scopes: ['read'] },
+      mcp: { serverName: 'search', transport: 'streamableHttp', address: 'https://api.example.com/mcp', timeout: 45000 },
+      cli: null,
+    };
+    const { container } = render(
+      <PublishPage
+        t={getMarketCopy('zh-CN')}
+        locale="zh-CN"
+        initialItem={{ ...initialItem, id: 'demo-connector', type: 'connector', metadata: { connectorPublishConfig: JSON.stringify(connectorConfig) } }}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        isPublishing={false}
+      />,
+    );
+
+    expect(container.querySelector('[name="connectorAuthMode"]')).toHaveValue('oauth');
+    expect(container.querySelector('[name="connectorOAuthIssuer"]')).toHaveValue('https://accounts.example.com');
+    expect(container.querySelector('[name="connectorOAuthResource"]')).toHaveValue('https://api.example.com');
+    expect(container.querySelector('[name="mcpServerName"]')).toHaveValue('search');
+    expect(container.querySelector('[name="mcpAddress"]')).toHaveValue('https://api.example.com/mcp');
+    expect(container.querySelector('[name="mcpTimeout"]')).toHaveValue(45000);
+  });
+
   it('collects the fields needed to assemble a complete connector package', () => {
     const { container } = render(
       <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,

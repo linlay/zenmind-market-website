@@ -1098,6 +1098,7 @@ export function App() {
         delete metadata.metadata.usageHint;
       }
       if (skill) metadata.skill = skill;
+      if (connectorConfig) metadata.metadata.connectorPublishConfig = JSON.stringify(connectorConfig);
       if (metadata.accessPolicy.mode === 'restricted' && !metadata.accessPolicy.departmentIds.length && !metadata.accessPolicy.userIds.length) {
         notify(t.accessRestrictedRequired, 'error');
         return;
