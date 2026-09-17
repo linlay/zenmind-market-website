@@ -70,6 +70,7 @@ import {
   hasArtifact,
   canInstallWithADP,
 } from '../domain/platform';
+import { formatVersionLabel } from '../domain/version';
 import {
   formatCount,
   formatDate,
@@ -140,7 +141,7 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
     ? `精选${displayType(item.type, t)}`
     : `Featured ${displayType(item.type, t)}`;
   const platform = preferredPlatformKey(item);
-  const canDownload = hasArtifact(item, platform) || isSkillPackage(item);
+  const canDownload = (Boolean(platform) && hasArtifact(item, platform)) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   const usageHints = item.type === 'skill' || item.type === 'connector' ? usageHintsFromMetadata(item.metadata) : [];
@@ -260,14 +261,14 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
   );
 }
 
-export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onInstall, onDownload, onFavorite, isDownloading, isFavoriting, onCommentsChanged }) {
+export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, selectedVersion, versionOptions = [], onVersionChange, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onInstall, onDownload, onFavorite, isDownloading, isFavoriting, onCommentsChanged }) {
   const Icon = categoryMeta.find((category) => category.id === item.type)?.icon || PackageOpen;
   const platformKeys = availablePlatformKeys(item);
   const activePlatformKey = preferredPlatformKey(item, selectedPlatformKey);
   const activePlatform = platformForKey(item, activePlatformKey);
   const specificPlatformKeys = platformKeys.filter((platform) => String(platform).toLowerCase() !== 'universal');
   const commands = commandEntries(activePlatform, t);
-  const canDownload = hasArtifact(item, activePlatformKey) || isSkillPackage(item);
+  const canDownload = (Boolean(activePlatformKey) && hasArtifact(item, activePlatformKey)) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   const readme = localized(item.readme, locale);
@@ -361,6 +362,30 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
           </section>
 
           <section className="detail-side">
+            {versionOptions.length > 1 ? (
+              <label className="platform-select">
+                <span>{t.version}</span>
+                <select aria-label={t.version} value={selectedVersion || item.version} onChange={(event) => onVersionChange(event.target.value)}>
+                  {versionOptions.map((version) => <option value={version} key={version}>{formatVersionLabel(version)}</option>)}
+                </select>
+              </label>
+            ) : null}
+            {platformKeys.length > 1 ? (
+              <label className="platform-select">
+                <span>{t.selectedPlatform}</span>
+                <select
+                  aria-label={t.selectedPlatform}
+                  value={activePlatformKey}
+                  onChange={(event) => onPlatformChange(event.target.value)}
+                >
+                  <option value="" disabled>{t.selectPlatform}</option>
+                  {platformKeys.map((platform) => <option key={platform} value={platform}>{platform}</option>)}
+                </select>
+              </label>
+            ) : platformKeys.length === 1 ? (
+              <div className="platform-single"><Box size={13} />{platformKeys[0]}</div>
+            ) : null}
+
             {item.type !== 'connector' && usageHints.length ? (
               <section className="side-section usage-hint-section">
                 <h3>{t.usageHintTitle}</h3>
