@@ -108,7 +108,7 @@ export function MetadataEditPage({ item, currentUser, locale, t, onClose, onSubm
               </span>
               <small className="field-hint">{t.editMetadataImageHint}</small>
             </label>
-            {item.type === 'skill' ? (
+            {item.type === 'skill' || item.type === 'connector' ? (
               <label className="full">
                 <span>{t.usageHint}</span>
                 {[0, 1, 2].map((index) => <input key={index} name="usageHints" maxLength="80" defaultValue={usageHintsFromMetadata(item.metadata)[index] || ''} placeholder={t.usageHintPlaceholder} />)}

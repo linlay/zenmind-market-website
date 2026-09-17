@@ -563,7 +563,7 @@ export function App() {
         },
       };
       const usageHints = form.getAll('usageHints').map((hint) => String(hint).trim()).filter(Boolean).slice(0, 3);
-      if (editSource.type === 'skill') {
+      if (editSource.type === 'skill' || editSource.type === 'connector') {
         if (usageHints.length) payload.metadata.usageHints = JSON.stringify(usageHints);
         else delete payload.metadata.usageHints;
         delete payload.metadata.usageHint;
@@ -916,6 +916,7 @@ export function App() {
       })).filter((field) => field.key && field.label);
       const connectorCredentialEnv = Object.fromEntries(connectorTokenRows.map(({ env, key }) => [env, key]).filter(([name, key]) => name && key));
       const mcpStaticEnv = Object.fromEntries(form.getAll('mcpStaticEnvName').map((value, index) => [String(value || '').trim(), String(form.getAll('mcpStaticEnvValue')[index] || '').trim()]).filter(([name, value]) => name && value));
+      const connectorSkillDescriptions = Object.fromEntries(form.getAll('connectorSkillName').map((value, index) => [String(value || '').trim(), String(form.getAll('connectorSkillDescription')[index] || '').trim()]).filter(([name, description]) => name && description));
       const connectorMCPTransport = String(form.get('mcpTransport') || 'streamableHttp');
       const hostedCredentialVariable = connectorAuthMode === 'oneid-token' ? 'ONEID_TOKEN' : connectorAuthMode === 'oauth' ? 'OAUTH_ACCESS_TOKEN' : '';
       const connectorMCPAuthTarget = String(form.get('connectorMCPAuthHeader') || '').trim()
@@ -940,6 +941,7 @@ export function App() {
         } : null,
         mcp: connectorHasMCP ? {
           serverName: String(form.get('mcpServerName') || 'main').trim(),
+          description: String(form.get('connectorMCPDescription') || '').trim(),
           transport: connectorMCPTransport,
           address: String(form.get('mcpAddress') || '').trim(),
           args: String(form.get('mcpArgs') || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean),
@@ -956,6 +958,8 @@ export function App() {
           credentialEnv: connectorCredentialEnv,
         } : null,
         cli: connectorHasCLI ? {
+          name: String(form.get('connectorCLIName') || '').trim(),
+          description: String(form.get('connectorCLIDescription') || '').trim(),
           runtimeType: String(form.get('cliRuntimeType') || '').trim(),
           runtimeVersion: String(form.get('cliRuntimeVersion') || '').trim(),
           init: connectorCommandMap('cliInit'),
@@ -975,6 +979,7 @@ export function App() {
           staticEnvValue: String(form.get('cliStaticEnvValue') || '').trim(),
         } : null,
         hasSkill: connectorHasSkill,
+        skillDescriptions: connectorSkillDescriptions,
       } : null;
       const hasConnectorParts = type === 'connector' && Boolean(connectorConfig) && (connectorHasMCP || connectorHasCLI) && (!connectorHasSkill || Boolean(connectorSkillsArchive));
       const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';
@@ -1092,7 +1097,7 @@ export function App() {
         },
       };
       const usageHints = form.getAll('usageHints').map((hint) => String(hint).trim()).filter(Boolean).slice(0, 3);
-      if (type === 'skill') {
+      if (type === 'skill' || type === 'connector') {
         if (usageHints.length) metadata.metadata.usageHints = JSON.stringify(usageHints);
         else delete metadata.metadata.usageHints;
         delete metadata.metadata.usageHint;

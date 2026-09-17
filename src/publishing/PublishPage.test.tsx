@@ -154,7 +154,7 @@ describe('connector-only publishing', () => {
       hasSkill: false,
       oauth: { issuer: 'https://accounts.example.com', resource: 'https://api.example.com', scopes: ['read'] },
       mcp: { serverName: 'search', transport: 'streamableHttp', address: 'https://api.example.com/mcp', timeout: 45000 },
-      cli: null,
+      cli: { minVersion: '1.3.0', versionCommand: { darwin: 'tool --version' } },
     };
     const { container } = render(
       <PublishPage
@@ -173,6 +173,7 @@ describe('connector-only publishing', () => {
     expect(container.querySelector('[name="mcpServerName"]')).toHaveValue('search');
     expect(container.querySelector('[name="mcpAddress"]')).toHaveValue('https://api.example.com/mcp');
     expect(container.querySelector('[name="mcpTimeout"]')).toHaveValue(45000);
+    expect(container.querySelector('[name="cliMinVersion"]')).toHaveValue('1.3.0');
   });
 
   it('collects the fields needed to assemble a complete connector package', () => {
@@ -201,8 +202,8 @@ describe('connector-only publishing', () => {
 
     fireEvent.click(container.querySelector('[name="connectorHasCLI"]'));
     fireEvent.click(container.querySelector('[name="connectorHasSKILL"]'));
-    expect(container.querySelector('[name="cliMinVersion"]')).toHaveAttribute('type', 'hidden');
-    expect(container.querySelector('[name="cliMinVersion"]')).toHaveValue('1.0.0');
+    expect(container.querySelector('[name="cliMinVersion"]')).toBeRequired();
+    expect(container.querySelector('[name="cliMinVersion"]')).toHaveValue('');
     expect(container.querySelector('[name="cliTargetSystem"]')).toHaveValue('darwin');
     expect(container.querySelector('[name="connectorTargetOS.0"]')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('添加随包可执行文件（可选）'));

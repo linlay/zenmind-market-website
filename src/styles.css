@@ -4132,6 +4132,82 @@ img {
   background: var(--surface);
 }
 
+.connector-usage-showcase {
+  display: grid;
+  gap: 9px;
+}
+
+.connector-usage-showcase h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 780;
+  letter-spacing: -0.03em;
+}
+
+.connector-usage-list {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(115deg, #e1edf4 0%, #e4e6f1 52%, #e2dcef 100%);
+}
+
+.connector-usage-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 5px 4px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.54);
+  color: #454854;
+}
+
+.connector-usage-message {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #777c89;
+}
+
+.connector-usage-copy {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 540;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connector-usage-copy-button {
+  display: grid;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(233, 235, 242, 0.9);
+  color: #454854;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.connector-usage-copy-button:hover {
+  background: rgba(255, 255, 255, 0.86);
+  transform: scale(1.06);
+}
+
+.connector-usage-copy-button.is-copied {
+  background: #d9f4e4;
+  color: #147443;
+}
+
 .media-panel,
 .video-panel {
   border: 1px solid var(--line);
@@ -4596,6 +4672,26 @@ img {
   .detail-side {
     grid-template-columns: 1fr;
   }
+
+  .connector-usage-list {
+    gap: 6px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .connector-usage-row {
+    gap: 7px;
+    padding: 4px 5px 4px 9px;
+  }
+
+  .connector-usage-copy {
+    font-size: 12px;
+  }
+
+  .connector-usage-copy-button {
+    width: 26px;
+    height: 26px;
+  }
 }
 
 .detail-heading {
@@ -4746,21 +4842,8 @@ img {
   gap: 16px;
 }
 
-.connector-components-heading {
-  display: grid;
-  gap: 6px;
-}
-
-.connector-components-heading h3,
 .connector-component-group h4 {
   margin: 0;
-}
-
-.connector-components-heading p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.55;
 }
 
 .connector-component-group {

@@ -7,6 +7,7 @@ import {
   Brain,
   Calendar,
   Cat,
+  Check,
   CheckCircle2,
   ChevronDown,
   Copy,
@@ -142,7 +143,7 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
   const canDownload = hasArtifact(item, platform) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
-  const usageHints = item.type === 'skill' ? usageHintsFromMetadata(item.metadata) : [];
+  const usageHints = item.type === 'skill' || item.type === 'connector' ? usageHintsFromMetadata(item.metadata) : [];
   const primaryTag = (item.tags || []).map((tag) => String(tag || '').trim()).find(Boolean);
   const primaryTagLabel = primaryTag || (item.type === 'skill' ? skillCategoryLabel(item.skillCategory, t) : '');
   const usageHintKey = usageHints.join('\u0000');
@@ -270,10 +271,20 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
   const canInstall = canInstallWithADP(item);
   const favoriteLabel = item.favorited ? t.unfavoriteAction : t.favoriteAction;
   const readme = localized(item.readme, locale);
-  const usageHints = item.type === 'skill' ? usageHintsFromMetadata(item.metadata) : [];
+  const usageHints = item.type === 'skill' || item.type === 'connector' ? usageHintsFromMetadata(item.metadata) : [];
   const localizedFeatures = localized(item.features, locale);
   const features = Array.isArray(localizedFeatures) ? localizedFeatures.filter(Boolean) : [];
   const hasCoreFeatures = Boolean(String(readme || '').trim() || features.length);
+  const [copiedUsageHint, setCopiedUsageHint] = useState('');
+  async function copyUsageHint(hint) {
+    try {
+      await navigator.clipboard.writeText(hint);
+      setCopiedUsageHint(hint);
+      window.setTimeout(() => setCopiedUsageHint((current) => current === hint ? '' : current), 1600);
+    } catch {
+      setCopiedUsageHint('');
+    }
+  }
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="detail-modal" role="dialog" aria-modal="true" aria-label={localized(item.name, locale)} onMouseDown={(event) => event.stopPropagation()}>
@@ -311,6 +322,20 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
             </div>
           </section>
           <section className="detail-main">
+            {item.type === 'connector' && usageHints.length ? (
+              <section className="connector-usage-showcase" aria-label={t.connectorUsageTitle}>
+                <h3>{t.connectorUsageTitle}</h3>
+                <div className="connector-usage-list">
+                  {usageHints.map((hint) => <div className="connector-usage-row" key={hint}>
+                    <span className="connector-usage-message" aria-hidden="true"><MessageCircleMore size={15} /></span>
+                    <span className="connector-usage-copy">{hint}</span>
+                    <button className={copiedUsageHint === hint ? 'connector-usage-copy-button is-copied' : 'connector-usage-copy-button'} type="button" onClick={() => copyUsageHint(hint)} aria-label={copiedUsageHint === hint ? t.usageHintCopied : t.copyUsageHint} title={copiedUsageHint === hint ? t.usageHintCopied : t.copyUsageHint}>
+                      {copiedUsageHint === hint ? <Check size={15} /> : <Copy size={15} />}
+                    </button>
+                  </div>)}
+                </div>
+              </section>
+            ) : null}
             {item.type !== 'skill' && item.screenshot && item.screenshot !== item.icon ? (
               <div className="media-panel">
                 <img src={item.screenshot} alt="" />
@@ -322,7 +347,7 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
                 {videoPlaying ? <span className="video-running">{t.videoPlaying}</span> : <span className="play-overlay"><Play size={26} fill="currentColor" /></span>}
               </button>
             ) : null}
-            {item.type === 'skill' && item.skillKind !== 'package' ? <SkillMarkdownCard item={item} t={t} /> : hasCoreFeatures ? (
+            {item.type === 'skill' && item.skillKind !== 'package' ? <SkillMarkdownCard item={item} t={t} /> : hasCoreFeatures && item.type !== 'connector' ? (
               <section className="readme-section">
                 <h3>{localized(item.readmeTitle, locale) || t.readmeFallback}</h3>
                 {readme ? <p>{readme}</p> : null}
@@ -336,7 +361,7 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
           </section>
 
           <section className="detail-side">
-            {usageHints.length ? (
+            {item.type !== 'connector' && usageHints.length ? (
               <section className="side-section usage-hint-section">
                 <h3>{t.usageHintTitle}</h3>
                 <ol>{usageHints.map((hint) => <li key={hint}>{hint}</li>)}</ol>
@@ -389,6 +414,7 @@ export function ConnectorComponentsSection({ item, t }) {
   const [expandedGroups, setExpandedGroups] = useState({});
   const capabilities = new Set((item.connectorCapabilities || []).map((capability) => String(capability).toLowerCase()));
   const config = item.connectorConfig || {};
+  const componentIndex = Array.isArray(item.connectorComponents) ? item.connectorComponents : [];
   const skills = Array.isArray(item.connectorSkillNames) ? item.connectorSkillNames.filter(Boolean) : [];
   const mcp = config.mcp || {};
   const cli = config.cli || {};
@@ -396,49 +422,42 @@ export function ConnectorComponentsSection({ item, t }) {
   const cliPlatforms = Object.entries(cli.versionCommand || {})
     .filter(([, command]) => Boolean(command))
     .map(([platform]) => platform);
+  const skillComponents = componentIndex.filter((component) => component.type === 'skill');
+  const mcpComponents = componentIndex.filter((component) => component.type === 'mcp');
+  const cliComponents = componentIndex.filter((component) => component.type === 'cli');
+  const skillItems = skillComponents.length
+    ? skillComponents.map((component) => ({ name: component.name, description: component.description || t.connectorSkillDescription(component.name) }))
+    : skills.map((name) => ({ name, description: t.connectorSkillDescription(name) }));
+  const mcpItems = mcpComponents.length
+    ? mcpComponents.map((component) => ({ name: component.name, badge: mcpTransports.length ? t.connectorToolCount(mcpTransports.length) : '', description: component.description || (mcpTransports.length ? t.connectorMCPDescription(mcpTransports.join(' · ')) : t.connectorMCPFallbackDescription) }))
+    : [{ name: mcp.serverName || t.connectorMCPFallbackName, badge: mcpTransports.length ? t.connectorToolCount(mcpTransports.length) : '', description: mcpTransports.length ? t.connectorMCPDescription(mcpTransports.join(' · ')) : t.connectorMCPFallbackDescription }];
+  const cliItems = cliComponents.length
+    ? cliComponents.map((component) => ({ name: component.name || t.connectorCLIName, badge: cliPlatforms.length ? t.connectorPlatformCount(cliPlatforms.length) : '', description: component.description || (cliPlatforms.length ? t.connectorCLIDescription(cliPlatforms.join(' · ')) : t.connectorCLIFallbackDescription) }))
+    : [{ name: t.connectorCLIName, badge: cliPlatforms.length ? t.connectorPlatformCount(cliPlatforms.length) : '', description: cliPlatforms.length ? t.connectorCLIDescription(cliPlatforms.join(' · ')) : t.connectorCLIFallbackDescription }];
   const sections = [
     capabilities.has('skill') ? {
       id: 'skill',
       title: t.connectorSkillsTitle,
       Icon: LibraryBig,
-      items: skills.length ? skills.map((name) => ({
-        name,
-        description: t.connectorSkillDescription(name),
-      })) : [{ name: t.connectorSkillFallbackName, description: t.connectorSkillFallbackDescription }],
+      items: skillItems.length ? skillItems : [{ name: t.connectorSkillFallbackName, description: t.connectorSkillFallbackDescription }],
     } : null,
     capabilities.has('mcp') ? {
       id: 'mcp',
       title: 'MCP',
       Icon: Unplug,
-      items: [{
-        name: mcp.serverName || t.connectorMCPFallbackName,
-        badge: mcpTransports.length ? t.connectorToolCount(mcpTransports.length) : '',
-        description: mcpTransports.length
-          ? t.connectorMCPDescription(mcpTransports.join(' · '))
-          : t.connectorMCPFallbackDescription,
-      }],
+      items: mcpItems,
     } : null,
     capabilities.has('cli') ? {
       id: 'cli',
       title: 'CLI',
       Icon: Terminal,
-      items: [{
-        name: t.connectorCLIName,
-        badge: cliPlatforms.length ? t.connectorPlatformCount(cliPlatforms.length) : '',
-        description: cliPlatforms.length
-          ? t.connectorCLIDescription(cliPlatforms.join(' · '))
-          : t.connectorCLIFallbackDescription,
-      }],
+      items: cliItems,
     } : null,
   ].filter(Boolean);
 
   if (!sections.length) return null;
   return (
     <section className="connector-components" aria-label={t.connectorComponentsTitle}>
-      <div className="connector-components-heading">
-        <h3>{t.connectorComponentsTitle}</h3>
-        <p>{t.connectorComponentsDescription}</p>
-      </div>
       {sections.map(({ id, title, Icon, items }) => {
         const expanded = Boolean(expandedGroups[id]);
         const visibleItems = expanded ? items : items.slice(0, 3);

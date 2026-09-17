@@ -132,6 +132,7 @@ export function mergeCatalogItem(apiItem) {
     connectorCapabilities: parseStringArray(apiItem.metadata?.connectorCapabilities),
     connectorMCPTransports: parseStringArray(apiItem.metadata?.connectorMCPTransports),
     connectorSkillNames: parseStringArray(apiItem.metadata?.connectorSkillNames),
+    connectorComponents: parseConnectorComponents(apiItem.metadata?.connectorComponents),
     connectorSpecVersion: apiItem.metadata?.connectorSpecVersion || '',
     connectorConfig,
     // Icons and screenshots serve different places in the UI.  In particular,
@@ -159,6 +160,15 @@ export function mergeCatalogItem(apiItem) {
     reviewedAt: apiItem.reviewedAt || '',
     reviewedBy: apiItem.reviewedBy || '',
   };
+}
+
+function parseConnectorComponents(value) {
+  try {
+    const parsed = JSON.parse(value || '[]');
+    return Array.isArray(parsed) ? parsed.filter((component) => component && component.id && component.type) : [];
+  } catch {
+    return [];
+  }
 }
 
 export function normalizeType(type) {

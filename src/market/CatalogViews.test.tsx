@@ -123,6 +123,11 @@ describe('ConnectorComponentsSection', () => {
       connectorCapabilities: ['skill', 'mcp', 'cli'],
       connectorSkillNames: ['document-reader'],
       connectorMCPTransports: ['streamableHttp'],
+      connectorComponents: [
+        { id: 'skill:document-reader', type: 'skill', name: 'document-reader', description: 'Reads and summarizes documents.' },
+        { id: 'mcp:workspace', type: 'mcp', name: 'workspace', description: 'Searches the company workspace.' },
+        { id: 'cli:default', type: 'cli', name: 'Workspace CLI', description: 'Runs local workspace commands.' },
+      ],
       connectorConfig: {
         mcp: { serverName: 'workspace' },
         cli: { versionCommand: { darwin: 'tool --version', linux: 'tool --version' } },
@@ -130,8 +135,10 @@ describe('ConnectorComponentsSection', () => {
     }} t={t} />);
 
     expect(screen.getByText('document-reader')).toBeTruthy();
-    expect(screen.getByText('MCP via streamableHttp')).toBeTruthy();
-    expect(screen.getByText('CLI for darwin · linux')).toBeTruthy();
+    expect(screen.getByText('Reads and summarizes documents.')).toBeTruthy();
+    expect(screen.getByText('Searches the company workspace.')).toBeTruthy();
+    expect(screen.getByText('Workspace CLI')).toBeTruthy();
+    expect(screen.getByText('Runs local workspace commands.')).toBeTruthy();
     expect(screen.getByText('2 platforms')).toBeTruthy();
   });
 

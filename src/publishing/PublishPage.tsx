@@ -120,6 +120,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     win32: { version: initialConnectorConfig?.cli?.versionCommand?.win32 || '', init: initialConnectorConfig?.cli?.init?.win32 || '', auth: initialConnectorConfig?.cli?.auth?.win32 || '', status: initialConnectorConfig?.cli?.status?.win32 || '', unAuth: initialConnectorConfig?.cli?.unAuth?.win32 || '' },
   });
   const [connectorTargets, setConnectorTargets] = useState([]);
+  const [connectorSkillCopy, setConnectorSkillCopy] = useState(() => Object.entries(initialConnectorConfig?.skillDescriptions || {}).map(([name, description], index) => ({ id: index + 1, name, description })));
   const [showAdvanced, setShowAdvanced] = useState(updateMode);
 	const [showDiscovery, setShowDiscovery] = useState(updateMode);
 	const [showAccess, setShowAccess] = useState(updateMode && initialItem?.accessPolicy?.mode !== 'all');
@@ -623,6 +624,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   {mcpTransport === 'stdio' && showConnectorAdvanced ? <div className="connector-capability-picker"><label className="checkbox-field"><input type="checkbox" checked={mcpHasRuntime} onChange={(event) => setMCPHasRuntime(event.target.checked)} /><span>{t.cliRuntimeToggle}</span></label></div> : null}
                   <div className="publish-section-grid">
                     {showConnectorAdvanced ? <label><span>{t.mcpServerName}</span><input name="mcpServerName" defaultValue={initialConnectorConfig?.mcp?.serverName || 'main'} /></label> : <input name="mcpServerName" type="hidden" value={initialConnectorConfig?.mcp?.serverName || 'main'} />}
+                    <label className="full"><span>组件简介</span><textarea name="connectorMCPDescription" rows={2} maxLength={500} defaultValue={initialConnectorConfig?.mcp?.description || ''} placeholder="说明这个 MCP 服务能为智能体完成什么。" /><small className="field-hint">展示在连接器详情页；留空时使用系统默认说明。</small></label>
                     <label><span className="required-field-label">{t.mcpTransport}</span><select name="mcpTransport" value={mcpTransport} onChange={(event) => setMCPTransport(event.target.value)} disabled={connectorAuthMode === 'mcp'}><option value="streamableHttp">HTTP / streamableHttp</option><option value="stdio">stdio</option></select></label>
                     <label className="full"><span className="required-field-label">{mcpTransport === 'stdio' ? t.mcpCommand : t.mcpURL}</span><input name="mcpAddress" type={mcpTransport === 'stdio' ? 'text' : 'url'} required defaultValue={initialConnectorConfig?.mcp?.address || ''} placeholder={mcpTransport === 'stdio' ? 'office-cli' : 'https://example.com/mcp'} /></label>
                     {mcpTransport === 'stdio' ? <label className="full"><span>{t.connectorArgs}</span><textarea name="mcpArgs" rows={3} defaultValue={(initialConnectorConfig?.mcp?.args || []).join('\n')} placeholder={'mcp\nserve'} /><small className="field-hint">{t.connectorArgsHint}</small></label> : null}
@@ -661,9 +663,11 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                     {connectorAuthMode === 'null' ? <label className="checkbox-field"><input type="checkbox" checked={connectorHasCLIAuth} onChange={(event) => setConnectorHasCLIAuth(event.target.checked)} /><span>{t.cliAuthToggle}</span></label> : null}
                   </div>
                   <div className="publish-section-grid">
+                    <label><span>组件名称</span><input name="connectorCLIName" maxLength={100} defaultValue={initialConnectorConfig?.cli?.name || ''} placeholder="例如：Office CLI" /></label>
+                    <label className="full"><span>组件简介</span><textarea name="connectorCLIDescription" rows={2} maxLength={500} defaultValue={initialConnectorConfig?.cli?.description || ''} placeholder="说明此命令行工具能为智能体完成什么。" /><small className="field-hint">展示在连接器详情页；留空时使用系统默认说明。</small></label>
                     <label className="full"><span className="required-field-label">{t.cliTargetSystem}</span><select name="cliTargetSystem" value={cliTargetSystem} onChange={(event) => setCLITargetSystem(event.target.value)}><option value="darwin">macOS (darwin)</option><option value="linux">Linux</option><option value="win32">Windows (win32)</option></select><small className="field-hint">{t.cliTargetSystemHint}</small></label>
                     {connectorHasRuntime ? <><label><span className="required-field-label">runtime.type</span><input name="cliRuntimeType" required defaultValue={initialConnectorConfig?.cli?.runtimeType || ''} placeholder="node" /></label><label><span className="required-field-label">runtime.version</span><input name="cliRuntimeVersion" required defaultValue={initialConnectorConfig?.cli?.runtimeVersion || ''} placeholder=">=20" /></label></> : null}
-                    <input name="cliMinVersion" type="hidden" value={marketPreview.version || '1.0.0'} />
+                    <label><span className="required-field-label">CLI 最低版本</span><input name="cliMinVersion" required pattern="[0-9]+\.[0-9]+\.[0-9]+" defaultValue={initialConnectorConfig?.cli?.minVersion || ''} placeholder="例如：1.3.0" /><small className="field-hint">这是用户本机安装的 CLI 最低版本，与连接器发布版本无关。</small></label>
                     {Object.entries(cliSystemCommands).filter(([system]) => system !== cliTargetSystem).flatMap(([system, commands]) => {
                       const suffix = system === 'darwin' ? 'Darwin' : system === 'linux' ? 'Linux' : 'Win32';
                       return Object.entries(commands).filter(([field]) => connectorHasCLIAuth || !['auth', 'status', 'unAuth'].includes(field)).map(([field, value]) => <input key={`${system}-${field}`} type="hidden" name={`cli${field[0].toUpperCase()}${field.slice(1)}${suffix}`} value={value} />);
@@ -698,6 +702,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                 <div className="publish-field-card full">
                   <h4>Skill</h4>
                   <label className="full"><span className="required-field-label">{t.connectorSkillsArchive}</span><input name="connectorSkillsArchive" type="file" accept="application/zip,.zip" required /><small className="field-hint">{t.connectorSkillsArchiveHint}</small></label>
+                  <div className="connector-env-list"><span>组件简介（可选）</span><small className="field-hint">填写 SKILL.md frontmatter 中的 name 后可覆写该 Skill 在详情页的简介；未填写时展示 SKILL.md 的 description。</small>{connectorSkillCopy.map((entry) => <div className="connector-env-row" key={entry.id}><label><span>Skill 名称</span><input name="connectorSkillName" value={entry.name} onChange={(event) => setConnectorSkillCopy((current) => current.map((item) => item.id === entry.id ? { ...item, name: event.target.value } : item))} placeholder="例如：meeting-summary" /></label><label><span>组件简介</span><textarea name="connectorSkillDescription" rows={2} maxLength={500} value={entry.description} onChange={(event) => setConnectorSkillCopy((current) => current.map((item) => item.id === entry.id ? { ...item, description: event.target.value } : item))} /></label><button className="secondary-action" type="button" onClick={() => setConnectorSkillCopy((current) => current.filter((item) => item.id !== entry.id))}><Trash2 size={14} /><span>移除</span></button></div>)}<button className="secondary-action" type="button" onClick={() => setConnectorSkillCopy((current) => [...current, { id: Date.now(), name: '', description: '' }])}><Plus size={14} /><span>添加 Skill 简介</span></button></div>
                 </div>
               ) : null}
               <button className="advanced-toggle connector-advanced-toggle full" type="button" onClick={() => setShowConnectorAdvanced((value) => !value)}>
@@ -913,7 +918,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                   <span>{t.tags}</span>
                   <input name="tags" defaultValue={updateMode ? (initialItem.tags || []).join(', ') : ''} placeholder="AI, Tool" />
                 </label>
-                {type === 'skill' ? (
+                {type === 'skill' || type === 'connector' ? (
                   <label className="full">
                     <span>{t.usageHint}</span>
                     {[0, 1, 2].map((index) => <input key={index} name="usageHints" maxLength="80" defaultValue={initialUsageHints[index] || ''} placeholder={index ? t.usageHintPlaceholder : t.usageHintPlaceholder} />)}
