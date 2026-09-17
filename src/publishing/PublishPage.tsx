@@ -99,8 +99,10 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [skillKind, setSkillKind] = useState(initialSkillKind);
   const [artifactSource, setArtifactSource] = useState('upload');
   const [connectorPackageMode, setConnectorPackageMode] = useState(initialConnectorConfig?.packageMode === 'complete' ? 'complete' : 'parts');
-  const [connectorCapabilities, setConnectorCapabilities] = useState({ mcp: Boolean(initialConnectorConfig?.mcp ?? true), cli: Boolean(initialConnectorConfig?.cli), skill: Boolean(initialConnectorConfig?.hasSkill) });
-  const [connectorPrimaryType, setConnectorPrimaryType] = useState(initialConnectorConfig?.primaryType || 'mcp');
+  // A new connector must explicitly opt into its interfaces.  A subsequent
+  // release, on the other hand, starts from the previous saved configuration.
+  const [connectorCapabilities, setConnectorCapabilities] = useState({ mcp: Boolean(initialConnectorConfig?.mcp), cli: Boolean(initialConnectorConfig?.cli), skill: Boolean(initialConnectorConfig?.hasSkill) });
+  const [connectorPrimaryType, setConnectorPrimaryType] = useState(initialConnectorConfig?.primaryType || '');
   const [connectorAuthMode, setConnectorAuthMode] = useState(initialConnectorConfig?.authMode || 'null');
   const [connectorAuthBrowser, setConnectorAuthBrowser] = useState(initialConnectorConfig?.authBrowser || 'system');
   const [mcpTransport, setMCPTransport] = useState(initialConnectorConfig?.mcp?.transport || 'streamableHttp');

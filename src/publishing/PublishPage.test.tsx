@@ -208,13 +208,19 @@ describe('connector-only publishing', () => {
 
     fireEvent.click(screen.getByText('连接器'));
     expect(container.querySelector('[name="type"]')).toHaveValue('connector');
-    expect(container.querySelector('[name="connectorHasMCP"]')).toBeChecked();
-    expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveValue('mcp');
+    expect(container.querySelector('[name="connectorHasMCP"]')).not.toBeChecked();
+    expect(container.querySelector('[name="connectorHasCLI"]')).not.toBeChecked();
+    expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveValue('');
     expect(container.querySelector('[name="connectorAuthMode"]')).toHaveValue('null');
     expect(container.querySelector('[name="connectorAuthBrowser"]')).toHaveValue('system');
+    expect(container.querySelector('[name="mcpTransport"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[name="mcpAddress"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeInTheDocument();
+
+    fireEvent.click(container.querySelector('[name="connectorHasMCP"]'));
+    expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveValue('mcp');
     expect(container.querySelector('[name="mcpTransport"]')).toHaveValue('streamableHttp');
     expect(container.querySelector('[name="mcpAddress"]')).toBeRequired();
-    expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeInTheDocument();
 
     fireEvent.change(container.querySelector('[name="connectorAuthMode"]'), { target: { value: 'token' } });
     expect(container.querySelector('[name="connectorTokenKey"]')).toHaveAttribute('type', 'hidden');
@@ -248,8 +254,10 @@ describe('connector-only publishing', () => {
     fireEvent.click(screen.getByText('连接器'));
 
     expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveAttribute('type', 'hidden');
-    expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveValue('mcp');
+    expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveValue('');
     fireEvent.click(container.querySelector('[name="connectorHasCLI"]'));
+    expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveValue('cli');
+    fireEvent.click(container.querySelector('[name="connectorHasMCP"]'));
     expect(container.querySelector('[name="connectorPrimaryType"]')).not.toHaveAttribute('type', 'hidden');
   });
 
@@ -298,6 +306,7 @@ describe('connector-only publishing', () => {
       <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
     );
     fireEvent.click(screen.getByText('连接器'));
+    fireEvent.click(container.querySelector('[name="connectorHasMCP"]'));
     fireEvent.change(container.querySelector('[name="mcpTransport"]'), { target: { value: 'stdio' } });
 
     fireEvent.click(screen.getByText('添加随包 stdio 可执行文件（可选）'));
@@ -337,7 +346,6 @@ describe('guided publish workflow', () => {
     );
 
     fireEvent.click(screen.getByText('连接器'));
-    fireEvent.click(container.querySelector('[name="connectorHasMCP"]'));
     fireEvent.click(screen.getByText('下一步：填写发布信息'));
 
     expect(container.querySelector('form')).toHaveClass('is-artifact');
@@ -350,6 +358,7 @@ describe('guided publish workflow', () => {
     );
 
     fireEvent.click(screen.getByText('连接器'));
+    fireEvent.click(container.querySelector('[name="connectorHasMCP"]'));
     fireEvent.change(container.querySelector('[name="mcpAddress"]'), { target: { value: 'https://example.com/mcp' } });
     fireEvent.click(screen.getByText('下一步：填写发布信息'));
 
