@@ -70,7 +70,6 @@ import {
   hasArtifact,
   canInstallWithADP,
 } from '../domain/platform';
-import { formatVersionLabel } from '../domain/version';
 import {
   formatCount,
   formatDate,
@@ -261,7 +260,7 @@ export function MarketCard({ item, isAuthenticated, locale, t, onDetails, onInst
   );
 }
 
-export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, selectedVersion, versionOptions = [], onVersionChange, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onInstall, onDownload, onFavorite, isDownloading, isFavoriting, onCommentsChanged }) {
+export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, selectedPlatformKey, onPlatformChange, onToggleVideo, onClose, onInstall, onDownload, onFavorite, isDownloading, isFavoriting, onCommentsChanged }) {
   const Icon = categoryMeta.find((category) => category.id === item.type)?.icon || PackageOpen;
   const platformKeys = availablePlatformKeys(item);
   const activePlatformKey = preferredPlatformKey(item, selectedPlatformKey);
@@ -367,14 +366,6 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
           </section>
 
           <section className="detail-side">
-            {versionOptions.length > 1 ? (
-              <label className="platform-select">
-                <span>{t.version}</span>
-                <select aria-label={t.version} value={selectedVersion || item.version} onChange={(event) => onVersionChange(event.target.value)}>
-                  {versionOptions.map((version) => <option value={version} key={version}>{formatVersionLabel(version)}</option>)}
-                </select>
-              </label>
-            ) : null}
             {item.type !== 'connector' && usageHints.length ? (
               <section className="side-section usage-hint-section">
                 <h3>{t.usageHintTitle}</h3>

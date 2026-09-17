@@ -131,9 +131,6 @@ export function App() {
   const [theme, setTheme] = useState(initialTheme);
   const [selected, setSelected] = useState(null);
   const [selectedPlatformKey, setSelectedPlatformKey] = useState('');
-  const [selectedVersion, setSelectedVersion] = useState('');
-  const [selectedVersions, setSelectedVersions] = useState([]);
-  const detailVersionsRequest = useRef('');
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [toast, setToast] = useState(null);
   const [publishSource, setPublishSource] = useState(null);
@@ -472,21 +469,6 @@ export function App() {
     });
   }, [activeCategory, activeSkillCategory, catalog, catalogOrderOverride, favoritesOnly, locale, marketOrderSignature, query, sortMode]);
 
-  const selectedRelease = useMemo(() => {
-    if (!selected) return null;
-    const release = selectedVersions.find((version) => canonicalVersion(version.version) === canonicalVersion(selectedVersion));
-    if (!release) return selected;
-    return mergeCatalogItem({
-      ...selected,
-      ...release,
-      id: selected.id,
-      type: selected.type,
-      name: selected.name,
-      author: selected.author,
-      latestVersion: selected.latestVersion || selected.version,
-    });
-  }, [selected, selectedVersion, selectedVersions]);
-
   const currentCategoryName = activeCategory === 'all' ? t.all : t.categories[activeCategory];
   const emptyCopy = catalog.length === 0
     ? { title: t.emptyCatalogTitle, body: t.emptyCatalogBody }
@@ -517,18 +499,8 @@ export function App() {
 
   function openDetails(item) {
     setSelected(item);
-    const version = item.version || item.latestVersion || '';
-    setSelectedVersion(version);
-    setSelectedVersions([]);
     setSelectedPlatformKey(preferredPlatformKey(item));
     setVideoPlaying(false);
-    const requestKey = `${item.type}:${item.id}:${Date.now()}`;
-    detailVersionsRequest.current = requestKey;
-    requestJSON(`${apiBase}/${marketRoute(item.type)}/${encodeURIComponent(item.id)}/versions`)
-      .then((data) => {
-        if (detailVersionsRequest.current === requestKey) setSelectedVersions(Array.isArray(data?.versions) ? data.versions : []);
-      })
-      .catch(() => {});
   }
 
   function handleOpenMarketDetails(item) {
@@ -548,11 +520,8 @@ export function App() {
   });
 
   function closeDetails() {
-    detailVersionsRequest.current = '';
     setSelected(null);
     setSelectedPlatformKey('');
-    setSelectedVersion('');
-    setSelectedVersions([]);
     setVideoPlaying(false);
   }
 
@@ -658,7 +627,6 @@ export function App() {
       const route = marketRoute(item.type);
       const id = encodeURIComponent(item.id);
       const query = new URLSearchParams();
-      if (item.version) query.set('version', canonicalVersion(item.version));
       if (platform) query.set('platform', platform);
       const resolved = await requestJSON(`${apiBase}/${route}/${id}/resolve?${query}`);
       if (!resolved?.asset?.url) {
@@ -666,7 +634,6 @@ export function App() {
       }
       const resolvedPlatform = resolved.platform || platform;
       const downloadQuery = new URLSearchParams();
-      if (resolved.version || item.version) downloadQuery.set('version', canonicalVersion(resolved.version || item.version));
       if (resolvedPlatform) downloadQuery.set('platform', resolvedPlatform);
       triggerBrowserDownload(`${apiBase}/${route}/${id}/download?${downloadQuery}`);
       window.dispatchEvent(new CustomEvent('market:downloaded', { detail: { type: item.type, id: item.id } }));
@@ -1457,29 +1424,21 @@ export function App() {
         <span>{isManualOpen ? '返回市场' : '操作手册'}</span>
       </button>
 
-      {selectedRelease ? (
+      {selected ? (
         <DetailModal
-          item={selectedRelease}
+          item={selected}
           isAuthenticated={isAuthenticated}
           locale={locale}
           t={t}
           videoPlaying={videoPlaying}
-          selectedVersion={selectedVersion || selectedRelease.version}
-          versionOptions={selectedVersions.map((version) => version.version)}
-          onVersionChange={(version) => {
-            setSelectedVersion(version);
-            const release = selectedVersions.find((entry) => canonicalVersion(entry.version) === canonicalVersion(version));
-            const nextItem = release ? mergeCatalogItem({ ...selected, ...release, id: selected.id, type: selected.type, name: selected.name }) : selected;
-            setSelectedPlatformKey(preferredPlatformKey(nextItem));
-          }}
-          selectedPlatformKey={selectedPlatformKey || preferredPlatformKey(selectedRelease)}
+          selectedPlatformKey={selectedPlatformKey || preferredPlatformKey(selected)}
           onPlatformChange={setSelectedPlatformKey}
           onToggleVideo={() => setVideoPlaying((value) => !value)}
           onClose={closeDetails}
-          onDownload={() => handleDownload(selectedRelease, selectedPlatformKey)}
-          onInstall={() => handleInstall(selectedRelease)}
+          onDownload={() => handleDownload(selected, selectedPlatformKey)}
+          onInstall={() => handleInstall(selected)}
           onFavorite={() => handleFavorite(selected)}
-          isDownloading={downloadingKey === downloadKeyForItem(selectedRelease, selectedPlatformKey)}
+          isDownloading={downloadingKey === downloadKeyForItem(selected, selectedPlatformKey)}
           isFavoriting={favoritingKey === `${selected.type}:${selected.id}`}
           onCommentsChanged={() => Promise.all([loadCatalog(), loadCreatorItems(undefined, authSession)])}
         />

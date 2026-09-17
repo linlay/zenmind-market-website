@@ -2509,7 +2509,6 @@ img {
 }
 
 .sort-control select,
-.platform-select select,
 .publish-form select,
 .publish-form input,
 .publish-form textarea {
@@ -2524,7 +2523,6 @@ img {
 }
 
 .sort-control select:focus,
-.platform-select select:focus,
 .publish-form select:focus,
 .publish-form input:focus,
 .publish-form textarea:focus,
@@ -5094,18 +5092,6 @@ label.detail-platform-choice:hover {
   .included-skill-list {
     grid-template-columns: 1fr;
   }
-}
-
-.platform-select {
-  display: grid;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.platform-select select {
-  min-width: 0;
 }
 
 .connector-structured-fields {
