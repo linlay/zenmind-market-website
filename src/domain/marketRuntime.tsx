@@ -347,14 +347,24 @@ export function preferredPlatformKey(item, requested = '') {
   const keys = availablePlatformKeys(item);
   if (!keys.length) return '';
   const detected = detectClientPlatform();
-  const preferred = requested || detected.key;
-  for (const candidate of platformFallbackCandidates(preferred)) {
-    if (keys.includes(candidate)) return candidate;
-  }
-  for (const candidate of platformFallbackCandidates(detected.os)) {
-    if (keys.includes(candidate)) return candidate;
+  if (requested) {
+    for (const candidate of platformFallbackCandidates(requested)) {
+      if (keys.includes(candidate)) return candidate;
+    }
+  } else if (detected.arch) {
+    for (const candidate of platformFallbackCandidates(detected.key)) {
+      if (keys.includes(candidate)) return candidate;
+    }
+  } else if (detected.os !== 'universal') {
+    const osMatches = keys.filter((key) => inferOSFromPlatform(key) === detected.os);
+    if (osMatches.length === 1) return osMatches[0];
+    if (keys.includes(detected.os)) return detected.os;
   }
   if (keys.includes('universal')) return 'universal';
+  if (!requested && detected.os !== 'universal') {
+    const osMatches = keys.filter((key) => inferOSFromPlatform(key) === detected.os);
+    if (osMatches.length > 1) return '';
+  }
   return keys[0];
 }
 
@@ -401,10 +411,7 @@ export function detectClientPlatform() {
   if (rawPlatform.includes('arm64') || rawPlatform.includes('aarch64')) arch = 'arm64';
   else if (rawPlatform.includes('x86_64') || rawPlatform.includes('x64') || rawPlatform.includes('win64') || rawPlatform.includes('amd64')) arch = 'amd64';
   else if (rawPlatform.includes('i686') || rawPlatform.includes('i386')) arch = '386';
-  if (!arch && os === 'darwin') arch = 'arm64';
-  if (!arch && os !== 'universal') arch = 'amd64';
-
-  return { os, arch, key: os === 'universal' ? 'universal' : `${os}-${arch}` };
+  return { os, arch, key: os === 'universal' ? 'universal' : arch ? `${os}-${arch}` : os };
 }
 
 export function sanitizePlatformKey(value) {
