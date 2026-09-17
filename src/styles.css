@@ -5038,6 +5038,18 @@ img {
   min-width: 0;
 }
 
+.connector-structured-fields {
+  border: 0;
+  display: contents;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.connector-structured-fields[hidden] {
+  display: none;
+}
+
 .platform-single {
   min-height: 32px;
   border-radius: 8px;

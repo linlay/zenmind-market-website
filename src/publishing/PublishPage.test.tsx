@@ -147,6 +147,24 @@ describe('publish access policy', () => {
 });
 
 describe('connector-only publishing', () => {
+  it('uses complete-package mode for connector configs that cannot be safely reconstructed', () => {
+    const { container } = render(
+      <PublishPage
+        t={getMarketCopy('zh-CN')}
+        locale="zh-CN"
+        initialItem={{ ...initialItem, id: 'advanced-connector', type: 'connector', metadata: { connectorPublishConfig: JSON.stringify({ packageMode: 'complete', primaryType: 'mcp', authMode: 'null' }) } }}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        isPublishing={false}
+      />,
+    );
+
+    expect(screen.getByLabelText('上传完整连接器 ZIP')).toBeChecked();
+    expect(container.querySelector('.connector-structured-fields')).toBeDisabled();
+    expect(container.querySelector('[name="variantArtifact.0"]')).toBeRequired();
+    expect(screen.getByText('保留完整连接器规范')).toBeInTheDocument();
+  });
+
   it('prefills a new version from the previous connector configuration', () => {
     const connectorConfig = {
       primaryType: 'mcp',

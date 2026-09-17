@@ -98,6 +98,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [websiteKind, setWebsiteKind] = useState(initialWebsiteKind);
   const [skillKind, setSkillKind] = useState(initialSkillKind);
   const [artifactSource, setArtifactSource] = useState('upload');
+  const [connectorPackageMode, setConnectorPackageMode] = useState(initialConnectorConfig?.packageMode === 'complete' ? 'complete' : 'parts');
   const [connectorCapabilities, setConnectorCapabilities] = useState({ mcp: Boolean(initialConnectorConfig?.mcp ?? true), cli: Boolean(initialConnectorConfig?.cli), skill: Boolean(initialConnectorConfig?.hasSkill) });
   const [connectorPrimaryType, setConnectorPrimaryType] = useState(initialConnectorConfig?.primaryType || 'mcp');
   const [connectorAuthMode, setConnectorAuthMode] = useState(initialConnectorConfig?.authMode || 'null');
@@ -164,7 +165,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const supportsADP = supportsADPFor(type, { skill: { kind: skillKind } });
   const showAssetSection = !(type === 'skill' && skillKind === 'package') || supportsADP;
   const filteredSkills = filterPublishSkills(availableSkills, skillSearch, locale);
-  const artifactReady = type === 'connector' || artifactSource === 'repository' || Object.values(artifactFiles).some(Boolean);
+  const artifactReady = (type === 'connector' && connectorPackageMode === 'parts') || artifactSource === 'repository' || Object.values(artifactFiles).some(Boolean);
   const basicReady = Boolean(marketPreview.id.trim() && marketPreview.name.trim() && marketPreview.version.trim() && marketPreview.description.trim());
   const readiness = [true, artifactReady, basicReady].filter(Boolean).length;
   const readinessPercent = Math.round((readiness / 3) * 100);
@@ -229,13 +230,13 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   }
 
   function advanceWizard(event, nextStep) {
-    if (type === 'connector' && !connectorCapabilities.mcp && !connectorCapabilities.cli) {
+    if (type === 'connector' && connectorPackageMode === 'parts' && !connectorCapabilities.mcp && !connectorCapabilities.cli) {
       setConnectorCapabilityError(true);
       return;
     }
     const form = event.currentTarget.form;
     const selector = step === 'artifact'
-      ? (type === 'connector' ? '.publish-section-settings' : '.publish-section-assets')
+      ? (type === 'connector' ? '.publish-section-settings, .publish-section-assets' : '.publish-section-assets')
       : '.publish-section-basic, .publish-section-settings, .publish-section-access, .publish-section-advanced';
     const invalid = invalidControlIn(form?.querySelector(selector));
     if (invalid) {
@@ -246,7 +247,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   }
 
   function submitWizard(event) {
-    if (type === 'connector' && !connectorCapabilities.mcp && !connectorCapabilities.cli) {
+    if (type === 'connector' && connectorPackageMode === 'parts' && !connectorCapabilities.mcp && !connectorCapabilities.cli) {
       setConnectorCapabilityError(true);
       setStep('artifact');
       return;
@@ -545,6 +546,12 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
           {type === 'connector' ? (
             <div className="connector-part-upload full">
               <p className="field-hint">{t.connectorPartUploadHint}</p>
+              <div className="connector-capability-picker">
+                <label className="checkbox-field"><input name="connectorPackageMode" type="radio" value="parts" checked={connectorPackageMode === 'parts'} onChange={() => setConnectorPackageMode('parts')} /><span>表单组装连接器</span></label>
+                <label className="checkbox-field"><input name="connectorPackageMode" type="radio" value="complete" checked={connectorPackageMode === 'complete'} onChange={() => setConnectorPackageMode('complete')} /><span>上传完整连接器 ZIP</span></label>
+              </div>
+              {connectorPackageMode === 'complete' ? <div className="publish-default-card"><span><PackageOpen size={16} /><span><strong>保留完整连接器规范</strong><small>适用于多个 MCP Server、多步骤 CLI 登录或其他高级配置；请在下方为每个平台上传包含 connector.json 的完整 ZIP。</small></span></span></div> : null}
+              <fieldset className="connector-structured-fields" hidden={connectorPackageMode === 'complete'} disabled={connectorPackageMode === 'complete'}>
               <div className={connectorCapabilityError ? 'connector-capability-picker is-invalid' : 'connector-capability-picker'} aria-describedby={connectorCapabilityError ? 'connector-capability-error' : undefined}>
                 {connectorAuthMode === 'mcp' ? <input name="connectorHasMCP" type="hidden" value="on" /> : null}
                 {['mcp', 'cli', 'skill'].map((capability) => (
@@ -710,6 +717,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                 <ArrowRight size={14} />
               </button>
               <small className="field-hint">{t.connectorPartUploadRequirement}</small>
+              </fieldset>
             </div>
           ) : null}
           {type === 'sandbox-image' ? (
@@ -748,7 +756,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
             </section>
           ) : null}
 
-          {showAssetSection && type !== 'connector' ? (
+          {showAssetSection && (type !== 'connector' || connectorPackageMode === 'complete') ? (
             <section className="publish-section publish-section-assets full">
               <div className="publish-section-title-row">
                 <div>

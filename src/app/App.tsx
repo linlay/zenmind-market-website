@@ -928,6 +928,7 @@ export function App() {
       const adpManifest = selectedFormFile(formElement, form, 'adpManifest');
       const hasSelectedADPManifest = Boolean(adpManifest);
       const connectorSkillsArchive = selectedFormFile(formElement, form, 'connectorSkillsArchive');
+      const connectorPackageMode = String(form.get('connectorPackageMode') || 'parts');
       const connectorHasMCP = form.get('connectorHasMCP') === 'on';
       const connectorHasCLI = form.get('connectorHasCLI') === 'on';
       const connectorHasSkill = form.get('connectorHasSKILL') === 'on';
@@ -958,7 +959,7 @@ export function App() {
         || (hostedCredentialVariable ? (connectorMCPTransport === 'stdio' ? hostedCredentialVariable : 'Authorization') : '');
       const connectorMCPAuthPrefix = String(form.get('connectorMCPAuthPrefix') || '')
         || (hostedCredentialVariable && connectorMCPTransport === 'streamableHttp' ? 'Bearer ' : '');
-      const connectorConfig = type === 'connector' ? {
+      const connectorConfig = type === 'connector' && connectorPackageMode !== 'complete' ? {
         primaryType: String(form.get('connectorPrimaryType') || '').trim(),
         authMode: connectorAuthMode,
         tokenSchema: connectorAuthMode === 'token' ? {
@@ -1036,7 +1037,7 @@ export function App() {
         return;
       }
       const artifactRequired = artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill });
-      if (artifactRequired && (type === 'connector' ? !hasConnectorParts : (!hasSelectedArtifact || (variantIndexes.length > 0 && !hasAllVariantArtifacts)))) {
+      if (artifactRequired && (type === 'connector' && connectorPackageMode !== 'complete' ? !hasConnectorParts : (!hasSelectedArtifact || (variantIndexes.length > 0 && !hasAllVariantArtifacts)))) {
         notify(t.artifactRequired, 'error');
         return;
       }
@@ -1096,7 +1097,7 @@ export function App() {
           fileField: `artifact.${key}`,
         };
       }) : [];
-      const variants = type === 'connector' && connectorCanBundleExecutable ? connectorVariants : uploadVariants;
+      const variants = type === 'connector' && connectorPackageMode !== 'complete' && connectorCanBundleExecutable ? connectorVariants : uploadVariants;
       if (new Set(variants.map((variant) => variant.platform.key)).size !== variants.length) {
         notify(t.publishFailed(t.duplicatePlatformVariant), 'error');
         return;
@@ -1161,7 +1162,7 @@ export function App() {
         if (hasSelectedImage) body.append('image', image);
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
         if (connectorConfig) body.append('connectorConfig', JSON.stringify(connectorConfig));
-        if (type === 'connector') connectorVariants.forEach((variant) => {
+        if (type === 'connector' && connectorPackageMode !== 'complete') connectorVariants.forEach((variant) => {
           const cliArchive = selectedFormFile(formElement, form, `connectorCLIArchive.${variant.platform.key}`);
           if (cliArchive) body.append(`connectorCLIArchive.${variant.platform.key}`, cliArchive);
         });
