@@ -266,7 +266,6 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
   const platformKeys = availablePlatformKeys(item);
   const activePlatformKey = preferredPlatformKey(item, selectedPlatformKey);
   const activePlatform = platformForKey(item, activePlatformKey);
-  const specificPlatformKeys = platformKeys.filter((platform) => String(platform).toLowerCase() !== 'universal');
   const commands = commandEntries(activePlatform, t);
   const canDownload = (Boolean(activePlatformKey) && hasArtifact(item, activePlatformKey)) || isSkillPackage(item);
   const canInstall = canInstallWithADP(item);
@@ -304,8 +303,14 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
                 {item.type === 'skill' && item.skillLevel ? <span>{t.skillLevels[item.skillLevel] || item.skillLevel}</span> : null}
                 {item.featured ? <span>{t.officialFeatured}</span> : null}
                 {(item.tags || []).map((tag) => <span key={tag}>#{tag}</span>)}
-                {specificPlatformKeys.map((platform) => <span key={platform}><Box size={13} />{platform}</span>)}
               </div>
+              <PlatformArtifactPicker
+                platformKeys={platformKeys}
+                activePlatformKey={activePlatformKey}
+                label={t.selectedPlatform}
+                selectLabel={t.selectPlatform}
+                onChange={onPlatformChange}
+              />
               <div className="detail-heading">
                 <h2>{localized(item.name, locale)}</h2>
                 <p>{localized(item.description, locale)}</p>
@@ -370,22 +375,6 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
                 </select>
               </label>
             ) : null}
-            {platformKeys.length > 1 ? (
-              <label className="platform-select">
-                <span>{t.selectedPlatform}</span>
-                <select
-                  aria-label={t.selectedPlatform}
-                  value={activePlatformKey}
-                  onChange={(event) => onPlatformChange(event.target.value)}
-                >
-                  <option value="" disabled>{t.selectPlatform}</option>
-                  {platformKeys.map((platform) => <option key={platform} value={platform}>{platform}</option>)}
-                </select>
-              </label>
-            ) : platformKeys.length === 1 ? (
-              <div className="platform-single"><Box size={13} />{platformKeys[0]}</div>
-            ) : null}
-
             {item.type !== 'connector' && usageHints.length ? (
               <section className="side-section usage-hint-section">
                 <h3>{t.usageHintTitle}</h3>
@@ -432,6 +421,28 @@ export function DetailModal({ item, isAuthenticated, locale, t, videoPlaying, se
         ) : null}
       </aside>
     </div>
+  );
+}
+
+export function PlatformArtifactPicker({ platformKeys = [], activePlatformKey = '', label, selectLabel, onChange }) {
+  if (!platformKeys.length) return null;
+  if (platformKeys.length === 1) {
+    return <div className="detail-platform-picker is-single" aria-label={label}>
+      <span className="detail-platform-choice is-active"><Box size={13} />{platformKeys[0]}</span>
+    </div>;
+  }
+  return (
+    <fieldset className="detail-platform-picker" aria-label={label}>
+      <legend>{activePlatformKey ? label : selectLabel}</legend>
+      {platformKeys.map((platform) => {
+        const checked = platform === activePlatformKey;
+        return <label className={checked ? 'detail-platform-choice is-active' : 'detail-platform-choice'} key={platform}>
+          <input type="radio" name="detail-platform-artifact" value={platform} checked={checked} onChange={() => onChange(platform)} />
+          {checked ? <Check size={13} /> : <Box size={13} />}
+          <span>{platform}</span>
+        </label>;
+      })}
+    </fieldset>
   );
 }
 

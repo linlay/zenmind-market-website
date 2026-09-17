@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ConnectorComponentsSection, IncludedSkillsSection, stripMarkdownFrontMatter } from './CatalogViews';
+import { ConnectorComponentsSection, IncludedSkillsSection, PlatformArtifactPicker, stripMarkdownFrontMatter } from './CatalogViews';
 
 const sectionCopy = {
   skillIncludedCount: (count: number) => `Included skills (${count})`,
@@ -43,6 +43,24 @@ describe('stripMarkdownFrontMatter', () => {
 
   it('does not remove content when a front matter block is incomplete', () => {
     expect(stripMarkdownFrontMatter('---\nname: Demo\n# Still YAML')).toBe('---\nname: Demo\n# Still YAML');
+  });
+});
+
+describe('PlatformArtifactPicker', () => {
+  it('shows a single platform as a non-interactive tag', () => {
+    render(<PlatformArtifactPicker platformKeys={['darwin-arm64']} activePlatformKey="darwin-arm64" label="Platform" selectLabel="Select platform" onChange={vi.fn()} />);
+
+    expect(screen.getByText('darwin-arm64')).toBeTruthy();
+    expect(screen.queryByRole('radio')).toBeNull();
+  });
+
+  it('shows multiple artifacts as a single-select tag group', () => {
+    const onChange = vi.fn();
+    render(<PlatformArtifactPicker platformKeys={['darwin-arm64', 'darwin-amd64']} activePlatformKey="darwin-arm64" label="Platform" selectLabel="Select platform" onChange={onChange} />);
+
+    expect(screen.getByRole('radio', { name: 'darwin-arm64' })).toBeChecked();
+    fireEvent.click(screen.getByRole('radio', { name: 'darwin-amd64' }));
+    expect(onChange).toHaveBeenCalledWith('darwin-amd64');
   });
 });
 

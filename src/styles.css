@@ -4069,6 +4069,76 @@ img {
   color: var(--line-strong);
 }
 
+.detail-platform-picker {
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  min-width: 0;
+  padding: 0;
+}
+
+.detail-platform-picker legend {
+  width: 100%;
+  margin-bottom: 1px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.detail-platform-picker.is-single {
+  margin-top: -2px;
+}
+
+.detail-platform-choice {
+  min-height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+label.detail-platform-choice {
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+label.detail-platform-choice:hover {
+  border-color: var(--brand);
+  color: var(--text);
+}
+
+.detail-platform-choice.is-active {
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--line));
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.detail-platform-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.detail-platform-choice:has(input:focus-visible) {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
 .detail-hero .detail-heading h2 {
   margin: 0 0 8px;
   font-size: 28px;
@@ -5048,20 +5118,6 @@ img {
 
 .connector-structured-fields[hidden] {
   display: none;
-}
-
-.platform-single {
-  min-height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 9px;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
 }
 
 .platform-facts {
