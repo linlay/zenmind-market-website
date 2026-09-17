@@ -102,6 +102,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [connectorCapabilities, setConnectorCapabilities] = useState({ mcp: Boolean(initialConnectorConfig?.mcp ?? true), cli: Boolean(initialConnectorConfig?.cli), skill: Boolean(initialConnectorConfig?.hasSkill) });
   const [connectorPrimaryType, setConnectorPrimaryType] = useState(initialConnectorConfig?.primaryType || 'mcp');
   const [connectorAuthMode, setConnectorAuthMode] = useState(initialConnectorConfig?.authMode || 'null');
+  const [connectorAuthBrowser, setConnectorAuthBrowser] = useState(initialConnectorConfig?.authBrowser || 'system');
   const [mcpTransport, setMCPTransport] = useState(initialConnectorConfig?.mcp?.transport || 'streamableHttp');
   const [mcpHasRuntime, setMCPHasRuntime] = useState(Boolean(initialConnectorConfig?.mcp?.runtimeType));
   const [connectorHasCLIAuth, setConnectorHasCLIAuth] = useState(Boolean(initialConnectorConfig?.cli && Object.keys(initialConnectorConfig.cli.auth || {}).length));
@@ -579,6 +580,14 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                     <option value="oauth">OAuth 2.0</option>
                     <option value="mcp">MCP OAuth 2.1</option>
                   </select>
+                </label>
+                <label>
+                  <span className="required-field-label">{t.connectorAuthBrowserField}</span>
+                  <select name="connectorAuthBrowser" value={connectorAuthBrowser} onChange={(event) => setConnectorAuthBrowser(event.target.value)} required>
+                    <option value="system">{t.connectorAuthBrowserSystem}</option>
+                    <option value="embedded">{t.connectorAuthBrowserEmbedded}</option>
+                  </select>
+                  <small className="field-hint">{t.connectorAuthBrowserHint}</small>
                 </label>
               </div>
 

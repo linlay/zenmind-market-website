@@ -169,6 +169,7 @@ describe('connector-only publishing', () => {
     const connectorConfig = {
       primaryType: 'mcp',
       authMode: 'oauth',
+      authBrowser: 'embedded',
       hasSkill: false,
       oauth: { issuer: 'https://accounts.example.com', resource: 'https://api.example.com', scopes: ['read'] },
       mcp: { serverName: 'search', transport: 'streamableHttp', address: 'https://api.example.com/mcp', timeout: 45000 },
@@ -186,6 +187,7 @@ describe('connector-only publishing', () => {
     );
 
     expect(container.querySelector('[name="connectorAuthMode"]')).toHaveValue('oauth');
+    expect(container.querySelector('[name="connectorAuthBrowser"]')).toHaveValue('embedded');
     expect(container.querySelector('[name="connectorOAuthIssuer"]')).toHaveValue('https://accounts.example.com');
     expect(container.querySelector('[name="connectorOAuthResource"]')).toHaveValue('https://api.example.com');
     expect(container.querySelector('[name="mcpServerName"]')).toHaveValue('search');
@@ -209,6 +211,7 @@ describe('connector-only publishing', () => {
     expect(container.querySelector('[name="connectorHasMCP"]')).toBeChecked();
     expect(container.querySelector('[name="connectorPrimaryType"]')).toHaveValue('mcp');
     expect(container.querySelector('[name="connectorAuthMode"]')).toHaveValue('null');
+    expect(container.querySelector('[name="connectorAuthBrowser"]')).toHaveValue('system');
     expect(container.querySelector('[name="mcpTransport"]')).toHaveValue('streamableHttp');
     expect(container.querySelector('[name="mcpAddress"]')).toBeRequired();
     expect(container.querySelector('[name="variantArtifact.0"]')).not.toBeInTheDocument();

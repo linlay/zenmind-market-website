@@ -905,6 +905,7 @@ export function App() {
         ['win32', String(form.get(`${prefix}Win32`) || '').trim()],
       ].filter(([, command]) => command));
       const connectorAuthMode = String(form.get('connectorAuthMode') || 'null');
+      const connectorAuthBrowser = String(form.get('connectorAuthBrowser') || 'system');
       const connectorTokenRows = form.getAll('connectorTokenKey').map((value, index) => ({
         key: String(value || '').trim(),
         label: String(form.getAll('connectorTokenLabel')[index] || '').trim(),
@@ -929,6 +930,7 @@ export function App() {
       const connectorConfig = type === 'connector' && connectorPackageMode !== 'complete' ? {
         primaryType: String(form.get('connectorPrimaryType') || '').trim(),
         authMode: connectorAuthMode,
+        authBrowser: connectorAuthBrowser,
         tokenSchema: connectorAuthMode === 'token' ? {
           title: String(form.get('connectorTokenTitle') || '').trim(),
           docUrl: String(form.get('connectorTokenDocURL') || '').trim(),
