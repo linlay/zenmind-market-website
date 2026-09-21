@@ -64,6 +64,7 @@ import {
 } from '../domain/market';
 import { nextPatchVersion } from '../domain/version';
 import { platformForKey, preferredPlatformKey } from '../domain/platform';
+import { readWebappManifest } from '../domain/webappManifest';
 
 export function PublishPage({ t, locale, availableSkills = [], initialItem = null, currentUser = null, onClose, onSubmit, isPublishing }) {
   const updateMode = Boolean(initialItem);
@@ -130,6 +131,9 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
 	const [showAccess, setShowAccess] = useState(updateMode && initialItem?.accessPolicy?.mode !== 'all');
 	const [platformVariants, setPlatformVariants] = useState(initialVariants);
   const [artifactFiles, setArtifactFiles] = useState({});
+  const [webappArtifactVersions, setWebappArtifactVersions] = useState({});
+  const [webappArtifactIDs, setWebappArtifactIDs] = useState({});
+  const [webappVersionError, setWebappVersionError] = useState('');
   const [skillSearch, setSkillSearch] = useState('');
   const [selectedSkillIDs, setSelectedSkillIDs] = useState(updateMode ? (initialItem.includedSkills || []).map((skill) => skill.id) : []);
   const initialAccessPolicy = initialItem?.accessPolicy || { mode: 'all', departmentIds: [], userIds: [] };
@@ -152,7 +156,7 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const [marketPreview, setMarketPreview] = useState({
     id: updateMode ? initialItem.id : '',
     name: updateMode ? localized(initialItem.name, locale) : '',
-    version: updateMode ? nextPatchVersion(initialItem.version) : '1.0.0',
+    version: updateMode ? (initialType === 'website-app' && initialWebsiteKind === 'local-app' ? '' : nextPatchVersion(initialItem.version)) : '1.0.0',
     description: updateMode ? localized(initialItem.description, locale) : '',
     imageName: '',
   });
@@ -169,7 +173,13 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
   const showAssetSection = !(type === 'skill' && skillKind === 'package') || supportsADP;
   const filteredSkills = filterPublishSkills(availableSkills, skillSearch, locale);
   const artifactReady = (type === 'connector' && connectorPackageMode === 'parts') || artifactSource === 'repository' || Object.values(artifactFiles).some(Boolean);
-  const basicReady = Boolean(marketPreview.id.trim() && marketPreview.name.trim() && marketPreview.version.trim() && marketPreview.description.trim());
+  const isLocalWebsiteApp = type === 'website-app' && websiteKind === 'local-app';
+  const expectedWebappID = marketPreview.id.trim().toLowerCase();
+  const webappIdentityError = isLocalWebsiteApp && expectedWebappID && Object.values(webappArtifactIDs).some((id) => id !== expectedWebappID)
+    ? 'webapp.json 中的 id 必须与发布组件 ID 完全一致。'
+    : '';
+  const webappError = webappVersionError || webappIdentityError;
+  const basicReady = Boolean(marketPreview.id.trim() && marketPreview.name.trim() && marketPreview.version.trim() && marketPreview.description.trim() && !webappError);
   const readiness = [true, artifactReady, basicReady].filter(Boolean).length;
   const readinessPercent = Math.round((readiness / 3) * 100);
   const enabledPrimaryCapabilities = ['mcp', 'cli'].filter((capability) => connectorCapabilities[capability]);
@@ -193,6 +203,10 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
 	setPlatformVariants([{ id: Date.now(), os: 'universal', arch: '', archiveType: defaultArchiveTypeFor(nextType, { sandboxKind: nextSandboxKind, websiteKind: nextWebsiteKind }) }]);
     setSkillSearch('');
     setSelectedSkillIDs([]);
+    setWebappArtifactVersions({});
+    setWebappArtifactIDs({});
+    setWebappVersionError('');
+    updateMarketPreview('version', nextType === 'website-app' && nextWebsiteKind === 'local-app' ? '' : '1.0.0');
     setStep('artifact');
   }
 
@@ -213,13 +227,65 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
 	  setPlatformVariants((current) => current.length > 1 ? current.filter((variant) => variant.id !== id) : current);
 	  setArtifactFiles((current) => {
 	    const next = { ...current };
+    delete next[id];
+    return next;
+  });
+	  setWebappArtifactVersions((current) => {
+	    const next = { ...current };
+	    delete next[id];
+	    const versions = [...new Set(Object.values(next).filter(Boolean))];
+	    setWebappVersionError(versions.length > 1 ? '所有平台发布包中的 webapp.json version 必须一致。' : '');
+	    updateMarketPreview('version', versions[0] || '');
+	    return next;
+	  });
+	  setWebappArtifactIDs((current) => {
+	    const next = { ...current };
 	    delete next[id];
 	    return next;
 	  });
 	}
 
-  function selectArtifactFile(variantID, file) {
+  async function selectArtifactFile(variantID, file) {
     setArtifactFiles((current) => ({ ...current, [variantID]: file || null }));
+    if (!isLocalWebsiteApp) return;
+    if (!file) {
+      setWebappArtifactVersions((current) => {
+        const next = { ...current };
+        delete next[variantID];
+        updateMarketPreview('version', Object.values(next).find(Boolean) || '');
+        return next;
+      });
+	    setWebappArtifactIDs((current) => {
+	      const next = { ...current };
+	      delete next[variantID];
+	      return next;
+	    });
+      return;
+    }
+    try {
+      const manifest = await readWebappManifest(file);
+      setWebappArtifactVersions((current) => {
+        const next = { ...current, [variantID]: manifest.version };
+        const versions = [...new Set(Object.values(next).filter(Boolean))];
+        setWebappVersionError(versions.length > 1 ? '所有平台发布包中的 webapp.json version 必须一致。' : '');
+        updateMarketPreview('version', versions.length === 1 ? versions[0] : '');
+        return next;
+      });
+	    setWebappArtifactIDs((current) => ({ ...current, [variantID]: manifest.id }));
+    } catch (error) {
+      setWebappArtifactVersions((current) => {
+        const next = { ...current };
+        delete next[variantID];
+        return next;
+      });
+	    setWebappArtifactIDs((current) => {
+	      const next = { ...current };
+	      delete next[variantID];
+	      return next;
+	    });
+      updateMarketPreview('version', '');
+      setWebappVersionError(error instanceof Error ? error.message : '无法读取 webapp.json。');
+    }
   }
 
   function formatBytes(size) {
@@ -365,6 +431,11 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
     const nextKind = event.target.value;
     setWebsiteKind(nextKind);
     setArchiveType(defaultArchiveTypeFor('website-app'));
+    setArtifactFiles({});
+    setWebappArtifactVersions({});
+    setWebappArtifactIDs({});
+    setWebappVersionError('');
+    updateMarketPreview('version', nextKind === 'local-app' ? '' : (updateMode ? nextPatchVersion(initialItem.version) : '1.0.0'));
   }
 
   function renderStepIndicator() {
@@ -457,7 +528,11 @@ export function PublishPage({ t, locale, availableSkills = [], initialItem = nul
                 <input name="name" required maxLength="60" defaultValue={updateMode ? localized(initialItem.name, locale) : ''} onChange={(event) => updateMarketPreview('name', event.target.value)} placeholder="例如：PDF 智能提取助手" />
                 <small className="field-hint">使用动词或结果描述，避免只写内部项目代号。</small>
               </label>
-              {updateMode ? <label>
+              {isLocalWebsiteApp ? <label>
+                <span className="required-field-label">{t.version}</span>
+                <input name="version" required readOnly value={marketPreview.version} placeholder="上传发布包后自动读取" />
+                <small className={`field-hint ${webappError ? 'field-error' : ''}`}>{webappError || '由发布包 webapp.json 中的 version 自动读取，不能手动修改。'}</small>
+              </label> : updateMode ? <label>
                 <span className="required-field-label">{t.version}</span>
                 <input name="version" required defaultValue={nextPatchVersion(initialItem.version)} onChange={(event) => updateMarketPreview('version', event.target.value)} placeholder="1.0.0" />
                 <small className="field-hint">已自动递增补丁版本，可按语义化版本规则调整。</small>

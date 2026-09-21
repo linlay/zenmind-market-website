@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { getMarketCopy } from '../i18n/marketCopy';
 import { PublishPage } from './PublishPage';
@@ -30,7 +30,54 @@ const initialItem = {
   assetMap: {},
 };
 
+function storedZip(name: string, content: string) {
+  const encoder = new TextEncoder();
+  const fileName = encoder.encode(name);
+  const body = encoder.encode(content);
+  const local = new Uint8Array(30 + fileName.length + body.length);
+  const localView = new DataView(local.buffer);
+  localView.setUint32(0, 0x04034b50, true);
+  localView.setUint16(4, 20, true);
+  localView.setUint16(26, fileName.length, true);
+  localView.setUint32(18, body.length, true);
+  local.set(fileName, 30);
+  local.set(body, 30 + fileName.length);
+  const directory = new Uint8Array(46 + fileName.length);
+  const directoryView = new DataView(directory.buffer);
+  directoryView.setUint32(0, 0x02014b50, true);
+  directoryView.setUint16(4, 20, true);
+  directoryView.setUint16(6, 20, true);
+  directoryView.setUint16(28, fileName.length, true);
+  directoryView.setUint32(20, body.length, true);
+  directory.set(fileName, 46);
+  const end = new Uint8Array(22);
+  const endView = new DataView(end.buffer);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(8, 1, true);
+  endView.setUint16(10, 1, true);
+  endView.setUint32(12, directory.length, true);
+  endView.setUint32(16, local.length, true);
+  const archive = new Uint8Array(local.length + directory.length + end.length);
+  archive.set(local);
+  archive.set(directory, local.length);
+  archive.set(end, local.length + directory.length);
+  return archive;
+}
+
 describe('publish platform selection', () => {
+  it('uses the local WebApp manifest version instead of a default release version', async () => {
+    const { container } = render(
+      <PublishPage t={getMarketCopy('zh-CN')} locale="zh-CN" onClose={vi.fn()} onSubmit={vi.fn()} isPublishing={false} />,
+    );
+    fireEvent.click(screen.getByText('网站应用'));
+    const archive = storedZip('app/webapp.json', '{"id":"demo-webapp","version":"3.2.1"}');
+    const file = { name: 'demo-webapp.zip', size: archive.byteLength, arrayBuffer: async () => archive.buffer };
+    fireEvent.change(container.querySelector('[name="variantArtifact.0"]'), { target: { files: [file] } });
+
+    await waitFor(() => expect(container.querySelector('[name="version"]')).toHaveValue('3.2.1'));
+    expect(container.querySelector('[name="version"]')).toHaveAttribute('readonly');
+  });
+
   it('explains the required SKILL.md metadata version contract', () => {
     render(
       <PublishPage

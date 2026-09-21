@@ -877,7 +877,13 @@ export function App() {
       const type = normalizeType(form.get('type'));
       const id = String(form.get('id') || '').trim().toLowerCase();
       const name = String(form.get('name') || '').trim();
-      const version = canonicalVersion(form.get('version')) || '1.0.0';
+      const submittedVersion = canonicalVersion(form.get('version'));
+      const websiteKind = type === 'website-app' ? String(form.get('websiteKind') || '').trim() || 'local-app' : '';
+      const version = submittedVersion || (type === 'website-app' && websiteKind === 'local-app' ? '' : '1.0.0');
+      if (!version) {
+        notify('请先上传包含 version 的 webapp.json 发布包。', 'error');
+        return;
+      }
       if (publishSource && compareSemanticVersionStrings(version, publishSource.version) <= 0) {
         notify(t.publishVersionMustAdvance(formatVersionLabel(publishSource.version)), 'error');
         return;
