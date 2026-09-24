@@ -12,13 +12,12 @@ import {
   PackageOpen,
   Puzzle,
   Network,
-  Terminal,
 } from 'lucide-react';
 
 export const apiBase = import.meta.env.VITE_MARKET_API_BASE || `${marketBasePath}/api/v1`;
 export const brandId = import.meta.env.VITE_MARKET_BRAND || 'zenmind';
 export const locales = ['zh-CN', 'en-US'];
-export const canonicalTypes = ['skill', 'plugin', 'agent', 'mcp', 'sandbox-image', 'pet', 'cli-tool', 'website-app', 'software-package'];
+export const canonicalTypes = ['connector', 'skill', 'plugin', 'agent', 'sandbox-image', 'pet', 'website-app', 'software-package'];
 export const defaultMediaImage = svgDataUri(`
   <svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
     <defs>
@@ -47,13 +46,12 @@ export const marketBrand = resolveMarketBrand(brandId);
 
 export const categoryMeta = [
   { id: 'all', icon: LayoutGrid, colorClass: 'is-muted' },
+  { id: 'connector', icon: Network, colorClass: 'is-blue' },
   { id: 'skill', icon: Brain, colorClass: 'is-purple' },
   { id: 'plugin', icon: Puzzle, colorClass: 'is-blue' },
   { id: 'agent', icon: Bot, colorClass: 'is-indigo' },
-  { id: 'mcp', icon: Network, colorClass: 'is-blue' },
   { id: 'sandbox-image', icon: Box, colorClass: 'is-emerald' },
   { id: 'pet', icon: Cat, colorClass: 'is-amber' },
-  { id: 'cli-tool', icon: Terminal, colorClass: 'is-rose' },
   { id: 'website-app', icon: Globe, colorClass: 'is-cyan' },
   { id: 'software-package', icon: HardDrive, colorClass: 'is-emerald' },
 ];
@@ -61,18 +59,17 @@ export const categoryMeta = [
 export const hiddenMarketTypeIDs = ['plugin', 'sandbox-image'];
 
 export function isMarketTypeVisible(type) {
-  return !hiddenMarketTypeIDs.includes(type);
+  return (type === 'all' || canonicalTypes.includes(type)) && !hiddenMarketTypeIDs.includes(type);
 }
 
 export function publishTypeOptions() {
   return [
+    { id: 'connector', type: 'connector', icon: Network, label: (t) => t.categories.connector },
     { id: 'skill', type: 'skill', skillKind: 'single', icon: Brain, label: (t) => t.skillSingle },
     { id: 'skill-package', type: 'skill', skillKind: 'package', icon: PackageOpen, label: (t) => t.skillPackage },
     { id: 'plugin', type: 'plugin', icon: Puzzle, label: (t) => t.categories.plugin },
     { id: 'agent', type: 'agent', icon: Bot, label: (t) => t.categories.agent },
-    { id: 'mcp', type: 'mcp', icon: Network, label: (t) => t.categories.mcp },
     { id: 'sandbox-image', type: 'sandbox-image', icon: Box, label: (t) => t.categories['sandbox-image'] },
-    { id: 'cli-tool', type: 'cli-tool', icon: Terminal, label: (t) => t.categories['cli-tool'] },
     { id: 'website-app', type: 'website-app', icon: Globe, label: (t) => t.categories['website-app'] },
     { id: 'software-package', type: 'software-package', icon: HardDrive, label: (t) => t.categories['software-package'] },
     { id: 'pet', type: 'pet', icon: Cat, label: (t) => t.categories.pet },
@@ -104,6 +101,12 @@ export function mergeCatalogItem(apiItem) {
     id: dep.id || dep.serviceId || dep.command || dep.runtime || dep.capability || dep.kind,
     name: dep.displayName || dep.id || dep.serviceId || dep.command || dep.runtime || dep.capability || dep.kind,
   })) : [];
+  let connectorConfig = {};
+  try {
+    connectorConfig = JSON.parse(apiItem.metadata?.connectorPublishConfig || '{}');
+  } catch {
+    connectorConfig = {};
+  }
   return {
     ...apiItem,
     type,
@@ -122,15 +125,21 @@ export function mergeCatalogItem(apiItem) {
     skillScenario: skill.scenario,
     skillLevel: skill.level,
     skillPackageMode: skill.packageMode,
-    skillFeatured: Boolean(skill.featured),
+    featured: Boolean(apiItem.featured),
     includedSkills: skill.includedSkills,
-    mcpSource: apiItem.metadata?.source || 'gateway',
-    mcpServerCode: apiItem.metadata?.gatewayServerCode || '',
-    mcpEndpointUrl: apiItem.metadata?.endpointUrl || '',
-    mcpGatewayConfigVersion: apiItem.metadata?.gatewayConfigVersion || '',
-    mcpTools: parseStringArray(apiItem.metadata?.tools),
-    icon: apiItem.metadata?.icon || apiItem.metadata?.screenshot || '',
-    screenshot: apiItem.metadata?.screenshot || apiItem.metadata?.icon || defaultMediaImage,
+    connectorPrimaryType: apiItem.metadata?.connectorPrimaryType || '',
+    connectorAuthMode: apiItem.metadata?.connectorAuthMode || '',
+    connectorCapabilities: parseStringArray(apiItem.metadata?.connectorCapabilities),
+    connectorMCPTransports: parseStringArray(apiItem.metadata?.connectorMCPTransports),
+    connectorSkillNames: parseStringArray(apiItem.metadata?.connectorSkillNames),
+    connectorComponents: parseConnectorComponents(apiItem.metadata?.connectorComponents),
+    connectorSpecVersion: apiItem.metadata?.connectorSpecVersion || '',
+    connectorConfig,
+    // Icons and screenshots serve different places in the UI.  In particular,
+    // do not reuse an icon as the detail-page media: it would be enlarged into
+    // a 16:9 panel for website apps that have no screenshot.
+    icon: apiItem.metadata?.icon || '',
+    screenshot: apiItem.metadata?.screenshot || '',
     videoThumb: apiItem.metadata?.videoThumb || '',
     hasVideo: Boolean(apiItem.metadata?.videoThumb || apiItem.metadata?.videoUrl),
     author: apiItem.author || apiItem.metadata?.author || '',
@@ -153,6 +162,15 @@ export function mergeCatalogItem(apiItem) {
   };
 }
 
+function parseConnectorComponents(value) {
+  try {
+    const parsed = JSON.parse(value || '[]');
+    return Array.isArray(parsed) ? parsed.filter((component) => component && component.id && component.type) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function normalizeType(type) {
   if (type === 'webapps' || type === 'webapp' || type === 'website' || type === 'website-apps') return 'website-app';
   if (type === 'agents') return 'agent';
@@ -162,7 +180,7 @@ export function normalizeType(type) {
 
 export function normalizeSkillProfile(skill, type) {
   if (type !== 'skill') {
-    return { kind: '', category: '', scenario: '', level: '', packageMode: '', featured: false, includedSkills: [] };
+    return { kind: '', category: '', scenario: '', level: '', packageMode: '', includedSkills: [] };
   }
   const kind = skill?.kind === 'package' ? 'package' : 'single';
   const category = skillCategoryFilters.includes(skill?.category) && skill.category !== 'all' ? skill.category : 'other';
@@ -177,7 +195,7 @@ export function normalizeSkillProfile(skill, type) {
       sortOrder: Number(entry.sortOrder || 0),
     })).filter((entry) => entry.id)
     : [];
-  return { kind, category, scenario, level, packageMode, featured: Boolean(skill?.featured), includedSkills };
+  return { kind, category, scenario, level, packageMode, includedSkills };
 }
 
 export function normalizeReviewStatusForUI(status) {
@@ -329,14 +347,24 @@ export function preferredPlatformKey(item, requested = '') {
   const keys = availablePlatformKeys(item);
   if (!keys.length) return '';
   const detected = detectClientPlatform();
-  const preferred = requested || detected.key;
-  for (const candidate of platformFallbackCandidates(preferred)) {
-    if (keys.includes(candidate)) return candidate;
-  }
-  for (const candidate of platformFallbackCandidates(detected.os)) {
-    if (keys.includes(candidate)) return candidate;
+  if (requested) {
+    for (const candidate of platformFallbackCandidates(requested)) {
+      if (keys.includes(candidate)) return candidate;
+    }
+  } else if (detected.arch) {
+    for (const candidate of platformFallbackCandidates(detected.key)) {
+      if (keys.includes(candidate)) return candidate;
+    }
+  } else if (detected.os !== 'universal') {
+    const osMatches = keys.filter((key) => inferOSFromPlatform(key) === detected.os);
+    if (osMatches.length === 1) return osMatches[0];
+    if (keys.includes(detected.os)) return detected.os;
   }
   if (keys.includes('universal')) return 'universal';
+  if (!requested && detected.os !== 'universal') {
+    const osMatches = keys.filter((key) => inferOSFromPlatform(key) === detected.os);
+    if (osMatches.length > 1) return '';
+  }
   return keys[0];
 }
 
@@ -347,7 +375,6 @@ export function platformForKey(item, key) {
 
 export function downloadKeyForItem(item, platformKey = '') {
   if (!item) return '';
-  if (item.type === 'mcp') return `${item.type}:${item.id}:config`;
   if (item.type === 'skill' && item.skillKind === 'package') return `${item.type}:${item.id}:package`;
   return `${item.type}:${item.id}:${preferredPlatformKey(item, platformKey) || 'any'}`;
 }
@@ -384,10 +411,7 @@ export function detectClientPlatform() {
   if (rawPlatform.includes('arm64') || rawPlatform.includes('aarch64')) arch = 'arm64';
   else if (rawPlatform.includes('x86_64') || rawPlatform.includes('x64') || rawPlatform.includes('win64') || rawPlatform.includes('amd64')) arch = 'amd64';
   else if (rawPlatform.includes('i686') || rawPlatform.includes('i386')) arch = '386';
-  if (!arch && os === 'darwin') arch = 'arm64';
-  if (!arch && os !== 'universal') arch = 'amd64';
-
-  return { os, arch, key: os === 'universal' ? 'universal' : `${os}-${arch}` };
+  return { os, arch, key: os === 'universal' ? 'universal' : arch ? `${os}-${arch}` : os };
 }
 
 export function sanitizePlatformKey(value) {
@@ -421,20 +445,18 @@ export function inferArchFromPlatform(platform) {
 
 export function marketRoute(type) {
   switch (normalizeType(type)) {
+    case 'connector':
+      return 'connectors';
     case 'skill':
       return 'skills';
     case 'plugin':
       return 'plugins';
     case 'agent':
       return 'agents';
-    case 'mcp':
-      return 'mcps';
     case 'sandbox-image':
       return 'sandbox-images';
     case 'pet':
       return 'pets';
-    case 'cli-tool':
-      return 'cli-tools';
     case 'website-app':
       return 'webapps';
     case 'software-package':
@@ -553,7 +575,7 @@ export function triggerBrowserDownload(url) {
 }
 
 export function canInstallWithADP(item) {
-  return Boolean(item?.adpInstallUrl && (item.type === 'cli-tool' || item.type === 'skill'));
+  return Boolean(item?.adpInstallUrl && item.type === 'skill');
 }
 
 export function adpInstallCommand(item) {
@@ -632,8 +654,6 @@ export function detectSpecFromForm(form) {
 
 export function artifactRequiredFor(type, options = {}) {
   type = normalizeType(type);
-  if (type === 'mcp') return false;
-  if (type === 'cli-tool') return false;
   if (type === 'website-app' && options.websiteKind === 'external') return false;
   if (type === 'skill' && options.skill?.kind === 'package') return false;
   return true;
@@ -642,18 +662,17 @@ export function artifactRequiredFor(type, options = {}) {
 export function supportsADPFor(type, options = {}) {
   type = normalizeType(type);
   if (type === 'skill' && options.skill?.kind === 'package') return false;
-  return type === 'cli-tool' || type === 'skill';
+  return type === 'skill';
 }
 
 export function archiveOptionsFor(type, options = {}) {
   switch (normalizeType(type)) {
-    case 'mcp':
-      return ['json'];
+    case 'connector':
+      return ['zip'];
     case 'skill':
     case 'plugin':
     case 'agent':
     case 'pet':
-    case 'cli-tool':
     case 'website-app':
       return ['zip'];
     case 'software-package':

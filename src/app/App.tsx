@@ -151,6 +151,7 @@ export function App() {
   const [moderatingCommentID, setModeratingCommentID] = useState(0);
   const [reviewingKey, setReviewingKey] = useState('');
   const [unpublishingKey, setUnpublishingKey] = useState('');
+  const [featuringKey, setFeaturingKey] = useState('');
   const [deletingKey, setDeletingKey] = useState('');
   const [downloadingKey, setDownloadingKey] = useState('');
   const [favoritingKey, setFavoritingKey] = useState('');
@@ -542,7 +543,7 @@ export function App() {
         },
       };
       const usageHints = form.getAll('usageHints').map((hint) => String(hint).trim()).filter(Boolean).slice(0, 3);
-      if (editSource.type === 'skill') {
+      if (editSource.type === 'skill' || editSource.type === 'connector') {
         if (usageHints.length) payload.metadata.usageHints = JSON.stringify(usageHints);
         else delete payload.metadata.usageHints;
         delete payload.metadata.usageHint;
@@ -552,11 +553,22 @@ export function App() {
         return;
       }
       const version = canonicalVersion(editSource.version || editSource.latestVersion);
-      await requestJSON(`${apiBase}/creator/items/${encodeURIComponent(editSource.type)}/${encodeURIComponent(editSource.id)}/versions/${encodeURIComponent(version)}/metadata`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const target = `${apiBase}/creator/items/${encodeURIComponent(editSource.type)}/${encodeURIComponent(editSource.id)}/versions/${encodeURIComponent(version)}/metadata`;
+      const image = selectedFormFile(event.currentTarget, form, 'image');
+      if (image) {
+        // A replacement image rides along as multipart form data; the server
+        // points the release's icon/screenshot metadata at the stored object.
+        const body = new FormData();
+        body.append('metadata', JSON.stringify(payload));
+        body.append('image', image);
+        await requestJSON(target, { method: 'PATCH', body });
+      } else {
+        await requestJSON(target, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
       await Promise.all([loadCatalog(), loadCreatorItems(undefined, authSession)]);
       setEditSource(null);
       navigate('/creator');
@@ -570,20 +582,6 @@ export function App() {
 
   async function handleDownload(item, platformOverride = '') {
     if (!item || downloadingKey) return;
-    if (item.type === 'mcp') {
-      const key = `${item.type}:${item.id}:config`;
-      setDownloadingKey(key);
-      try {
-        triggerBrowserDownload(`${apiBase}/mcps/${encodeURIComponent(item.id)}/download`);
-        window.dispatchEvent(new CustomEvent('market:downloaded', { detail: { type: item.type, id: item.id } }));
-        notify(t.downloadStarted(localized(item.name, locale) || item.id), 'success');
-      } catch (reason) {
-        notify(t.downloadFailed(errorMessage(reason)), 'error');
-      } finally {
-        setDownloadingKey('');
-      }
-      return;
-    }
     if (item.type === 'skill' && item.skillKind === 'package') {
       const key = `${item.type}:${item.id}:package`;
       setDownloadingKey(key);
@@ -599,7 +597,7 @@ export function App() {
       return;
     }
     const platform = preferredPlatformKey(item, platformOverride);
-    if (!hasArtifact(item, platform)) {
+    if (!platform || !hasArtifact(item, platform)) {
       notify(t.downloadUnavailable, 'error');
       return;
     }
@@ -608,14 +606,16 @@ export function App() {
     try {
       const route = marketRoute(item.type);
       const id = encodeURIComponent(item.id);
-      const platformQuery = platform ? `?platform=${encodeURIComponent(platform)}` : '';
-      const resolved = await requestJSON(`${apiBase}/${route}/${id}/resolve${platformQuery}`);
+      const query = new URLSearchParams();
+      if (platform) query.set('platform', platform);
+      const resolved = await requestJSON(`${apiBase}/${route}/${id}/resolve?${query}`);
       if (!resolved?.asset?.url) {
         throw new Error(t.downloadUnavailable);
       }
       const resolvedPlatform = resolved.platform || platform;
-      const downloadQuery = resolvedPlatform ? `?platform=${encodeURIComponent(resolvedPlatform)}` : '';
-      triggerBrowserDownload(`${apiBase}/${route}/${id}/download${downloadQuery}`);
+      const downloadQuery = new URLSearchParams();
+      if (resolvedPlatform) downloadQuery.set('platform', resolvedPlatform);
+      triggerBrowserDownload(`${apiBase}/${route}/${id}/download?${downloadQuery}`);
       window.dispatchEvent(new CustomEvent('market:downloaded', { detail: { type: item.type, id: item.id } }));
       notify(t.downloadStarted(`${localized(item.name, locale) || item.id}${resolvedPlatform ? ` (${resolvedPlatform})` : ''}`), 'success');
     } catch (reason) {
@@ -771,6 +771,25 @@ export function App() {
     }
   }
 
+  async function handleSetFeatured(item) {
+    if (!item || featuringKey || authSession?.user?.role !== 'admin') return;
+    const key = `${item.type}:${item.id}`;
+    setFeaturingKey(key);
+    try {
+      await requestJSON(`${apiBase}/admin/items/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}/featured`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ featured: !item.featured }),
+      });
+      await loadCatalog();
+      notify(item.featured ? t.adminRemoveFeaturedSuccess : t.adminSetFeaturedSuccess, 'success');
+    } catch (reason) {
+      notify(t.adminFeaturedFailed(errorMessage(reason)), 'error');
+    } finally {
+      setFeaturingKey('');
+    }
+  }
+
   async function handleDeleteItem(item) {
     if (!item || deletingKey) return;
     if (!authSession?.user?.id) {
@@ -833,34 +852,20 @@ export function App() {
       const type = normalizeType(form.get('type'));
       const id = String(form.get('id') || '').trim().toLowerCase();
       const name = String(form.get('name') || '').trim();
-      const version = canonicalVersion(form.get('version')) || '1.0.0';
+      const submittedVersion = canonicalVersion(form.get('version'));
+      const websiteKind = type === 'website-app' ? String(form.get('websiteKind') || '').trim() || 'local-app' : '';
+      const version = submittedVersion || (type === 'website-app' && websiteKind === 'local-app' ? '' : '1.0.0');
+      if (!version) {
+        notify('请先上传包含 version 的 webapp.json 发布包。', 'error');
+        return;
+      }
       if (publishSource && compareSemanticVersionStrings(version, publishSource.version) <= 0) {
         notify(t.publishVersionMustAdvance(formatVersionLabel(publishSource.version)), 'error');
         return;
       }
       const description = String(form.get('description') || '').trim();
-      if (type === 'mcp') {
-        const mcpSource = String(form.get('mcpSource') || 'gateway');
-        if (mcpSource === 'gateway' && !String(form.get('mcpServerCode') || '').trim()) {
-          notify(t.mcpGatewayRequired, 'error');
-          return;
-        }
-        if (mcpSource === 'custom') {
-          const customEndpoint = String(form.get('mcpEndpointUrl') || '').trim();
-          if (!customEndpoint) {
-            notify(t.mcpCustomEndpointRequired, 'error');
-            return;
-          }
-          try {
-            const parsedURL = new URL(customEndpoint);
-            if (parsedURL.protocol !== 'http:' && parsedURL.protocol !== 'https:') throw new Error('invalid protocol');
-          } catch {
-            notify(t.mcpCustomEndpointInvalid, 'error');
-            return;
-          }
-        }
-      }
       const variantIndexes = form.getAll('variantIndex').map((value) => String(value));
+      const connectorTargetIndexes = form.getAll('connectorTargetIndex').map((value) => String(value));
       const variantFiles = variantIndexes.map((index) => selectedFormFile(formElement, form, `variantArtifact.${index}`));
       const artifact = selectedFormFile(formElement, form, 'artifact');
       const repositorySource = String(form.get('artifactSource') || 'upload') === 'repository';
@@ -870,6 +875,99 @@ export function App() {
       const hasSelectedImage = Boolean(image);
       const adpManifest = selectedFormFile(formElement, form, 'adpManifest');
       const hasSelectedADPManifest = Boolean(adpManifest);
+      const connectorSkillsArchive = selectedFormFile(formElement, form, 'connectorSkillsArchive');
+      const connectorPackageMode = String(form.get('connectorPackageMode') || 'parts');
+      const connectorHasMCP = form.get('connectorHasMCP') === 'on';
+      const connectorHasCLI = form.get('connectorHasCLI') === 'on';
+      const connectorHasSkill = form.get('connectorHasSKILL') === 'on';
+      const connectorCommandMap = (prefix) => Object.fromEntries([
+        ['darwin', String(form.get(`${prefix}Darwin`) || '').trim()],
+        ['linux', String(form.get(`${prefix}Linux`) || '').trim()],
+        ['win32', String(form.get(`${prefix}Win32`) || '').trim()],
+      ].filter(([, command]) => command));
+      const connectorAuthMode = String(form.get('connectorAuthMode') || 'null');
+      const connectorAuthBrowser = String(form.get('connectorAuthBrowser') || 'system');
+      const connectorTokenRows = form.getAll('connectorTokenKey').map((value, index) => ({
+        key: String(value || '').trim(),
+        label: String(form.getAll('connectorTokenLabel')[index] || '').trim(),
+        type: String(form.getAll('connectorTokenType')[index] || 'password'),
+        env: String(form.getAll('connectorTokenEnvName')[index] || '').trim(),
+      }));
+      const connectorTokenFields = connectorTokenRows.map(({ key, label, type }) => ({
+        key,
+        label,
+        type,
+        required: true,
+      })).filter((field) => field.key && field.label);
+      const connectorCredentialEnv = Object.fromEntries(connectorTokenRows.map(({ env, key }) => [env, key]).filter(([name, key]) => name && key));
+      const mcpStaticEnv = Object.fromEntries(form.getAll('mcpStaticEnvName').map((value, index) => [String(value || '').trim(), String(form.getAll('mcpStaticEnvValue')[index] || '').trim()]).filter(([name, value]) => name && value));
+      const connectorSkillDescriptions = Object.fromEntries(form.getAll('connectorSkillName').map((value, index) => [String(value || '').trim(), String(form.getAll('connectorSkillDescription')[index] || '').trim()]).filter(([name, description]) => name && description));
+      const connectorMCPTransport = String(form.get('mcpTransport') || 'streamableHttp');
+      const hostedCredentialVariable = connectorAuthMode === 'oneid-token' ? 'ONEID_TOKEN' : connectorAuthMode === 'oauth' ? 'OAUTH_ACCESS_TOKEN' : '';
+      const connectorMCPAuthTarget = String(form.get('connectorMCPAuthHeader') || '').trim()
+        || (hostedCredentialVariable ? (connectorMCPTransport === 'stdio' ? hostedCredentialVariable : 'Authorization') : '');
+      const connectorMCPAuthPrefix = String(form.get('connectorMCPAuthPrefix') || '')
+        || (hostedCredentialVariable && connectorMCPTransport === 'streamableHttp' ? 'Bearer ' : '');
+      const connectorConfig = type === 'connector' && connectorPackageMode !== 'complete' ? {
+        primaryType: String(form.get('connectorPrimaryType') || '').trim(),
+        authMode: connectorAuthMode,
+        authBrowser: connectorAuthBrowser,
+        tokenSchema: connectorAuthMode === 'token' ? {
+          title: String(form.get('connectorTokenTitle') || '').trim(),
+          docUrl: String(form.get('connectorTokenDocURL') || '').trim(),
+          fields: connectorTokenFields,
+        } : null,
+        oauth: connectorAuthMode === 'oauth' ? {
+          issuer: String(form.get('connectorOAuthIssuer') || '').trim(),
+          resource: String(form.get('connectorOAuthResource') || '').trim(),
+          scopes: String(form.get('connectorOAuthScopes') || '').trim().split(/[\s,]+/).filter(Boolean),
+          authorizationEndpoint: String(form.get('connectorOAuthAuthorizationEndpoint') || '').trim(),
+          tokenEndpoint: String(form.get('connectorOAuthTokenEndpoint') || '').trim(),
+          revocationEndpoint: String(form.get('connectorOAuthRevocationEndpoint') || '').trim(),
+        } : null,
+        mcp: connectorHasMCP ? {
+          serverName: String(form.get('mcpServerName') || 'main').trim(),
+          description: String(form.get('connectorMCPDescription') || '').trim(),
+          transport: connectorMCPTransport,
+          address: String(form.get('mcpAddress') || '').trim(),
+          args: String(form.get('mcpArgs') || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean),
+          timeout: Number(form.get('mcpTimeout') || 30000),
+          authHeader: connectorMCPAuthTarget,
+          authPrefix: connectorMCPAuthPrefix,
+          staticHeaderName: String(form.get('mcpStaticHeaderName') || '').trim(),
+          staticHeaderValue: String(form.get('mcpStaticHeaderValue') || '').trim(),
+          runtimeType: String(form.get('mcpRuntimeType') || '').trim(),
+          runtimeVersion: String(form.get('mcpRuntimeVersion') || '').trim(),
+          staticEnvName: String(form.get('mcpStaticEnvName') || '').trim(),
+          staticEnvValue: String(form.get('mcpStaticEnvValue') || '').trim(),
+          staticEnv: mcpStaticEnv,
+          credentialEnv: connectorCredentialEnv,
+        } : null,
+        cli: connectorHasCLI ? {
+          name: String(form.get('connectorCLIName') || '').trim(),
+          description: String(form.get('connectorCLIDescription') || '').trim(),
+          runtimeType: String(form.get('cliRuntimeType') || '').trim(),
+          runtimeVersion: String(form.get('cliRuntimeVersion') || '').trim(),
+          init: connectorCommandMap('cliInit'),
+          versionCommand: connectorCommandMap('cliVersion'),
+          minVersion: String(form.get('cliMinVersion') || '').trim(),
+          versionPattern: String(form.get('cliVersionPattern') || '').trim(),
+          auth: connectorCommandMap('cliAuth'),
+          status: connectorCommandMap('cliStatus'),
+          unAuth: connectorCommandMap('cliUnAuth'),
+          statusMatch: String(form.get('cliStatusMatch') || '').trim(),
+          statusMatchJSON: String(form.get('cliStatusMatchJSON') || '').trim(),
+          authURLDomain: String(form.get('cliAuthURLDomain') || '').trim(),
+          authWaitForExit: form.get('cliAuthWaitForExit') === 'on',
+          authSuppressBrowser: form.get('cliAuthSuppressBrowser') === 'on',
+          authEnv: String(form.get('connectorCLIAuthEnv') || '').trim() || hostedCredentialVariable,
+          staticEnvName: String(form.get('cliStaticEnvName') || '').trim(),
+          staticEnvValue: String(form.get('cliStaticEnvValue') || '').trim(),
+        } : null,
+        hasSkill: connectorHasSkill,
+        skillDescriptions: connectorSkillDescriptions,
+      } : null;
+      const hasConnectorParts = type === 'connector' && Boolean(connectorConfig) && (connectorHasMCP || connectorHasCLI) && (!connectorHasSkill || Boolean(connectorSkillsArchive));
       const skillKind = type === 'skill' && form.get('skillKind') === 'package' ? 'package' : 'single';
       const skill = type === 'skill' ? {
         kind: skillKind,
@@ -877,7 +975,6 @@ export function App() {
         scenario: String(form.get('skillScenario') || 'productivity').trim(),
         level: String(form.get('skillLevel') || 'beginner').trim(),
         packageMode: skillKind === 'package' ? 'collection' : '',
-        featured: form.get('skillFeatured') === 'on',
         includedSkills: parseIncludedSkills(form.getAll('includedSkills')),
       } : null;
       if (skill?.kind === 'package' && !skill.includedSkills.length) {
@@ -885,7 +982,7 @@ export function App() {
         return;
       }
       const artifactRequired = artifactRequiredFor(type, { websiteKind: String(form.get('websiteKind') || '').trim(), skill });
-      if (artifactRequired && (!hasSelectedArtifact || (variantIndexes.length > 0 && !hasAllVariantArtifacts))) {
+      if (artifactRequired && (type === 'connector' && connectorPackageMode !== 'complete' ? !hasConnectorParts : (!hasSelectedArtifact || (variantIndexes.length > 0 && !hasAllVariantArtifacts)))) {
         notify(t.artifactRequired, 'error');
         return;
       }
@@ -921,7 +1018,7 @@ export function App() {
       if (install) platform.install = install;
       if (uninstall) platform.uninstall = uninstall;
       if (detect) platform.detect = detect;
-      const variants = variantIndexes.map((index) => {
+      const uploadVariants = variantIndexes.map((index) => {
         const os = String(form.get(`variantOS.${index}`) || '').trim();
         const arch = String(form.get(`variantArch.${index}`) || '').trim();
         const key = platformKeyFromSelection(os, arch);
@@ -933,6 +1030,19 @@ export function App() {
           fileField: `artifact.${key}`,
         };
       });
+      const connectorCanBundleExecutable = connectorHasCLI || (connectorHasMCP && connectorMCPTransport === 'stdio');
+      const connectorVariants = connectorCanBundleExecutable ? connectorTargetIndexes.map((index) => {
+        const os = String(form.get(`connectorTargetOS.${index}`) || '').trim();
+        const arch = String(form.get(`connectorTargetArch.${index}`) || '').trim();
+        const key = platformKeyFromSelection(os, arch);
+        return {
+          platform: { ...platform, key, os, arch },
+          archiveType: 'zip',
+          assetRole: 'primary',
+          fileField: `artifact.${key}`,
+        };
+      }) : [];
+      const variants = type === 'connector' && connectorPackageMode !== 'complete' && connectorCanBundleExecutable ? connectorVariants : uploadVariants;
       if (new Set(variants.map((variant) => variant.platform.key)).size !== variants.length) {
         notify(t.publishFailed(t.duplicatePlatformVariant), 'error');
         return;
@@ -968,45 +1078,26 @@ export function App() {
         },
       };
       const usageHints = form.getAll('usageHints').map((hint) => String(hint).trim()).filter(Boolean).slice(0, 3);
-      if (type === 'skill') {
+      if (type === 'skill' || type === 'connector') {
         if (usageHints.length) metadata.metadata.usageHints = JSON.stringify(usageHints);
         else delete metadata.metadata.usageHints;
         delete metadata.metadata.usageHint;
       }
       if (skill) metadata.skill = skill;
+      if (connectorConfig) metadata.metadata.connectorPublishConfig = JSON.stringify(connectorConfig);
       if (metadata.accessPolicy.mode === 'restricted' && !metadata.accessPolicy.departmentIds.length && !metadata.accessPolicy.userIds.length) {
         notify(t.accessRestrictedRequired, 'error');
         return;
-      }
-      if (type === 'cli-tool') {
-        if (install) metadata.install = install;
-        if (uninstall) metadata.uninstall = uninstall;
-        if (detect) metadata.detect = detect;
       }
       const author = String(form.get('author') || '').trim();
       const metadataUrl = String(form.get('metadataUrl') || '').trim();
       if (author) metadata.metadata.author = author;
       if (metadataUrl) metadata.metadata.url = metadataUrl;
-      if (type === 'mcp') {
-        const mcpSource = String(form.get('mcpSource') || 'gateway');
-        metadata.metadata.source = mcpSource;
-        metadata.metadata.gatewayServerCode = String(form.get('mcpServerCode') || '').trim();
-        metadata.metadata.endpointUrl = String(form.get('mcpEndpointUrl') || '').trim();
-        metadata.metadata.gatewayConfigVersion = String(form.get('mcpGatewayConfigVersion') || '').trim();
-        if (mcpSource === 'custom') {
-          const customTools = String(form.get('mcpCustomTools') || '').split(',').map((tool) => tool.trim()).filter(Boolean);
-          metadata.metadata.tools = JSON.stringify(customTools);
-          metadata.metadata.serverKey = String(form.get('mcpCustomServerKey') || '').trim().toLowerCase();
-        } else {
-          metadata.metadata.tools = String(form.get('mcpTools') || '[]');
-        }
-        metadata.tags = [...new Set([...metadata.tags, 'MCP', mcpSource === 'custom' ? 'custom' : 'gateway'])];
-      }
       if (hasSelectedADPManifest && !hasSelectedArtifact) {
         metadata.adpYaml = await adpManifest.text();
       }
 
-      if (hasSelectedArtifact || hasSelectedImage) {
+      if (hasSelectedArtifact || hasSelectedImage || hasConnectorParts) {
         const body = new FormData();
         body.append('metadata', JSON.stringify(metadata));
         if (artifact) body.append('artifact', artifact);
@@ -1015,6 +1106,12 @@ export function App() {
         });
         if (hasSelectedImage) body.append('image', image);
         if (hasSelectedADPManifest) body.append('adp', adpManifest);
+        if (connectorConfig) body.append('connectorConfig', JSON.stringify(connectorConfig));
+        if (type === 'connector' && connectorPackageMode !== 'complete') connectorVariants.forEach((variant) => {
+          const cliArchive = selectedFormFile(formElement, form, `connectorCLIArchive.${variant.platform.key}`);
+          if (cliArchive) body.append(`connectorCLIArchive.${variant.platform.key}`, cliArchive);
+        });
+        if (connectorSkillsArchive) body.append('connectorSkillsArchive', connectorSkillsArchive);
         if (repositorySource) {
           body.append('artifactSource', 'repository');
           body.append('repositoryProvider', String(form.get('repositoryProvider') || 'gitlab'));
@@ -1166,6 +1263,8 @@ export function App() {
             reviewingKey={reviewingKey}
             onUnpublishLatest={handleUnpublishLatest}
             unpublishingKey={unpublishingKey}
+            onSetFeatured={handleSetFeatured}
+            featuringKey={featuringKey}
             onDeleteItem={handleDeleteItem}
             deletingKey={deletingKey}
             onLoadAdminReviews={handleLoadAdminReviews}

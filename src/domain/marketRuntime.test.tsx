@@ -17,10 +17,21 @@ describe('market catalog normalization', () => {
     expect(item.detailViewCount).toBe(12);
   });
 
+  it('keeps an icon separate from detail media', () => {
+    const item = mergeCatalogItem({
+      id: 'website-app',
+      type: 'website-app',
+      metadata: { icon: 'https://example.com/icon.png' },
+    });
+
+    expect(item.icon).toBe('https://example.com/icon.png');
+    expect(item.screenshot).toBe('');
+  });
+
   it('uses targets returned by the API for artifact platform selection', () => {
     const item = mergeCatalogItem({
       id: 'targeted',
-      type: 'cli-tool',
+      type: 'connector',
       targets: {
         'darwin-arm64': { platform: 'darwin-arm64', os: 'darwin', arch: 'arm64' },
       },
@@ -41,16 +52,22 @@ describe('market catalog normalization', () => {
     expect(marketBrand.name['en-US']).toBe('Capability Market');
   });
 
-  it('hides only disabled market categories while retaining all data-model types', () => {
+  it('exposes connectors and rejects removed MCP/CLI market types', () => {
     const categoryIDs = sidebarCategoryMeta.map((category) => category.id);
 
     expect(categoryIDs).not.toContain('plugin');
     expect(categoryIDs).not.toContain('sandbox-image');
+    expect(categoryIDs).not.toContain('mcp');
+    expect(categoryIDs).not.toContain('cli-tool');
+    expect(categoryIDs).toContain('connector');
     expect(categoryIDs).toContain('pet');
     expect(categoryIDs).toContain('website-app');
     expect(isMarketTypeVisible('agent')).toBe(true);
     expect(isMarketTypeVisible('plugin')).toBe(false);
     expect(isMarketTypeVisible('pet')).toBe(true);
     expect(isMarketTypeVisible('website-app')).toBe(true);
+    expect(isMarketTypeVisible('connector')).toBe(true);
+    expect(isMarketTypeVisible('mcp')).toBe(false);
+    expect(isMarketTypeVisible('cli-tool')).toBe(false);
   });
 });

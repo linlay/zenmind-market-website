@@ -30,6 +30,7 @@ import {
   Search,
   Shapes,
   ShieldCheck,
+  Star,
   Sun,
   Terminal,
   Trash2,
@@ -70,6 +71,8 @@ export function AdminCenter({
   reviewingKey,
   onUnpublishLatest,
   unpublishingKey,
+  onSetFeatured,
+  featuringKey,
   onDeleteItem,
   deletingKey,
   onLoadAdminReviews,
@@ -177,6 +180,7 @@ export function AdminCenter({
                   <span className="table-actions">
                     <button className="table-action" type="button" onClick={() => openVersions(item)}><Calendar size={14} /><span>{t.creatorVersions}</span></button>
                     <button className="table-action" type="button" onClick={() => onDetails(item)}><ArrowRight size={14} /><span>{t.creatorOpenMarket}</span></button>
+                    <button className={item.featured ? 'table-action is-active' : 'table-action'} type="button" disabled={featuringKey === key} onClick={() => onSetFeatured(item)}><Star size={14} fill={item.featured ? 'currentColor' : 'none'} /><span>{item.featured ? t.adminRemoveFeatured : t.adminSetFeatured}</span></button>
                     <button className="table-action is-danger" type="button" disabled={unpublishingKey === key} onClick={() => onUnpublishLatest(item)}><Trash2 size={14} /><span>{t.adminUnpublishLatest}</span></button>
                     <button className="table-action is-danger" type="button" disabled={deletingKey === key} onClick={() => onDeleteItem(item)}><X size={14} /><span>{t.deleteComponent}</span></button>
                   </span>

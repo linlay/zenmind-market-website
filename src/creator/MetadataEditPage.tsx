@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { ArrowLeft, CheckCircle2, Plus, Save, Search, X } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, CheckCircle2, ImagePlus, Plus, Save, Search, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { requestJSON } from '../api/client';
 import { apiBase, localized, usageHintsFromMetadata } from '../domain/market';
 import { formatVersionLabel } from '../domain/version';
@@ -14,8 +14,29 @@ export function MetadataEditPage({ item, currentUser, locale, t, onClose, onSubm
   const [directoryQuery, setDirectoryQuery] = useState('');
   const [directoryResults, setDirectoryResults] = useState([]);
   const [directoryStatus, setDirectoryStatus] = useState('idle');
+  const currentImageURL = item?.icon || item?.screenshot || '';
+  const [imagePreview, setImagePreview] = useState(currentImageURL);
+  const previewObjectURL = useRef('');
+
+  useEffect(() => () => {
+    if (previewObjectURL.current) URL.revokeObjectURL(previewObjectURL.current);
+  }, []);
 
   if (!item) return null;
+
+  function handleImageChange(event) {
+    const file = event.target.files && event.target.files[0];
+    if (previewObjectURL.current) {
+      URL.revokeObjectURL(previewObjectURL.current);
+      previewObjectURL.current = '';
+    }
+    if (!file) {
+      setImagePreview(currentImageURL);
+      return;
+    }
+    previewObjectURL.current = URL.createObjectURL(file);
+    setImagePreview(previewObjectURL.current);
+  }
 
   function toggleDepartment(id) {
     setSelectedDepartmentIDs((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
@@ -73,7 +94,21 @@ export function MetadataEditPage({ item, currentUser, locale, t, onClose, onSubm
               <span>{t.tags}</span>
               <input name="tags" defaultValue={(item.tags || []).join(', ')} placeholder="AI, Tool" />
             </label>
-            {item.type === 'skill' ? (
+            <label className="full">
+              <span>{t.image}</span>
+              <span className="metadata-image-field">
+                {imagePreview ? (
+                  <img className="metadata-image-preview" src={imagePreview} alt="" />
+                ) : (
+                  <span className="metadata-image-placeholder"><ImagePlus size={22} /></span>
+                )}
+                <span className="metadata-image-input">
+                  <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleImageChange} />
+                </span>
+              </span>
+              <small className="field-hint">{t.editMetadataImageHint}</small>
+            </label>
+            {item.type === 'skill' || item.type === 'connector' ? (
               <label className="full">
                 <span>{t.usageHint}</span>
                 {[0, 1, 2].map((index) => <input key={index} name="usageHints" maxLength="80" defaultValue={usageHintsFromMetadata(item.metadata)[index] || ''} placeholder={t.usageHintPlaceholder} />)}

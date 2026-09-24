@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { IncludedSkillsSection, stripMarkdownFrontMatter } from './CatalogViews';
+import { ConnectorComponentsSection, IncludedSkillsSection, PlatformArtifactPicker, stripMarkdownFrontMatter } from './CatalogViews';
 
 const sectionCopy = {
   skillIncludedCount: (count: number) => `Included skills (${count})`,
@@ -43,6 +43,24 @@ describe('stripMarkdownFrontMatter', () => {
 
   it('does not remove content when a front matter block is incomplete', () => {
     expect(stripMarkdownFrontMatter('---\nname: Demo\n# Still YAML')).toBe('---\nname: Demo\n# Still YAML');
+  });
+});
+
+describe('PlatformArtifactPicker', () => {
+  it('shows a single platform as a non-interactive tag', () => {
+    render(<PlatformArtifactPicker platformKeys={['darwin-arm64']} activePlatformKey="darwin-arm64" label="Platform" selectLabel="Select platform" onChange={vi.fn()} />);
+
+    expect(screen.getByText('darwin-arm64')).toBeTruthy();
+    expect(screen.queryByRole('radio')).toBeNull();
+  });
+
+  it('shows multiple artifacts as a single-select tag group', () => {
+    const onChange = vi.fn();
+    render(<PlatformArtifactPicker platformKeys={['darwin-arm64', 'darwin-amd64']} activePlatformKey="darwin-arm64" label="Platform" selectLabel="Select platform" onChange={onChange} />);
+
+    expect(screen.getByRole('radio', { name: 'darwin-arm64' })).toBeChecked();
+    fireEvent.click(screen.getByRole('radio', { name: 'darwin-amd64' }));
+    expect(onChange).toHaveBeenCalledWith('darwin-amd64');
   });
 });
 
@@ -95,5 +113,74 @@ describe('IncludedSkillsSection', () => {
     );
 
     await waitFor(() => expect(screen.getByText('skill-a')).toBeTruthy());
+  });
+});
+
+describe('ConnectorComponentsSection', () => {
+  it('shows bundled skills, MCP transport, and CLI platforms with descriptions', () => {
+    const t = {
+      connectorComponentsTitle: 'Connector components',
+      connectorComponentsDescription: 'Installed capabilities.',
+      connectorSkillsTitle: 'Skills',
+      connectorSkillDescription: (name) => `${name} workflow`,
+      connectorSkillFallbackName: 'Built-in skill',
+      connectorSkillFallbackDescription: 'Built-in workflow',
+      connectorMCPFallbackName: 'MCP service',
+      connectorMCPDescription: (transport) => `MCP via ${transport}`,
+      connectorMCPFallbackDescription: 'MCP tools',
+      connectorCLIName: 'Command-line tool',
+      connectorCLIDescription: (platforms) => `CLI for ${platforms}`,
+      connectorCLIFallbackDescription: 'CLI tools',
+      connectorToolCount: (count) => `${count} transport`,
+      connectorPlatformCount: (count) => `${count} platforms`,
+      connectorComponentCount: (count) => `${count} items`,
+      connectorExpandComponents: (count) => `Show ${count} more`,
+      connectorCollapseComponents: 'Show less',
+    };
+    render(<ConnectorComponentsSection item={{
+      connectorCapabilities: ['skill', 'mcp', 'cli'],
+      connectorSkillNames: ['document-reader'],
+      connectorMCPTransports: ['streamableHttp'],
+      connectorComponents: [
+        { id: 'skill:document-reader', type: 'skill', name: 'document-reader', description: 'Reads and summarizes documents.' },
+        { id: 'mcp:workspace', type: 'mcp', name: 'workspace', description: 'Searches the company workspace.' },
+        { id: 'cli:default', type: 'cli', name: 'Workspace CLI', description: 'Runs local workspace commands.' },
+      ],
+      connectorConfig: {
+        mcp: { serverName: 'workspace' },
+        cli: { versionCommand: { darwin: 'tool --version', linux: 'tool --version' } },
+      },
+    }} t={t} />);
+
+    expect(screen.getByText('document-reader')).toBeTruthy();
+    expect(screen.getByText('Reads and summarizes documents.')).toBeTruthy();
+    expect(screen.getByText('Searches the company workspace.')).toBeTruthy();
+    expect(screen.getByText('Workspace CLI')).toBeTruthy();
+    expect(screen.getByText('Runs local workspace commands.')).toBeTruthy();
+    expect(screen.getByText('2 platforms')).toBeTruthy();
+  });
+
+  it('shows three components per group before expanding', () => {
+    const t = {
+      connectorComponentsTitle: 'Connector components', connectorComponentsDescription: 'Installed capabilities.',
+      connectorSkillsTitle: 'Skills', connectorSkillDescription: (name) => `${name} workflow`,
+      connectorSkillFallbackName: 'Built-in skill', connectorSkillFallbackDescription: 'Built-in workflow',
+      connectorMCPFallbackName: 'MCP service', connectorMCPDescription: (value) => value,
+      connectorMCPFallbackDescription: 'MCP tools', connectorCLIName: 'Command-line tool',
+      connectorCLIDescription: (value) => value, connectorCLIFallbackDescription: 'CLI tools',
+      connectorToolCount: (count) => String(count), connectorPlatformCount: (count) => String(count),
+      connectorComponentCount: (count) => `${count} items`, connectorExpandComponents: (count) => `Show ${count} more`,
+      connectorCollapseComponents: 'Show less',
+    };
+    render(<ConnectorComponentsSection item={{
+      connectorCapabilities: ['skill'],
+      connectorSkillNames: ['skill-1', 'skill-2', 'skill-3', 'skill-4'],
+    }} t={t} />);
+
+    expect(screen.queryByText('skill-4')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show 1 more' }));
+    expect(screen.getByText('skill-4')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Show less' }));
+    expect(screen.queryByText('skill-4')).toBeNull();
   });
 });

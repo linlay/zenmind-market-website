@@ -5,6 +5,7 @@ export {
   canInstallWithADP,
   commandEntries,
   dependencyKey,
+  detectClientPlatform,
   downloadKeyForItem,
   formatAssetSize,
   formatAssetSizeForPlatform,

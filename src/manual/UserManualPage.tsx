@@ -68,10 +68,9 @@ const skillPageSections = [
 const componentRows = [
   ['单项技能', '可复用的一项工作能力', 'ZIP；根目录或子目录中包含 SKILL.md，且 metadata.version 与表单版本一致', '可从 GitHub / GitLab 导入；可附加 ADP'],
   ['技能包', '把多个已上架单项技能组合成套装', '至少选择 1 个已发布的单项技能', '系统生成组合下载，无需自行上传 ZIP'],
+  ['连接器', '统一封装 MCP、CLI 和可选 Skill 能力', 'ZIP；根目录包含 connector.json 及匹配的 mcp.json/cli.json', '认证、运行时和能力声明必须符合连接器规范'],
   ['智能体', '智能体定义和运行资源', 'ZIP；包含 agent.yml 或 agent.yaml', '适合完整角色或自动化工作流'],
-  ['MCP', '向客户端提供工具和数据服务', '选择网关服务，或填写有效的 HTTP(S) 自定义地址', '下载的是 MCP 配置，不要求上传制品'],
   ['桌面宠物', '桌面宠物形象及动作资源', '资源包内包含 pet.json、pet-idle.png', '图片、配置文件名要准确'],
-  ['CLI 工具', '在终端中使用的命令行程序', '制品可选；需要额外依赖时可上传 adp.yaml', '可填写安装、卸载、检测、版本命令'],
   ['网站应用', '本地运行的网站或外部网页入口', 'local-app 需要 webapp.json；external 需要有效 URL', '外部网站不要上传虚构压缩包'],
   ['软件依赖包', 'Python、Node.js 等运行依赖', 'ZIP 或 tar.gz', '应说明系统、架构、版本和安装方式'],
   ['插件（代码已支持）', '扩展宿主应用能力', 'ZIP；包含 manifest.json', '当前新发布入口与市场分类暂时隐藏'],
@@ -201,7 +200,7 @@ export function UserManualPage({ onClose }: UserManualPageProps) {
               ]}
             />
             <StepList>
-              <li><strong>选分类。</strong><span>点击左侧“全部功能、技能、智能体、MCP、桌面宠物、CLI 工具、网站应用、软件依赖包”。进入技能后，还能用文档、数据、编程、浏览器、办公、内容、多媒体、搜索、系统、API、自动化等标签继续筛选。</span></li>
+              <li><strong>选分类。</strong><span>点击左侧“全部功能、连接器、技能、智能体、桌面宠物、网站应用、软件依赖包”。进入技能后，还能用文档、数据、编程、浏览器、办公、内容、多媒体、搜索、系统、API、自动化等标签继续筛选。</span></li>
               <li><strong>输入关键词。</strong><span>搜索范围包含名称、组件 ID、作者、描述和标签。没有结果时，先清空搜索框，再切回“全部功能”。</span></li>
               <li><strong>选择排序。</strong><span>“热门推荐”优先显示下载量高的组件；“最新发布”按时间；“名称排序”按名称排列。</span></li>
               <li><strong>查看卡片。</strong><span>卡片展示名称、版本、作者、下载/收藏数、技能类型、标签和平台。登录后可直接点击心形收藏。</span></li>
@@ -219,7 +218,7 @@ export function UserManualPage({ onClose }: UserManualPageProps) {
             <StepList>
               <li><strong>打开详情。</strong><span>点击卡片左下角“详情”。组件详情以弹窗显示，点击右上角关闭或弹窗外空白处返回。</span></li>
               <li><strong>确认平台。</strong><span>有平台下拉框时选择你的系统与架构。不了解架构：Apple 芯片 Mac 通常是 darwin-arm64；多数 Windows 电脑是 windows-amd64。</span></li>
-              <li><strong>选择动作。</strong><span>显示“下载”时会下载对应平台制品；MCP 下载的是配置文件；技能包下载的是组合包。显示“一键安装”时，按钮会把 <code>adp install ...</code> 命令复制到剪贴板，需要到已安装 ADP 的终端中粘贴执行。</span></li>
+              <li><strong>选择动作。</strong><span>显示“下载”时会下载对应平台制品；连接器下载的是统一连接器包；技能包下载的是组合包。显示“一键安装”时，按钮会把 <code>adp install ...</code> 命令复制到剪贴板，需要到已安装 ADP 的终端中粘贴执行。</span></li>
               <li><strong>收藏、评分或评论。</strong><span>收藏后可在首页启用“仅看我的收藏”。下载过组件后可提交 1–5 星评分；写评论时也可一并选择星级。</span></li>
             </StepList>
             <Note tone="warning"><strong>安全提醒：</strong>运行命令前，先查看依赖、安装命令和制品来源。按钮显示“暂无制品”时，说明作者没有提供可下载文件，不能强行安装。</Note>
@@ -255,13 +254,13 @@ export function UserManualPage({ onClose }: UserManualPageProps) {
                 { number: 1, label: '发布步骤：当前是“选择类型”，选中后进入“填写信息”。', x: '14%', y: '19%' },
                 { number: 2, label: '单项技能：上传一个技能；卡片下方列出必须材料。', x: '18%', y: '37%' },
                 { number: 3, label: '技能包：关联已有技能，不是上传一个普通压缩包。', x: '50%', y: '37%' },
-                { number: 4, label: 'MCP：从网关选择，或在下一步切换为自定义地址。', x: '18%', y: '55%' },
+                { number: 4, label: '连接器：分别上传 connector.json、MCP、CLI 和可选 Skill 文件。', x: '18%', y: '55%' },
                 { number: 5, label: '网站应用：下一步选择本地应用或外部链接。', x: '82%', y: '55%' },
               ]}
             />
             <StepList>
               <li><strong>登录并进入。</strong><span>点击顶部“开发者发布”。如果没有该按钮，说明未登录或当前是“仅安全审核”角色。</span></li>
-              <li><strong>选择类型。</strong><span>阅读卡片上的“需要准备”，确认自己有对应文件或地址。类型关系到后续校验，不能把 CLI 工具当作技能上传。</span></li>
+              <li><strong>选择类型。</strong><span>阅读卡片上的“需要准备”，确认自己有对应文件。MCP 或 CLI 能力必须按连接器类型上传，不能使用其他商品类型绕过校验。</span></li>
               <li><strong>填写基础信息。</strong><span>组件 ID 要全市场唯一，建议用小写英文、数字、点、横线或下划线并长期保持不变；名称与描述面向普通用户；版本建议从 1.0.0 开始并遵守“主版本.次版本.修订号”。</span></li>
               <li><strong>上传展示图片。</strong><span>支持 PNG、JPEG、WebP、GIF。图片用于市场详情展示，应清晰、无敏感信息，避免把使用说明全塞在图片里。</span></li>
               <li><strong>填写类型设置和制品。</strong><span>系统会按类型显示不同字段。带红色必填提示的项目必须完成；同一个系统+架构只能添加一次。</span></li>
@@ -311,7 +310,6 @@ export function UserManualPage({ onClose }: UserManualPageProps) {
                   <tr><td>技能分类</td><td>必填</td><td>选择最接近核心能力的一项：文档处理、数据分析、编程开发、浏览器自动化、办公效率、内容创作、图像多媒体、搜索阅读、系统操作、API 集成、自动化或其他。</td><td>按主要用途选，不要为了增加曝光重复或错选。例如 Excel 汇总通常选“数据分析”或“办公效率”。</td></tr>
                   <tr><td>使用场景</td><td>必填</td><td>从效率、开发者、研究、企业、教育、创作者中选择最主要的使用人群和场景。</td><td>代码检查选“开发者”；论文资料整理选“研究”；企业内部流程选“企业”。</td></tr>
                   <tr><td>难度</td><td>必填</td><td>入门：几乎无需配置；进阶：需要准备文件、参数或少量依赖；高级：需要开发知识、复杂环境或多个系统配合。</td><td>难度描述的是用户的使用门槛，不是作者开发它有多难。</td></tr>
-                  <tr><td>官方推荐</td><td>选填</td><td>用于标记推荐内容。只有内容成熟、说明完整、经过充分验证时再勾选，最终仍以审核结果为准。</td><td>普通新技能建议先不勾选。</td></tr>
                 </tbody>
               </table>
             </div>
@@ -479,9 +477,8 @@ version: "1.2.0"
             <div className="manual-component-stack">
               {[
                 ['03', '智能体', '含 agent.yml 或 agent.yaml 的 ZIP。', '说明智能体能完成的任务、需要什么输入、输出什么结果以及不适用范围。', '定义文件能被解析，引用的资源都在包内，版本和展示信息一致。', '只有说明没有运行定义；资源路径写错；把普通脚本当智能体。'],
-                ['04', 'MCP', '从网关选择一个服务，或准备有效的 HTTP(S) 自定义服务地址。', '网关模式会带入 endpoint、配置版本和工具；自定义模式可填服务标识与英文逗号分隔的工具名。', '地址可访问；工具列表真实；服务标识适合成为 .mcp.json 的 mcpServers 键名。', '网关模式没有真正选中服务；自定义地址不是 http(s)；工具名使用中文逗号。'],
+                ['04', '连接器', '分别上传 connector.json，并至少上传 mcp.json 或 cli.json；可选 SKILL.md。', '在 connector.json 声明身份、主要调用方式和认证模式；市场将 MCP、CLI 与 Skill 文件组装到规范目录。', '清单版本和 ID 与发布表单一致；认证模板、HTTPS 地址、CLI 生命周期及 Skill frontmatter 均可通过校验。', '继续使用旧 MCP/CLI 商品格式；上传完整 ZIP；把真实凭据写入清单；字段冲突或缺少对应能力文件。'],
                 ['05', '桌面宠物', '包含 pet.json 和 pet-idle.png 的资源包。', '名称、说明和展示图要准确表现宠物；pet.json 中的资源路径必须与包内文件一致。', '待机图片能正常读取，文件名大小写正确，包内没有无关敏感文件。', '缺少必需图片；配置引用不存在的动作资源；图片与描述不一致。'],
-                ['06', 'CLI 工具', '可选 ZIP 制品；需要额外依赖时准备 adp.yaml。', '按平台上传；高级选项可填写安装、卸载、检测和版本命令，检测命令一行一条。', '命令可在目标平台执行；返回值和版本输出正常；卸载不会误删用户数据。', '平台标错；命令只适用于作者电脑；把多个检测命令写在同一行。'],
                 ['07', '网站应用', 'local-app 准备含 webapp.json 的制品；external 准备有效外部 URL。', '先选 local-app 或 external。外部网站直接填 URL，不需要为了上传而制作无关压缩包。', '本地入口、端口和资源路径正确；外部地址使用 HTTPS 且对目标用户可访问。', '类型选错；URL 指向登录后无权限的页面；本地包缺少 webapp.json。'],
                 ['08', '软件依赖包', 'ZIP 或 tar.gz 依赖包。', '为不同系统和架构分别添加平台制品，并在 README 中说明安装、验证和卸载方法。', '包名、版本、系统、架构全部一致；依赖来源和许可证信息清楚。', '把专用包标成 universal；压缩类型与实际文件不符；缺少安装说明。'],
                 ['09', '插件（当前隐藏）', '含 manifest.json 的 ZIP。', '代码保留了插件发布与管理能力，但当前首次发布入口和市场分类不显示。', '如通过已有管理流程维护，仍需核对 manifest、版本、权限和宿主兼容性。', '不要尝试通过选择其他类型绕过当前隐藏限制。'],
@@ -587,7 +584,7 @@ version: "1.2.0"
               <details><summary>为什么上传技能后提示版本错误？</summary><p>核对表单版本与 ZIP 中 SKILL.md 的 YAML <code>metadata.version</code>，两者必须完全一致，例如都为 1.2.0。</p></details>
               <details><summary>为什么无法添加平台？</summary><p>同一个系统和架构组合只能出现一次。检查是否已有 windows-amd64、darwin-arm64 等重复项。</p></details>
               <details><summary>为什么限定人群无法提交？</summary><p>至少选择一个部门或指定用户。用户搜索至少输入 2 个字符；目录不可用时重新登录，仍失败则联系管理员。</p></details>
-              <details><summary>MCP 为什么无法提交？</summary><p>网关模式必须真正选中一个服务；自定义模式必须填写以 http:// 或 https:// 开头的有效地址。</p></details>
+              <details><summary>为什么不能再单独提交 MCP 或 CLI？</summary><p>这两种旧商品类型已经删除。请按连接器表单分别上传 connector.json 与 mcp.json/cli.json；市场会校验并保存标准连接器包。</p></details>
               <details><summary>新版本为什么没有马上出现在市场？</summary><p>新版本必须更高，并依次完成安全审核与管理员审核。审核期间，市场继续显示旧版本，这是正常保护机制。</p></details>
               <details><summary>为什么“编辑附加信息”不能换文件？</summary><p>该入口专门保护已发布制品，只允许改展示信息和访问范围。要换文件、平台、依赖或安装协议，请选择“发布新版本”。</p></details>
             </div>
@@ -598,7 +595,7 @@ version: "1.2.0"
                 '制品与系统/架构匹配；必需文件名正确；技能 metadata.version 一致。',
                 'README、展示图片、标签、场景足以让第一次看到的人理解用途。',
                 '访问范围正确；私有仓库令牌为短期只读且未写入任何内容。',
-                '已在预期平台验证依赖、下载包和 ADP/CLI 安装命令。',
+                '已在预期平台验证依赖、连接器运行时、下载包和技能 ADP 安装命令。',
               ].map((item) => <p key={item}><CheckCircle2 size={16} />{item}</p>)}
             </div>
           </section>

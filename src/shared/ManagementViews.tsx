@@ -242,7 +242,7 @@ export function ReviewDetailModal({ state, locale, t, reviewingKey, onReview, on
 
           {state.status === 'ready' && item && tab === 'preview' ? (
             <div className="review-market-preview">
-              {item.icon ? <div className="media-panel"><img src={item.screenshot} alt="" /></div> : null}
+              {item.screenshot && item.screenshot !== item.icon ? <div className="media-panel"><img src={item.screenshot} alt="" /></div> : null}
               <div><span className="section-kicker">{displayType(item.type, t)}</span><h2>{localized(item.name, locale)}</h2><p>{localized(item.description, locale)}</p><div className="tag-row">{(item.tags || []).map((tag) => <span key={tag}>#{tag}</span>)}</div></div>
               {hasCoreFeatures ? (
                 <section className="readme-section">

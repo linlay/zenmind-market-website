@@ -42,6 +42,7 @@ export function MarketPage({
   emptyCopy,
   filtered,
   isAuthenticated,
+  locale,
   skillCategories,
   skillCounts,
   favoritesOnly,
